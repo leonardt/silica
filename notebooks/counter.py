@@ -1,1 +1,1 @@
-../counter.py
+../examples/counter.py
