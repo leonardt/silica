@@ -44,4 +44,4 @@ if __name__ == "__main__":
         next(lfsr)
 
     for item, count in counter.items():
-        assert count == 2, "Should only see each binary sequence twice every 2 ^ (2 * N - 1) cycles"
+        assert count == 2, "Should only see each binary sequence twice every 2 * (2 ^ N - 1) cycles"
