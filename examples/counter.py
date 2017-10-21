@@ -5,11 +5,12 @@ from magma.bit_vector import BitVector
 def add(a, b, cout=False):
     assert isinstance(a, BitVector) and isinstance(b, BitVector)
     assert len(a) == len(b)
-    c = a + b
     if cout:
-        return c, (BitVector(a, len(a) + 1) + BitVector(b, len(b) + 1))[-1]
+        width = len(a)
+        c = BitVector(a, width + 1) + BitVector(b, width + 1)
+        return c[:-1], c[-1]
     else:
-        return c
+        return a + b
 
 
 @silica.coroutine

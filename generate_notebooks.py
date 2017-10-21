@@ -16,6 +16,7 @@ pip install -e .
 """)
     for file in glob.glob("examples/*.py"):
         base_name = file.split("/")[1].split(".")[0]
+        os.remove(f"./notebooks/{base_name}.py")
         os.symlink(f"../{file}", f"./notebooks/{base_name}.py")
         readme.write(f"* [{base_name}](./notebooks/{base_name}.ipynb)\n")
 
