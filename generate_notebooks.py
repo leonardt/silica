@@ -15,7 +15,7 @@ pip install -e .
 
 # Examples
 """)
-    for file in glob.glob("examples/*.py"):
+    for file in sorted(glob.glob("examples/*.py")):
         base_name = file.split("/")[1].split(".")[0]
         if os.path.isfile(f"./notebooks/{base_name}.py"):
             os.remove(f"./notebooks/{base_name}.py")
