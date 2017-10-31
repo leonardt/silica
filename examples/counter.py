@@ -18,8 +18,27 @@ def Counter(width, init=0, incr=1):
     value = BitVector(init, width)
     while True:
         O = value
-        value, cout = add(O, BitVector(incr, width), cout=True)
+        value, cout = add(value, BitVector(incr, width), cout=True)
         yield O, cout
+
+
+@silica.coroutine
+def CounterIncr(width, init=0):
+    value = BitVector(init, width)
+    while True:
+        incr = receive()
+        O = value
+        value, cout = add(value, BitVector(incr, width), cout=True)
+        yield O, cout
+
+
+@silica.coroutine
+def main():
+    counter = CounterIncr(8)
+    cout = 0
+    while True:
+        O, cout = counter.peek(cout)
+        yield O
 
 if __name__ == "__main__":
     counter = Counter(4)
