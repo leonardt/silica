@@ -1,0 +1,2 @@
+git+git://github.com/berkerpeksag/astor.git#egg=astor
+graphviz
