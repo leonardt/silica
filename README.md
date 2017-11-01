@@ -1,7 +1,7 @@
 # Silica
 [![Build Status](https://travis-ci.org/leonardt/silica.svg?branch=master)](https://travis-ci.org/leonardt/silica)
 
-A langauge for constructing hardware finite state machines using coroutines.
+A language for constructing hardware finite state machines using coroutines.
 
 # Setup
 ```
