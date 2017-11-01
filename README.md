@@ -1,5 +1,5 @@
 # Silica
-[![Build Status](https://travis-ci.org/leonardt/silica3.svg?branch=master)](https://travis-ci.org/leonardt/silica3)
+[![Build Status](https://travis-ci.org/leonardt/silica.svg?branch=master)](https://travis-ci.org/leonardt/silica)
 
 Using coroutines to specify sequential logic circuits
 
