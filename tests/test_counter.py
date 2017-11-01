@@ -1,15 +1,16 @@
 import silica
 from magma.bit_vector import BitVector
+from magma.testing.coroutine import check
 
 
 def bits(value, width):
     return BitVector(value, width)
 
 
-def add(a, b, with_cout=False):
+def add(a, b, cout=False):
     assert isinstance(a, BitVector) and isinstance(b, BitVector)
     assert len(a) == len(b)
-    if with_cout:
+    if cout:
         width = len(a)
         c = BitVector(a, width + 1) + BitVector(b, width + 1)
         return c[:-1], c[-1]
@@ -22,7 +23,7 @@ def Counter(width, init=0, incr=1):
     value = bits(init, width)
     while True:
         O = value
-        value, cout = add(value, bits(incr, width), with_cout=True)
+        value, cout = add(value, bits(incr, width), cout=True)
         yield O, cout
 
 def test_counter4():
@@ -33,4 +34,5 @@ def test_counter4():
             assert counter.cout == (i == (1 << 4) - 1)
             next(counter)
 
-    silica.compile(counter)
+    magma_counter = silica.compile(counter)
+    check(magma_counter, counter, 1<<4 * 2)

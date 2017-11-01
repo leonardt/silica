@@ -1,5 +1,6 @@
 import ast
 import astor
+import inspect
 
 from silica.coroutine import Coroutine
 from silica.cfg import ControlFlowGraph 
@@ -50,8 +51,8 @@ class TypeChecker(ast.NodeVisitor):
                         raise TypeError("Calling add with different length types")
                     width = widths[0]
                     for keyword in node.keywords:
-                        if keyword.arg == "with_cout" and isinstance(keyword.value, ast.NameConstant) and keyword.value.value == True:
-                            width = (width, 1)
+                        if keyword.arg == "cout" and isinstance(keyword.value, ast.NameConstant) and keyword.value.value == True:
+                            width = (width, None)
                     return width
             else:
                 raise NotImplementedError(ast.dump(node))
@@ -93,7 +94,15 @@ def compile(coroutine):
         registers |= path[0].live_ins  # Union
         outputs += (collect_names(path[-1].value), )
     assert all(outputs[0] == output for output in outputs), "Yield statements must all have the same outputs"
-    output_string = ", ".join(f"\"{output}\", Out(Bits({width_table[output]}))" for output in outputs[0])
+    outputs = outputs[0]
+    output_strings = []
+    for output in outputs:
+        width = width_table[output]
+        if width is None:
+            output_strings.append(f"\"{output}\", Out(Bit)")
+        else:
+            output_strings.append(f"\"{output}\", Out(Bits({width_table[output]}))")
+    output_string = ", ".join(output_strings)
     states = cfg.states
     num_yields = cfg.curr_yield_id
     yield_width = (num_yields - 1).bit_length()
@@ -104,31 +113,61 @@ os.environ["MANTLE"] = "lattice"
 from mantle import *
 
 {tree.name} = DefineCircuit("{tree.name}", {output_string}, "CLK", In(Clock), "CE", In(Enable))
-__silica_yield_state = Register({num_yields}, ce=True)
+__silica_yield_state = Register({num_yields}) # , ce=True)
 wireclock({tree.name}, __silica_yield_state)
+__silica_yield_state_next = Or({len(cfg.paths)}, {num_yields})
+wire(__silica_yield_state_next.O, __silica_yield_state.I)
 """
+    for i, state in enumerate(states):
+        magma_source += f"__silica_yield_state_next_{i} = And(2, {num_yields})\n"
+        magma_source += f"wire(__silica_yield_state_next_{i}.O, __silica_yield_state_next.I{i})\n"
+        for j in range(num_yields):
+            magma_source += f"wire(__silica_yield_state_next_{i}.I0[{j}], __silica_yield_state.O[{state.start_yield_id}])\n"
 
     for register in registers:
-        magma_source += f"{register} = Register({width_table[register]}, ce=True)\n"
+        magma_source += f"{register} = Register({width_table[register]}) # , ce=True)\n"
         magma_source += f"wireclock({tree.name}, {register})\n"
         magma_source += f"{register}_next = Or({len(cfg.paths)}, {width_table[register]})\n"
+        magma_source += f"wire({register}_next.O, {register}.I)\n"
         for i, state in enumerate(states):
             magma_source += f"{register}_next_{i} = And(2, {width_table[register]})\n"
-            magma_source += f"wire({register}_next_{i}.O, {register}_next.I[{i}])\n"
+            magma_source += f"wire({register}_next_{i}.O, {register}_next.I{i})\n"
             for j in range(width_table[register]):
-                magma_source += f"wire({register}_next_{i}.I0[{j}], __silica_state_{state.start_yield_id})\n"
-    for i, path in enumerate(cfg.paths):
+                magma_source += f"wire({register}_next_{i}.I0[{j}], __silica_yield_state.O[{state.start_yield_id}])\n"
+    for output in outputs:
+        width = width_table[output]
+        magma_source += f"{output} = Or({len(cfg.paths)}, {width})\n"
+        magma_source += f"wire({output}.O, {tree.name}.{output})\n"
+        for i, state in enumerate(states):
+            magma_source += f"{output}_{i} = And(2, {width})\n"
+            magma_source += f"wire({output}_{i}.O, {output}.I{i})\n"
+            if width is None:
+                magma_source += f"wire({output}_{i}.I0, __silica_yield_state.O[{state.start_yield_id}])\n"
+            else:
+                for j in range(width):
+                    magma_source += f"wire({output}_{i}.I0[{j}], __silica_yield_state.O[{state.start_yield_id}])\n"
+    for i, state in enumerate(cfg.states):
         load_symbol_map = {}
         store_symbol_map = {}
         for register in registers:
             load_symbol_map[register] = ast.parse(f"{register}.O").body[0].value
-            store_symbol_map[register] = ast.parse(f"{register}_next_{i}.I[1]").body[0].value
-        for block in path[1:-1]:
-            for statement in block.statements:
-                statement = replace_symbols(statement, load_symbol_map, ast.Load)
-                statement = replace_symbols(statement, store_symbol_map, ast.Store)
-                magma_source += astor.to_source(statement)
+            store_symbol_map[register] = ast.parse(f"{register}_next_{i}_tmp").body[0].value
+        for output in outputs:
+            store_symbol_map[output] = ast.parse(f"{output}_{i}_tmp").body[0].value
+        for statement in state.statements:
+            statement = replace_symbols(statement, load_symbol_map, ast.Load)
+            statement = replace_symbols(statement, store_symbol_map, ast.Store)
+            magma_source += astor.to_source(statement)
+        magma_source += f"wire(__silica_yield_state_next_{i}.I1, bits({1 << state.end_yield_id}, {num_yields}))\n"
+        for register in registers:
+            magma_source += f"wire({register}_next_{i}_tmp, {register}_next_{i}.I1)\n"
+        for output in outputs:
+            magma_source += f"wire({output}_{i}_tmp, {output}_{i}.I1)\n"
+    magma_source += "EndDefine()"
 
-    print(magma_source)
-    # cfg.render()
-    raise NotImplementedError()
+    print("\n".join(f"{i + 1}: {line}" for i, line in enumerate(magma_source.splitlines())))
+    stack = inspect.stack()
+    func_locals = stack[1].frame.f_locals
+    func_globals = stack[1].frame.f_globals
+    exec(magma_source, func_globals, func_locals)
+    return eval(tree.name, func_globals, func_locals)
