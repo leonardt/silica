@@ -28,7 +28,8 @@ before_install:
   - export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/deps/lib:$LD_LIBRARY_PATH
 
 install: 
-  - "pip install -r requirements.txt"
+  - pip install -r requirements.txt
+  - pip install pytest pytest-cov
   # - "pip install codecov"
 
 script: 
