@@ -135,7 +135,7 @@ def compile(coroutine):
     magma_source = f"""\
 from magma import *
 import os
-os.environ["MANTLE"] = "coreir"
+os.environ["MANTLE"] = os.getenv("MANTLE", "coreir")
 from mantle import *
 
 {tree.name} = DefineCircuit("{tree.name}", {io_string}, "CLK", In(Clock), "CE", In(Enable))
