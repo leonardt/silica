@@ -1,0 +1,17 @@
+language: python
+python:
+    - "3.6"
+
+install: 
+    - "pip install -r requirements.txt"
+      # - "pip install codecov"
+
+script: 
+    - pip install -e .
+    - export MANTLE=lattice
+    - pytest --cov=silica
+    - export MANTLE=coreir
+    - pytest --cov=silica
+
+# after_success:
+#     - bash <(curl -s https://codecov.io/bash)
