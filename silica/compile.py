@@ -101,11 +101,12 @@ def compile(coroutine):
     tree = get_ast(coroutine._definition).body[0]  # Get the first element of the ast.Module
     specialize_arguments(tree, coroutine)
     width_table = {}
-    for input_, type_ in coroutine._inputs.items():
-        if type_ is magma.Bit:
-            width_table[input_] = None
-        else:
-            raise NotImplementedError(type_)
+    if coroutine._inputs:
+        for input_, type_ in coroutine._inputs.items():
+            if type_ is magma.Bit:
+                width_table[input_] = None
+            else:
+                raise NotImplementedError(type_)
     TypeChecker(width_table).check(tree)
     cfg = ControlFlowGraph(tree)
     liveness_analysis(cfg.paths)
@@ -126,8 +127,9 @@ def compile(coroutine):
         else:
             io_strings.append(f"\"{output}\", Out(Bits({width_table[output]}))")
     
-    for input_, type_ in coroutine._inputs.items():
-        io_strings.append(f"\"{input_}\", In({type_})")
+    if coroutine._inputs:
+        for input_, type_ in coroutine._inputs.items():
+            io_strings.append(f"\"{input_}\", In({type_})")
     io_string = ", ".join(io_strings)
     states = cfg.states
     num_yields = cfg.curr_yield_id
@@ -144,8 +146,9 @@ wireclock({tree.name}, __silica_yield_state)
 __silica_yield_state_next = Or({len(cfg.paths)}, {num_yields})
 wire(__silica_yield_state_next.O, __silica_yield_state.I)
 """
-    for input_, type_ in coroutine._inputs.items():
-        magma_source += f"{input_} = {tree.name}.{input_}\n"
+    if coroutine._inputs:
+        for input_, type_ in coroutine._inputs.items():
+            magma_source += f"{input_} = {tree.name}.{input_}\n"
     for i, state in enumerate(states):
         magma_source += f"__silica_yield_state_next_{i} = And(2, {num_yields})\n"
         magma_source += f"wire(__silica_yield_state_next_{i}.O, __silica_yield_state_next.I{i})\n"
