@@ -6,14 +6,16 @@ class Coroutine:
     Overrides __getattr__ to support inspection of the local variables
     """
     def __init__(self, *args, **kwargs):
-        self.reset(*args, **kwargs)
+        self.args = args
+        self.kwargs = kwargs
+        self.reset()
 
     @classmethod
     def definition(cls, *args, **kwargs):
         return cls._definition(*args, **kwargs)
 
-    def reset(self, *args, **kwargs):
-        self.co = self.definition(*args, **kwargs)
+    def reset(self):
+        self.co = self.definition(*self.args, **self.kwargs)
         next(self.co)
 
     def __getattr__(self, key):

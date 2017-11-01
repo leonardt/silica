@@ -7,6 +7,10 @@ class Block:
     def __init__(self):
         self.outgoing_edges = set()
         self.incoming_edges = set()
+        self.live_outs = set()
+        self.live_ins = set()
+        self.gen = set()
+        self.kill = set()
 
     def add_outgoing_edge(self, sink, label=""):
         self.outgoing_edges.add((sink, label))
@@ -59,11 +63,6 @@ class Yield(Block):
 class State:
     def __init__(self, start_yield_id, end_yield_id):
         self.start_yield_id = start_yield_id
-        self.yield_state = ast.Compare(
-            ast.Name("yield_state", ast.Load()),
-            [ast.Eq()],
-            [ast.Num(start_yield_id)]
-        )
         self.end_yield_id = end_yield_id
         self.conds = []
         self.statements = []

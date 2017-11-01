@@ -372,14 +372,26 @@ class ControlFlowGraph:
                 dot.node(str(id(block)), label.rstrip(), {"shape": "invhouse"})
             elif isinstance(block, Yield):
                 label = "yield " + astor.to_source(block.value)
+                # label += "\nLive Ins  : " + str(block.live_ins)
+                # label += "\nLive Outs : " + str(block.live_outs)
+                label += "\nGen  : " + str(block.gen)
+                label += "\nKill : " + str(block.kill)
                 dot.node(str(id(block)), label.rstrip(), {"shape": "oval"})
             elif isinstance(block, BasicBlock):
                 label = "\n".join(astor.to_source(stmt) for stmt in block.statements)
+                # label += "\nLive Ins  : " + str(block.live_ins)
+                # label += "\nLive Outs : " + str(block.live_outs)
+                label += "\nGen  : " + str(block.gen)
+                label += "\nKill : " + str(block.kill)
                 dot.node(str(id(block)), label.rstrip(), {"shape": "box"})
             elif isinstance(block, HeadBlock):
                 label = "Initial"
                 dot.node(str(id(block)) + "_start", label.rstrip(), {"shape": "doublecircle"})
                 label = "\n".join(astor.to_source(stmt).rstrip() for stmt in block.initial_statements)
+                # label += "\nLive Ins  : " + str(block.live_ins)
+                # label += "\nLive Outs : " + str(block.live_outs)
+                label += "\nGen  : " + str(block.gen)
+                label += "\nKill : " + str(block.kill)
                 dot.node(str(id(block)), label.rstrip(), {"shape": "box"})
                 dot.edge(str(id(block)) + "_start", str(id(block)))
             else:
@@ -412,11 +424,10 @@ def render_fsm(states):
         dot.node(str(_id), "state {}".format(_id))
     for state in states:
         label = "Inputs: "
-        label += ", ".join(astor.to_source(cond).rstrip() for cond in state.conds)
         label += "\n"
         label += "Outputs: "
         # Skip yield state assignment for now
-        label += ", ".join(astor.to_source(statement).rstrip() for statement in state.statements[1:])
+        label += "\n".join(astor.to_source(statement).rstrip() for statement in state.statements[1:])
         dot.edge(str(state.start_yield_id), str(state.end_yield_id), label)
     file_name = tempfile.mktemp("gv")
     dot.render(file_name, view=True)
@@ -435,14 +446,30 @@ def render_paths_between_yields(paths):  # pragma: no cover
                 label = "if " + astor.to_source(block.cond)
                 dot.node(str(i) + str(id(block)), label.rstrip(), {"shape": "invhouse"})
             elif isinstance(block, Yield):
-                label = "yield {}".format(block.yield_id)
+                label = "id: {}\n".format(block.yield_id)
+                label += "yield " + astor.to_source(block.value)
+                label += "\nLive Ins  : " + str(block.live_ins)
+                label += "\nLive Outs : " + str(block.live_outs)
+                # label += "\nGen  : " + str(block.gen)
+                # label += "\nKill : " + str(block.kill)
                 dot.node(str(i) + str(id(block)), label.rstrip(), {"shape": "oval"})
             elif isinstance(block, BasicBlock):
                 label = "\n".join(astor.to_source(stmt) for stmt in block.statements)
+                # label += "\nGen  : " + str(block.gen)
+                # label += "\nKill : " + str(block.kill)
+                label += "\nLive Ins  : " + str(block.live_ins)
+                label += "\nLive Outs : " + str(block.live_outs)
                 dot.node(str(i) + str(id(block)), label.rstrip(), {"shape": "box"})
             elif isinstance(block, HeadBlock):
                 label = "Initial"
-                dot.node(str(i) + str(id(block)), label.rstrip(), {"shape": "doublecircle"})
+                dot.node(str(i) + str(id(block)) + "_start", label.rstrip(), {"shape": "doublecircle"})
+                label = "\n".join(astor.to_source(stmt).rstrip() for stmt in block.initial_statements)
+                label += "\nLive Ins  : " + str(block.live_ins)
+                label += "\nLive Outs : " + str(block.live_outs)
+                # label += "\nGen  : " + str(block.gen)
+                # label += "\nKill : " + str(block.kill)
+                dot.node(str(i) + str(id(block)), label.rstrip(), {"shape": "box"})
+                dot.edge(str(i) + str(id(block)) + "_start", str(i) + str(id(block)))
             elif isinstance(block, State):
                 label = "{}".format(astor.to_source(block.yield_state).rstrip())
                 if block.conds:

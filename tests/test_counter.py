@@ -2,20 +2,27 @@ import silica
 from magma.bit_vector import BitVector
 
 
-def addc(a, b):
+def bits(value, width):
+    return BitVector(value, width)
+
+
+def add(a, b, with_cout=False):
     assert isinstance(a, BitVector) and isinstance(b, BitVector)
     assert len(a) == len(b)
-    width = len(a)
-    c = BitVector(a, width + 1) + BitVector(b, width + 1)
-    return c[:-1], c[-1]
+    if with_cout:
+        width = len(a)
+        c = BitVector(a, width + 1) + BitVector(b, width + 1)
+        return c[:-1], c[-1]
+    else:
+        return a + b
 
 
 @silica.coroutine
 def Counter(width, init=0, incr=1):
-    value = BitVector(init, width)
+    value = bits(init, width)
     while True:
         O = value
-        value, cout = addc(value, BitVector(incr, width))
+        value, cout = add(value, bits(incr, width), with_cout=True)
         yield O, cout
 
 def test_counter4():
