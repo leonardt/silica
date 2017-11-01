@@ -305,6 +305,11 @@ class ControlFlowGraph:
             else:  # pragma: no cover
                 self.curr_block.add(stmt)
                 # raise NotImplementedError(stmt.value)
+        elif isinstance(stmt, ast.Assign):
+            if isinstance(stmt.value, ast.Yield):
+                self.add_new_yield(stmt)
+            else:
+                self.curr_block.add(stmt)
         else:
             # Append a normal statement to the current block
             self.curr_block.add(stmt)
@@ -567,7 +572,7 @@ def build_state_info(paths, outputs, inputs):
             start_yield_id = path[0].yield_id
         end_yield_id = path[-1].yield_id
         state = State(start_yield_id, end_yield_id)
-        for i in range(1, len(path)):
+        for i in range(0, len(path)):
             block = path[i]
             if isinstance(block, Branch):
                 cond = block.cond
@@ -581,6 +586,9 @@ def build_state_info(paths, outputs, inputs):
                 state.conds.append(cond)
             elif isinstance(block, BasicBlock):
                 state.statements.extend(block.statements)
+            elif isinstance(block, HeadBlock):
+                print(block.initial_statements)
+                state.statements.extend(block.initial_statements)
         states.append(state)
     return states, state_vars
 

@@ -30,8 +30,16 @@ class Coroutine:
     def next(self):
         return self.__next__()
 
-def coroutine(func):
-    class _Coroutine(Coroutine):
-        _definition = func
-
-    return _Coroutine
+def coroutine(func=None, inputs=None):
+    if inputs is not None:
+        def wrapper(func):
+            class _Coroutine(Coroutine):
+                _definition = func
+                _inputs = inputs
+            return _Coroutine
+        return wrapper
+    else:
+        class _Coroutine(Coroutine):
+            _definition = func
+            _inputs = inputs
+        return _Coroutine
