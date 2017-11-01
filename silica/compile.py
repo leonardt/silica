@@ -109,11 +109,11 @@ def compile(coroutine):
     magma_source = f"""\
 from magma import *
 import os
-os.environ["MANTLE"] = "lattice"
+os.environ["MANTLE"] = "coreir"
 from mantle import *
 
 {tree.name} = DefineCircuit("{tree.name}", {output_string}, "CLK", In(Clock), "CE", In(Enable))
-__silica_yield_state = Register({num_yields}) # , ce=True)
+__silica_yield_state = Register({num_yields}, init=1) # , ce=True)
 wireclock({tree.name}, __silica_yield_state)
 __silica_yield_state_next = Or({len(cfg.paths)}, {num_yields})
 wire(__silica_yield_state_next.O, __silica_yield_state.I)
