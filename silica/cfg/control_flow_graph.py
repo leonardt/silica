@@ -104,7 +104,6 @@ class ControlFlowGraph:
 
         # inputs, outputs = parse_arguments(tree.args.args)
         inputs, outputs = get_io(tree)
-        print(inputs, outputs)
         self.build(tree)
         self.bypass_conds()
         try:
@@ -587,7 +586,6 @@ def build_state_info(paths, outputs, inputs):
             elif isinstance(block, BasicBlock):
                 state.statements.extend(block.statements)
             elif isinstance(block, HeadBlock):
-                print(block.initial_statements)
                 state.statements.extend(block.initial_statements)
         states.append(state)
     return states, state_vars

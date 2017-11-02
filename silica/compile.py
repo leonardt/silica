@@ -95,7 +95,7 @@ class TypeChecker(ast.NodeVisitor):
         else:
             raise NotImplementedError(ast.dump(node))
 
-def compile(coroutine):
+def compile(coroutine, file_name=None):
     if not isinstance(coroutine, Coroutine):
         raise ValueError("silica.compile expects a silica.Coroutine")
     tree = get_ast(coroutine._definition).body[0]  # Get the first element of the ast.Module
@@ -203,9 +203,13 @@ wire(__silica_yield_state_next.O, __silica_yield_state.I)
             magma_source += f"wire({output}_{i}_tmp, {output}_{i}.I1)\n"
     magma_source += "EndDefine()"
 
-    print("\n".join(f"{i + 1}: {line}" for i, line in enumerate(magma_source.splitlines())))
-    stack = inspect.stack()
-    func_locals = stack[1].frame.f_locals
-    func_globals = stack[1].frame.f_globals
-    exec(magma_source, func_globals, func_locals)
-    return eval(tree.name, func_globals, func_locals)
+    # print("\n".join(f"{i + 1}: {line}" for i, line in enumerate(magma_source.splitlines())))
+    if file_name is None:
+        stack = inspect.stack()
+        func_locals = stack[1].frame.f_locals
+        func_globals = stack[1].frame.f_globals
+        exec(magma_source, func_globals, func_locals)
+        return eval(tree.name, func_globals, func_locals)
+    else:
+        with open(file_name, "w") as output_file:
+            output_file.write(magma_source)
