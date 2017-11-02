@@ -22,3 +22,4 @@ def test_counter():
             next(counter)
 
     magma_counter = silica.compile(counter)
+    check(magma_counter, counter, 1<<3 * 2)
