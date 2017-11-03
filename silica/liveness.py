@@ -44,6 +44,8 @@ def liveness_analysis(paths):
             elif isinstance(block, cfg_types.HeadBlock):
                 for statement in block.initial_statements:
                     analyzer.visit(statement)
+            elif isinstance(block, cfg_types.Branch):
+                analyzer.visit(block.cond)
             else:
                 for statement in block.statements:
                     analyzer.visit(statement)

@@ -451,7 +451,7 @@ def render_paths_between_yields(paths):  # pragma: no cover
                 dot.node(str(i) + str(id(block)), label.rstrip(), {"shape": "invhouse"})
             elif isinstance(block, Yield):
                 label = "id: {}\n".format(block.yield_id)
-                label += "yield " + astor.to_source(block.value)
+                label += astor.to_source(block.value)
                 label += "\nLive Ins  : " + str(block.live_ins)
                 label += "\nLive Outs : " + str(block.live_outs)
                 # label += "\nGen  : " + str(block.gen)
@@ -576,11 +576,11 @@ def build_state_info(paths, outputs, inputs):
             if isinstance(block, Branch):
                 cond = block.cond
                 if path[i + 1] is block.false_edge:
-                    cond = ast.UnaryOp(ast.Invert(), cond)
+                    cond = ast.Call(ast.Name("not_", ast.Load()), [cond], [])
                 names = collect_names(cond)
                 for name in names:
-                    if name not in outputs and \
-                       name not in inputs:
+                    if outputs and name not in outputs and \
+                       inputs and name not in inputs:
                         state_vars.update(names)
                 state.conds.append(cond)
             elif isinstance(block, BasicBlock):
