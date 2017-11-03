@@ -17,5 +17,5 @@ if __name__ == "__main__":
     detect = detect111()
     for i in [1,1,0,1,1,1,0,1,0,1,1,1,1,1,1]:
         print(f"i={i}, O={detect.O}")
-        detect.send(i)
+        detect.send(bool(i))
     compile(detect, file_name="detect.magma.py")
