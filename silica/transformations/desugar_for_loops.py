@@ -21,20 +21,20 @@ class ForLoopDesugarer(ast.NodeTransformer):
             if 4 > len(node.iter.args) > 0:
                 assert isinstance(node.target, ast.Name)
                 if len(node.iter.args) <= 2:
-                    incr = ast.Num(1)
+                    incr = 1
                 else:
-                    incr = node.iter.args[2]
+                    incr = node.iter.args[2].n
                 if len(node.iter.args) == 1:
-                    start = ast.Num(0)
+                    start = 0
                     stop = node.iter.args[0]
                 else:
-                    start = node.iter.args[0]
+                    start = node.iter.args[0].n
                     stop = node.iter.args[1]
             else:
                 assert len(node.iter.keywords)
-                start = ast.Num(0)
+                start = 0
                 stop = None
-                incr = ast.Num(1)
+                incr = 1
                 for keyword in node.iter.keywords:
                     if keyword.arg == "start":
                         start = keyword.value
@@ -56,11 +56,11 @@ class ForLoopDesugarer(ast.NodeTransformer):
                 assert width is not None
             self.loopvars.add((node.target.id, width))
             return [
-                ast.Assign([ast.Name(node.target.id, ast.Store())], start),
-                ast.While(ast.BinOp(ast.Name(node.target.id, ast.Load()), ast.Lt(), stop),
+                ast.Assign([ast.Name(node.target.id, ast.Store())], ast.parse(f"bits({start}, {width})").body[0].value),
+                ast.Assign([ast.Name(node.target.id + "_cout", ast.Store())], ast.NameConstant(False)),
+                ast.While(ast.parse(f"not_({node.target.id}_cout)").body[0].value,
                     node.body + [
-                        ast.Assign([ast.Name(node.target.id, ast.Store())], ast.BinOp(
-                            ast.Name(node.target.id, ast.Load()), ast.Add(), incr))
+                        ast.parse(f"{node.target.id}, {node.target.id}_cout = add({node.target.id}, bits({incr}, {width}), cout=True)").body[0]
                     ], [])
             ]
         else:  # pragma: no cover

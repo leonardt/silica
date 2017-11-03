@@ -3,12 +3,13 @@ import astor
 import inspect
 import magma
 
+import silica
 from silica.coroutine import Coroutine
 from silica.cfg import ControlFlowGraph 
 from silica.cfg.control_flow_graph import render_paths_between_yields, build_state_info, render_fsm
 from silica.ast_utils import get_ast
 from silica.liveness import liveness_analysis
-from silica.transformations import specialize_constants, replace_symbols, constant_fold
+from silica.transformations import specialize_constants, replace_symbols, constant_fold, desugar_for_loops
 from silica.visitors import collect_names
 
 
@@ -33,7 +34,7 @@ def specialize_arguments(tree, coroutine):
 
 def get_width(node, width_table):
     if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and \
-       node.func.id in {"bits", "uint"}:
+       node.func.id in {"bits", "uint", "BitVector"}:
         assert isinstance(node.args[1], ast.Num), "We should know all widths at compile time"
         return node.args[1].n
     elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and \
@@ -75,6 +76,16 @@ def get_width(node, width_table):
         return None
     elif isinstance(node, ast.NameConstant) and node.value in [True, False]:
         return None
+    elif isinstance(node, ast.List):
+        widths = [get_width(arg, width_table) for arg in node.elts]
+        assert all(widths[0] == width for width in widths) 
+        return (len(node.elts), widths[0])
+    elif isinstance(node, ast.Subscript):
+        if isinstance(node.slice, ast.Index):
+            width = get_width(node.value, width_table)
+            if isinstance(width, tuple):
+                return width[1]
+            return width
     raise NotImplementedError(ast.dump(node))
 
 
@@ -201,6 +212,10 @@ class Desugar(ast.NodeTransformer):
             op = "xor"
         elif isinstance(node.op, ast.BitAnd):
             op = "and_"
+        elif isinstance(node.op, ast.Lt):
+            op = "lt"
+        elif isinstance(node.op, ast.LtE):
+            op = "le"
         else:
             raise NotImplementedError(node.op)
         return ast.parse(f"{op}({astor.to_source(node.left).rstrip()}, {astor.to_source(node.right).rstrip()})").body[0].value
@@ -231,18 +246,73 @@ class Desugar(ast.NodeTransformer):
         return node
 
 
+def specialize_list_comps(tree, globals, locals):
+    class ListCompSpecializer(ast.NodeTransformer):
+        def visit_ListComp(self, node):
+            result = eval(astor.to_source(node), globals, silica.operators)
+            result = ", ".join(repr(x) for x in result)
+            return ast.parse(f"[{result}]").body[0].value
+    ListCompSpecializer().visit(tree)
+
+
+def get_input_width(type_):
+    if type_ is magma.Bit:
+        return None
+    elif isinstance(type_, magma.ArrayKind):
+        if isinstance(type_.T, magma.ArrayKind):
+            elem_width = get_input_width(type_.T)
+            if isinstance(elem_width, tuple):
+                return (type_.N, ) + elem_width
+            else:
+                return (type_.N, elem_width)
+        else:
+            return type_.N
+    else:
+        raise NotImplementedError(type_)
+
+
+
+class ArrayReplacer(ast.NodeTransformer):
+    def __init__(self, array):
+        self.array = array
+
+    def visit_Subscript(self, node):
+        if isinstance(node.value, ast.Name) and self.array in node.value.id:
+            if isinstance(node.ctx, ast.Load):
+                if isinstance(node.slice, ast.Index):
+                    if isinstance(node.slice.value, ast.Num) or isinstance(node.slice.value, ast.Call) and node.slice.value.func.id in {"uint"}:
+                        if "_tmp" in node.value.id:
+                            return ast.parse(f"{astor.to_source(node).rstrip()}").body[0].value
+                        else:
+                            return ast.parse(f"{astor.to_source(node).rstrip()}.O").body[0].value
+                    else:
+                        if "_tmp" in node.value.id:
+                            return ast.parse(f"mux([x for x in {astor.to_source(node.value).rstrip()}], {astor.to_source(node.slice).rstrip()})").body[0].value
+                        else:
+                            return ast.parse(f"mux([x.O for x in {astor.to_source(node.value).rstrip()}], {astor.to_source(node.slice).rstrip()})").body[0].value
+            else:
+                raise NotImplementedError()
+        return node
+
+
+def replace_arrays(tree, array):
+    return ArrayReplacer(array).visit(tree)
+
+
 def compile(coroutine, file_name=None):
     if not isinstance(coroutine, Coroutine):
         raise ValueError("silica.compile expects a silica.Coroutine")
     tree = get_ast(coroutine._definition).body[0]  # Get the first element of the ast.Module
+    stack = inspect.stack()
+    func_locals = stack[1].frame.f_locals  # FIXME: Should include the function scope
+    func_globals = stack[1].frame.f_globals
     specialize_arguments(tree, coroutine)
+    specialize_list_comps(tree, func_globals, func_locals)
+    desugar_for_loops(tree)
     width_table = {}
     if coroutine._inputs:
         for input_, type_ in coroutine._inputs.items():
-            if type_ is magma.Bit:
-                width_table[input_] = None
-            else:
-                raise NotImplementedError(type_)
+            width_table[input_] = get_input_width(type_)
 
     constant_fold(tree)
     type_table = {}
@@ -316,18 +386,42 @@ __silica_path_state = Buffer()
         width = width_table[register]
         if width is None:
             magma_source += f"{register} = DFF() # , ce=True)\n"
+            magma_source += f"wireclock({tree.name}, {register})\n"
+            magma_source += f"{register}_next = Or({len(cfg.paths)}, {width})\n"
+            magma_source += f"wire({register}_next.O, {register}.I)\n"
+        elif isinstance(width, tuple):
+            if len(width) > 2:
+                raise NotImplementedError()
+            magma_source += f"{register} = [Register({width[1]}) for _ in range({width[0]})]\n"
+            magma_source += f"{register}_next = [Or({len(cfg.paths)}, {width[1]}) for _ in range({width[0]})]\n"
+            magma_source += f"""\
+for __silica_i in range({width[0]}):
+    wire({register}_next[__silica_i].O, {register}[__silica_i].I)
+"""
         else:
-            magma_source += f"{register} = Register({width_table[register]}) # , ce=True)\n"
-        magma_source += f"wireclock({tree.name}, {register})\n"
-        magma_source += f"{register}_next = Or({len(cfg.paths)}, {width_table[register]})\n"
-        magma_source += f"wire({register}_next.O, {register}.I)\n"
+            magma_source += f"{register} = Register({width})\n"
+            magma_source += f"wireclock({tree.name}, {register})\n"
+            magma_source += f"{register}_next = Or({len(cfg.paths)}, {width})\n"
+            magma_source += f"wire({register}_next.O, {register}.I)\n"
         for i, state in enumerate(states):
-            magma_source += f"{register}_next_{i} = And(2, {width_table[register]})\n"
-            magma_source += f"wire({register}_next_{i}.O, {register}_next.I{i})\n"
             if width is None:
+                magma_source += f"{register}_next_{i} = And(2, {width})\n"
+                magma_source += f"wire({register}_next_{i}.O, {register}_next.I{i})\n"
                 magma_source += f"wire({register}_next_{i}.I0, __silica_path_state.O[{i}])\n"
+            elif isinstance(width, tuple):
+                if len(width) > 2:
+                    raise NotImplementedError()
+                magma_source += f"{register}_next_{i} = [And(2, {width[1]}) for _ in range({width[0]})]\n"
+                magma_source += f"""\
+for __silica_j in range({width[0]}):
+    wire({register}_next_{i}[__silica_j].O, {register}_next[__silica_j].I{i})
+    for __silica_k in range({width[1]}):
+        wire({register}_next_{i}[__silica_j].I0[__silica_k], __silica_path_state.O[{i}])
+"""
             else:
-                for j in range(width_table[register]):
+                magma_source += f"{register}_next_{i} = And(2, {width})\n"
+                magma_source += f"wire({register}_next_{i}.O, {register}_next.I{i})\n"
+                for j in range(width):
                     magma_source += f"wire({register}_next_{i}.I0[{j}], __silica_path_state.O[{i}])\n"
 
     for output in outputs:
@@ -345,9 +439,14 @@ __silica_path_state = Buffer()
     for i, state in enumerate(cfg.states):
         load_symbol_map = {}
         store_symbol_map = {}
+        arrays = set()
         for register in registers:
-            load_symbol_map[register] = ast.parse(f"{register}.O").body[0].value
-            store_symbol_map[register] = ast.parse(f"{register}_next_{i}_tmp").body[0].value
+            if isinstance(width_table[register], tuple):
+                arrays.add(register)
+                store_symbol_map[register] = ast.parse(f"{register}_next_{i}_tmp").body[0].value
+            else:
+                load_symbol_map[register] = ast.parse(f"{register}.O").body[0].value
+                store_symbol_map[register] = ast.parse(f"{register}_next_{i}_tmp").body[0].value
         for output in outputs:
             store_symbol_map[output] = ast.parse(f"{output}_{i}_tmp").body[0].value
         stores = set()
@@ -355,13 +454,32 @@ __silica_path_state = Buffer()
             stores |= collect_names(statement, ast.Store)
             statement = replace_symbols(statement, load_symbol_map, ast.Load)
             statement = replace_symbols(statement, store_symbol_map, ast.Store)
+            for array in arrays:
+                statement = replace_arrays(statement, array)
             magma_source += astor.to_source(statement)
+            for var in stores:
+                if var in registers:
+                    load_symbol_map[var] = ast.parse(f"{var}_next_{i}_tmp").body[0].value
+                elif var in outputs:
+                    load_symbol_map[var] = ast.parse(f"{var}_{i}_tmp").body[0].value
         magma_source += f"wire(__silica_yield_state_next_{i}.I1, bits({1 << state.end_yield_id}, {num_yields}))\n"
         for register in registers:
-            if register in stores:
-                magma_source += f"wire({register}_next_{i}_tmp, {register}_next_{i}.I1)\n"
+            if isinstance(width_table[register], tuple):
+                if register in stores:
+                    magma_source += f"""\
+for __silica_i in range({width_table[register][0]}):
+    wire({register}_next_{i}_tmp[__silica_i], {register}_next_{i}[__silica_i].I1)
+"""
+                else:
+                    magma_source += f"""\
+for __silica_i in range({width_table[register][0]}):
+    wire({register}[__silica_i].O, {register}_next_{i}[__silica_i].I1)
+"""
             else:
-                magma_source += f"wire({register}.O, {register}_next_{i}.I1)\n"
+                if register in stores:
+                    magma_source += f"wire({register}_next_{i}_tmp, {register}_next_{i}.I1)\n"
+                else:
+                    magma_source += f"wire({register}.O, {register}_next_{i}.I1)\n"
         for output in outputs:
             magma_source += f"wire({output}_{i}_tmp, {output}_{i}.I1)\n"
 
@@ -377,11 +495,8 @@ __silica_path_state = Buffer()
         magma_source += f"wire(__silica_path_state.I[{i}], {astor.to_source(cond).rstrip()})\n"
     magma_source += "EndDefine()"
 
-    # print("\n".join(f"{i + 1}: {line}" for i, line in enumerate(magma_source.splitlines())))
+    print("\n".join(f"{i + 1}: {line}" for i, line in enumerate(magma_source.splitlines())))
     if file_name is None:
-        stack = inspect.stack()
-        func_locals = stack[1].frame.f_locals
-        func_globals = stack[1].frame.f_globals
         exec(magma_source, func_globals, func_locals)
         return eval(tree.name, func_globals, func_locals)
     else:

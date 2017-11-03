@@ -1,8 +1,15 @@
 from .coroutine import coroutine, Coroutine
 from .compile import compile
 
-from magma import Bit, zext, concat
+import magma
+from magma import Bit, zext, concat, Array, Bits
 from magma.bit_vector import BitVector
+
+
+class BitVector(BitVector):
+    def __repr__(self):
+        return f"bits({self._value}, {self.num_bits})"
+
 
 def bits(value, width):
     # TODO: Only support bitwise ops
@@ -16,7 +23,7 @@ def zext(value, n):
     return BitVector(value, num_bits=n + value.num_bits)
 
 def add(a, b, cout=False):
-    assert isinstance(a, BitVector) and isinstance(b, BitVector)
+    assert isinstance(a, magma.bit_vector.BitVector) and isinstance(b, magma.bit_vector.BitVector)
     assert len(a) == len(b)
     if cout:
         width = len(a)
@@ -24,3 +31,20 @@ def add(a, b, cout=False):
         return c[:-1], c[-1]
     else:
         return a + b
+
+def lt(a, b):
+    return a < b
+
+def le(a, b):
+    return a <= b
+
+def not_(a):
+    return ~a
+
+operators = {
+    "lt": lt,
+    "le": le,
+    "not_": not_,
+    "uint": uint,
+    "BitVector": BitVector
+}

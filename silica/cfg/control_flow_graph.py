@@ -10,6 +10,7 @@ import ast
 import astor
 import magma
 
+import silica
 from silica.transformations import specialize_constants, replace_symbols, constant_fold
 from silica.visitors import collect_names
 from silica.cfg.types import BasicBlock, Yield, Branch, HeadBlock, State
@@ -112,7 +113,7 @@ class ControlFlowGraph:
             # Most likely infinite loop in CFG, TODO: should catch this with an analysis phase
             self.render()
             raise error
-        self.paths = promote_live_variables(self.paths)
+        # self.paths = promote_live_variables(self.paths)
         self.states, self.state_vars = build_state_info(self.paths, outputs, inputs)
 
         # self.render()
@@ -128,9 +129,9 @@ class ControlFlowGraph:
         assert isinstance(func_def, ast.FunctionDef)
         self.head_block = HeadBlock()
         self.blocks.append(self.head_block)
-        self.curr_block = self.gen_new_block()
-        add_edge(self.head_block, self.curr_block)
-        self.head_block.initial_statements = func_def.body[:-1]
+        self.curr_block = self.head_block
+        # self.curr_block = self.gen_new_block()
+        # add_edge(self.head_block, self.curr_block)
 
         # for statement in self.initial_statements:
         #     if isinstance(statement, ast.Assign) and isinstance(statement.value, ast.Call) and \
@@ -139,8 +140,10 @@ class ControlFlowGraph:
         #         self.local_vars.add((statement.targets[0].id, statement.value.args[0].n))
         #     else:
         #         raise NotImplementedError()
-        assert isinstance(func_def.body[-1], ast.While), "FSMs should end with a ``while True:``"
-        self.process_stmt(func_def.body[-1])
+        # assert isinstance(func_def.body[-1], ast.While), "FSMs should end with a ``while True:``"
+        for statement in func_def.body:
+            self.process_stmt(statement)
+        # self.process_stmt(func_def.body[-1])
         self.consolidate_empty_blocks()
         self.remove_if_trues()
 
@@ -188,12 +191,13 @@ class ControlFlowGraph:
             cond = deepcopy(branch.cond)
             cond = specialize_constants(cond, constants)
             try:
-                if eval(astor.to_source(cond)):
+                if eval(astor.to_source(cond), silica.operators):
                     # FIXME: Interface violation, need a remove method from blocks
                     block.outgoing_edges = {(branch.true_edge, "")}
                 else:
                     block.outgoing_edges = {(branch.false_edge, "")}
-            except NameError:
+            except NameError as e:
+                # print(e)
                 pass
 
 
@@ -515,6 +519,11 @@ def collect_constant_assigns(statements):
                     # TODO: This should already be guaranteed by a type checker
                     assert stmt.targets[0].name in constant_assigns, \
                            "Assigned to multiple constants"
+            elif isinstance(stmt.value, ast.Call) and isinstance(stmt.value.func, ast.Name) and \
+                 stmt.value.func.id in {"bits", "uint"}:
+                constant_assigns[stmt.targets[0].id] = stmt.value.args[0].n
+            elif isinstance(stmt.value, ast.NameConstant) and len(stmt.targets) == 1:
+                constant_assigns[stmt.targets[0].id] = int(stmt.value.value)
     return constant_assigns
 
 
@@ -554,6 +563,7 @@ def promote_live_variables(paths):
     return paths
 
 
+__unique_cond_id = -1
 def build_state_info(paths, outputs, inputs):
     """
     Constructs a ``State`` object for each path in paths.
@@ -574,6 +584,8 @@ def build_state_info(paths, outputs, inputs):
         for i in range(0, len(path)):
             block = path[i]
             if isinstance(block, Branch):
+                global __unique_cond_id
+                __unique_cond_id += 1
                 cond = block.cond
                 if path[i + 1] is block.false_edge:
                     cond = ast.Call(ast.Name("not_", ast.Load()), [cond], [])
@@ -582,7 +594,8 @@ def build_state_info(paths, outputs, inputs):
                     if outputs and name not in outputs and \
                        inputs and name not in inputs:
                         state_vars.update(names)
-                state.conds.append(cond)
+                state.statements.append(ast.parse(f"__silica_cond_{__unique_cond_id} = {astor.to_source(cond).rstrip()}").body[0])
+                state.conds.append(ast.parse(f"__silica_cond_{__unique_cond_id}").body[0].value)
             elif isinstance(block, BasicBlock):
                 state.statements.extend(block.statements)
             elif isinstance(block, HeadBlock):

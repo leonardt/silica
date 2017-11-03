@@ -27,7 +27,10 @@ class Block:
 class HeadBlock(Block):
     def __init__(self):
         super().__init__()
-        self.initial_statements = None
+        self.initial_statements = []
+
+    def add(self, stmt):
+        self.initial_statements.append(stmt)
 
 
 class BasicBlock(Block):
