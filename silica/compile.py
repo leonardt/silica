@@ -377,7 +377,7 @@ __silica_path_state = Buffer()
         magma_source += f"wire(__silica_path_state.I[{i}], {astor.to_source(cond).rstrip()})\n"
     magma_source += "EndDefine()"
 
-    print("\n".join(f"{i + 1}: {line}" for i, line in enumerate(magma_source.splitlines())))
+    # print("\n".join(f"{i + 1}: {line}" for i, line in enumerate(magma_source.splitlines())))
     if file_name is None:
         stack = inspect.stack()
         func_locals = stack[1].frame.f_locals
