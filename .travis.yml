@@ -20,10 +20,9 @@ before_install:
   - mkdir deps/lib
   - mkdir deps/include
   - cd deps
-  - git clone https://github.com/rdaly525/coreir.git
-  - cd coreir
-  - export COREIRCONFIG="g++-4.9"
-  - export COREIR=$PWD
+  - wget https://github.com/rdaly525/coreir/releases/download/v0.0.1/coreir.tar.gz
+  - tar -xf coreir.tar.gz
+  - cd release
   - make install prefix=$TRAVIS_BUILD_DIR/deps
   - cd ..
   - cd ..
