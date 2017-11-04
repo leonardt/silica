@@ -7,13 +7,6 @@ sudo: false
 cache:
     apt: true
 
-addons:
-  apt:
-    sources:
-      - ubuntu-toolchain-r-test
-    packages:
-      - g++-4.9
-
 before_install:
   - mkdir deps
   - mkdir deps/bin
