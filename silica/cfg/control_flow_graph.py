@@ -108,7 +108,7 @@ class ControlFlowGraph:
         self.build(tree)
         self.bypass_conds()
         try:
-            self.paths = self.collect_paths_between_yields()
+            self.paths_between_yields = self.paths = self.collect_paths_between_yields()
         except RecursionError as error:
             # Most likely infinite loop in CFG, TODO: should catch this with an analysis phase
             self.render()
@@ -176,7 +176,13 @@ class ControlFlowGraph:
         paths = []
         for block in self.blocks:
             if isinstance(block, (Yield, HeadBlock)):
-                paths.extend([block] + path for path in self.find_paths(block.outgoing_edge[0]))
+                paths.extend([deepcopy(block)] + path for path in self.find_paths(block.outgoing_edge[0]))
+        for path in paths:
+            for i in range(len(path) - 1):
+                path[i].next = path[i + 1]
+            path[-1].next = None
+            path[-1].terminal = True
+            path[0].terminal = False
         return paths
 
     def bypass_conds(self):
@@ -224,7 +230,7 @@ class ControlFlowGraph:
     def add_new_yield(self, value):
         """
         Adds a new ``Yield`` block to the CFG and connects ``self.curr_block``
-        to it.  
+        to it.
 
         Then adds a new ``BasicBlock`` to the CFG via ``add_new_block`` and
         adds an edge from the new ``Yield`` block to this new ``BasicBlock``.
@@ -301,7 +307,7 @@ class ControlFlowGraph:
                     add_false_edge(branch, self.curr_block)
         elif isinstance(stmt, ast.Expr):
             if isinstance(stmt.value, ast.Yield):
-                self.add_new_yield(stmt.value.value)
+                self.add_new_yield(stmt.value)
             elif isinstance(stmt.value, ast.Str):
                 # Docstring, ignore
                 pass

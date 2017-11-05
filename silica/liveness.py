@@ -8,6 +8,7 @@ class Analyzer(ast.NodeVisitor):
         # self.return_values = set()
 
     def visit_Call(self, node):
+        # Ignore function calls
         for arg in node.args:
             self.visit(arg)
 
@@ -30,27 +31,31 @@ class Analyzer(ast.NodeVisitor):
 #         else:
 #             self.return_values.add(node.value.id)
 
-def liveness_analysis(paths):
-    for path in paths:
-        for index, block in enumerate(reversed(path)):
-            analyzer = Analyzer()
-            if isinstance(block, cfg_types.Yield):
-                analyzer.visit(block.value)
-                if block is path[0]:  # We only use assigments
-                    analyzer.gen = set()
-                else:
-                    assert block is path[-1]  # Only use reads
-                    analyzer.kill = set()
-            elif isinstance(block, cfg_types.HeadBlock):
-                for statement in block.initial_statements:
-                    analyzer.visit(statement)
-            elif isinstance(block, cfg_types.Branch):
-                analyzer.visit(block.cond)
-            else:
-                for statement in block.statements:
-                    analyzer.visit(statement)
-            block.gen = analyzer.gen
-            block.kill = analyzer.kill
-            if index > 0:
-                block.live_outs = block.live_outs.union(path[-index].live_ins)
-            block.live_ins = analyzer.gen | (block.live_outs - analyzer.kill)
+
+def analyze(node):
+    analyzer = Analyzer()
+    if isinstance(node, cfg_types.Yield):
+        analyzer.visit(node.value)
+        if not node.terminal:  # We only use assigments
+            analyzer.gen = set()
+        else:
+            analyzer.kill = set()
+    elif isinstance(node, cfg_types.HeadBlock):
+        for statement in node.initial_statements:
+            analyzer.visit(statement)
+    elif isinstance(node, cfg_types.Branch):
+        analyzer.visit(node.cond)
+    else:
+        for statement in node.statements:
+            analyzer.visit(statement)
+    return analyzer.gen, analyzer.kill
+
+def liveness_analysis(cfg):
+    for path in cfg.paths_between_yields:
+        path[-1].live_outs = set()
+        for node in reversed(path):
+            node.gen, node.kill = analyze(node)
+            if node.next is not None:
+                node.live_outs = node.next.live_ins
+            still_live = node.live_outs - node.kill
+            node.live_ins = node.gen | still_live

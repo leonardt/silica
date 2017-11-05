@@ -322,7 +322,7 @@ def compile(coroutine, file_name=None):
     type_table = {}
     TypeChecker(width_table, type_table).check(tree)
     cfg = ControlFlowGraph(tree)
-    liveness_analysis(cfg.paths)
+    liveness_analysis(cfg)
     # render_paths_between_yields(cfg.paths)
     # render_fsm(cfg.states)
     registers = set()
