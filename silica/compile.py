@@ -5,7 +5,7 @@ import magma
 
 import silica
 from silica.coroutine import Coroutine
-from silica.cfg import ControlFlowGraph 
+from silica.cfg import ControlFlowGraph
 from silica.cfg.control_flow_graph import render_paths_between_yields, build_state_info, render_fsm
 from silica.ast_utils import get_ast
 from silica.liveness import liveness_analysis
@@ -61,6 +61,8 @@ def get_width(node, width_table):
                 if not all(widths[0] == x for x in widths):
                     raise TypeError("Calling eq with different length types")
                 return None
+            elif node.func.id == "decoder":
+                return 2 ** get_width(node.args[0], width_table)
             else:
                 raise NotImplementedError(ast.dump(node))
         else:
@@ -99,11 +101,11 @@ class TypeChecker(ast.NodeVisitor):
         return self.width_table
 
     def visit_Assign(self, node):
+        if isinstance(node.value, ast.Yield):
+            return  # width specified at compile time
         if len(node.targets) == 1:
             if isinstance(node.targets[0], ast.Name):
-                if isinstance(node.value, ast.Yield):
-                    pass  # width specified at compile time
-                elif node.targets[0].id not in self.width_table:
+                if node.targets[0].id not in self.width_table:
                     self.width_table[node.targets[0].id] = get_width(node.value, self.width_table)
                 elif self.width_table[node.targets[0].id] != get_width(node.value, self.width_table):
                     raise TypeError(f"Trying to assign {ast.dump(node.value)} with width {get_width(node.value, self.width_table)} to {node.targets[0].id} with width {self.width_table[node.targets[0].id]}")
@@ -115,6 +117,9 @@ class TypeChecker(ast.NodeVisitor):
                     raise TypeError(f"Trying to unpack {len(node.targets.elts)} but got {len(widths)} - {ast.dump(node)} ")
                 for target, width in zip(node.targets[0].elts, widths):
                     self.width_table[target.id] = width
+            elif isinstance(node.targets[0], ast.Subscript):
+                if not get_width(node.targets[0], self.width_table) == get_width(node.value, self.width_table):
+                    raise TypeError("FIXME: Better type error message")
             else:
                 raise NotImplementedError(ast.dump(node))
         else:
@@ -163,6 +168,14 @@ class PromoteWidths(ast.NodeTransformer):
             node.value = self.make(node.value.n, width, self.get_type(node.targets[0]))
         return node
 
+    def visit_AugAssign(self, node):
+        node.value = self.visit(node.value)
+        if isinstance(node.value, ast.Num):
+            width = get_width(node.target, self.width_table)
+            self.check_valid(node.value.n.bit_length(), width)
+            node.value = self.make(node.value.n, width, self.get_type(node.target))
+        return node
+
     def visit_BinOp(self, node):
         node.left = self.visit(node.left)
         node.right = self.visit(node.right)
@@ -203,6 +216,30 @@ class PromoteWidths(ast.NodeTransformer):
 
 
 class Desugar(ast.NodeTransformer):
+    def visit(self, node):
+        node = super().visit(node)
+        if hasattr(node, 'body'):
+            new_body = []
+            for child in node.body:
+                if isinstance(child, list):
+                    new_body.extend(child)
+                else:
+                    assert isinstance(child, ast.AST)
+                    new_body.append(child)
+            node.body = new_body
+        return node
+
+    def visit_Call(self, node):
+        # Skip wire calls because they are not silica code
+        if isinstance(node.func, ast.Name) and node.func.id in {"wire"}:
+            return node
+        return super().generic_visit(node)
+
+    def visit_AugAssign(self, node):
+        target = astor.to_source(node.target).rstrip()
+        value  = astor.to_source(node.value).rstrip()
+        return self.visit(ast.parse(f"{target} = {target} + {value}").body[0].value)
+
     def visit_BinOp(self, node):
         node.left = self.visit(node.left)
         node.right = self.visit(node.right)
@@ -220,14 +257,22 @@ class Desugar(ast.NodeTransformer):
             raise NotImplementedError(node.op)
         return ast.parse(f"{op}({astor.to_source(node.left).rstrip()}, {astor.to_source(node.right).rstrip()})").body[0].value
 
-    # def visit_BoolOp(self, node):
-    #     node.values = [self.visit(value) for value in node.values]
-    #     if isinstance(node.op, ast.And):
-    #         op = "and_"
-    #     else:
-    #         raise NotImplementedError(node.op)
-    #     args = ", ".join(astor.to_source(value) for value in node.values)
-    #     return ast.parse(f"{op}({args})").body[0].value
+
+    def visit_UnaryOp(self, node):
+        if isinstance(node.op, ast.Not):
+            op = "not_"
+        else:
+            raise NotImplementedError(node.op)
+        return ast.parse(f"{op}({astor.to_source(node.operand).rstrip()})").body[0].value
+
+    def visit_BoolOp(self, node):
+        node.values = [self.visit(value) for value in node.values]
+        if isinstance(node.op, ast.And):
+            op = "and_"
+        else:
+            raise NotImplementedError(node.op)
+        args = ", ".join(astor.to_source(value) for value in node.values)
+        return ast.parse(f"{op}({args})").body[0].value
 
     def visit_Compare(self, node):
         node.left = self.visit(node.left)
@@ -252,6 +297,18 @@ def specialize_list_comps(tree, globals, locals):
             result = eval(astor.to_source(node), globals, silica.operators)
             result = ", ".join(repr(x) for x in result)
             return ast.parse(f"[{result}]").body[0].value
+
+        def visit_Call(self, node):
+            if isinstance(node.func, ast.Name) and node.func.id == "list":
+                result = eval(astor.to_source(node), globals, silica.operators)
+                result = ", ".join(repr(x) for x in result)
+                return ast.parse(f"[{result}]").body[0].value
+            return node
+
+
+            result = eval(astor.to_source(node), globals, silica.operators)
+            result = ", ".join(repr(x) for x in result)
+            return ast.parse(f"[{result}]").body[0].value
     ListCompSpecializer().visit(tree)
 
 
@@ -273,14 +330,26 @@ def get_input_width(type_):
 
 
 class ArrayReplacer(ast.NodeTransformer):
-    def __init__(self, array):
+    def __init__(self, array, state):
         self.array = array
+        self.state = state
+        self.stored = False
+
+    def visit_Call(self, node):
+        # Skip wire calls because they are not silica code
+        if isinstance(node.func, ast.Name) and node.func.id in {"wire"}:
+            return node
+        elif isinstance(node.func, ast.Attribute) and node.func.attr in {"append"}:
+            return node
+        return super().generic_visit(node)
 
     def visit_Subscript(self, node):
         if isinstance(node.value, ast.Name) and self.array in node.value.id:
             if isinstance(node.ctx, ast.Load):
                 if isinstance(node.slice, ast.Index):
-                    if isinstance(node.slice.value, ast.Num) or isinstance(node.slice.value, ast.Call) and node.slice.value.func.id in {"uint"}:
+                    if isinstance(node.slice.value, ast.Num) or \
+                       isinstance(node.slice.value, ast.Call) and \
+                       node.slice.value.func.id in {"uint"}:
                         if "_tmp" in node.value.id:
                             return ast.parse(f"{astor.to_source(node).rstrip()}").body[0].value
                         else:
@@ -290,18 +359,56 @@ class ArrayReplacer(ast.NodeTransformer):
                             return ast.parse(f"mux([x for x in {astor.to_source(node.value).rstrip()}], {astor.to_source(node.slice).rstrip()})").body[0].value
                         else:
                             return ast.parse(f"mux([x.O for x in {astor.to_source(node.value).rstrip()}], {astor.to_source(node.slice).rstrip()})").body[0].value
-            else:
-                raise NotImplementedError()
         return node
 
+    def visit_Assign(self, node):
+        if len(node.targets) == 1 and isinstance(node.targets[0], ast.Subscript) and \
+                                      isinstance(node.targets[0].value, ast.Name) and \
+                                      node.targets[0].value.id == self.array:
+            target = replace_symbols(node.targets[0], {self.array: ast.parse(f"{self.array}_next_{self.state}_tmp").body[0].value})
+            target = astor.to_source(target).rstrip()
+            value = astor.to_source(node.value).rstrip()
+            self.stored = True
+            return ast.parse(f"{target} = {value}")
+        return super().generic_visit(node)
 
-def replace_arrays(tree, array):
-    return ArrayReplacer(array).visit(tree)
+
+    def run(self, tree):
+        self.visit(tree)
+        return tree, self.stored
+
+
+def replace_arrays(tree, array, state):
+    return ArrayReplacer(array, state).run(tree)
+
+
+class DesugarArrays(ast.NodeTransformer):
+    def __init__(self):
+        self.unique_decoder_id = -1
+
+    def visit_Assign(self, node):
+        self.unique_decoder_id += 1
+        if len(node.targets) == 1 and isinstance(node.targets[0], ast.Subscript):
+            array = astor.to_source(node.targets[0].value).rstrip()
+            write_address = node.targets[0].slice
+            if isinstance(write_address, ast.Index):
+                return ast.parse(f"""
+__silica_decoder_{self.unique_decoder_id} = decoder({astor.to_source(write_address).rstrip()})
+for i in range(len({array})):
+    {array}_CE[i].append(__silica_decoder_{self.unique_decoder_id}[i])
+    # TODO: Replace this with wiring to next memory mux input for this state
+    {array}[i] = {astor.to_source(node.value).rstrip()}
+""").body
+            else:
+                raise NotImplementedError(ast.dump(node))
+        return super().generic_visit(node)
 
 
 def compile(coroutine, file_name=None):
     if not isinstance(coroutine, Coroutine):
         raise ValueError("silica.compile expects a silica.Coroutine")
+    # TODO: Simplify clock enables wired up to 1
+    has_ce = coroutine.has_ce
     tree = get_ast(coroutine._definition).body[0]  # Get the first element of the ast.Module
     stack = inspect.stack()
     func_locals = stack[1].frame.f_locals  # FIXME: Should include the function scope
@@ -321,6 +428,7 @@ def compile(coroutine, file_name=None):
     Desugar().visit(tree)
     type_table = {}
     TypeChecker(width_table, type_table).check(tree)
+    DesugarArrays().visit(tree)
     cfg = ControlFlowGraph(tree)
     liveness_analysis(cfg)
     # render_paths_between_yields(cfg.paths)
@@ -330,7 +438,7 @@ def compile(coroutine, file_name=None):
     for path in cfg.paths:
         registers |= path[0].live_ins  # Union
         outputs += (collect_names(path[-1].value, ctx=ast.Load), )
-    assert all(outputs[0] == output for output in outputs), "Yield statements must all have the same outputs"
+    assert all(outputs[1] == output for output in outputs[1:]), "Yield statements must all have the same outputs except for the first"
     outputs = outputs[0]
     io_strings = []
     for output in outputs:
@@ -339,7 +447,7 @@ def compile(coroutine, file_name=None):
             io_strings.append(f"\"{output}\", Out(Bit)")
         else:
             io_strings.append(f"\"{output}\", Out(Bits({width_table[output]}))")
-    
+
     if coroutine._inputs:
         for input_, type_ in coroutine._inputs.items():
             io_strings.append(f"\"{input_}\", In({type_})")
@@ -349,6 +457,9 @@ def compile(coroutine, file_name=None):
     num_states = len(states)
     state_width = (num_states - 1).bit_length()
     yield_width = (num_yields - 1).bit_length()
+    CE = f"VCC"
+    if has_ce:
+        CE = f"{tree.name}.CE"
     magma_source = f"""\
 from magma import *
 import os
@@ -356,8 +467,10 @@ os.environ["MANTLE"] = os.getenv("MANTLE", "coreir")
 from mantle import *
 import mantle.common.operator
 
-{tree.name} = DefineCircuit("{tree.name}", {io_string}, "CLK", In(Clock), "CE", In(Enable))
-__silica_yield_state = Register({num_yields}, init=1) # , ce=True)
+{tree.name} = DefineCircuit("{tree.name}", {io_string}, *ClockInterface(has_ce={has_ce}))
+CE = {CE}
+__silica_yield_state = Register({num_yields}, init=1, has_ce=True)
+wire(__silica_yield_state.CE, CE)
 wireclock({tree.name}, __silica_yield_state)
 __silica_yield_state_next = Or({len(cfg.paths)}, {num_yields})
 wire(__silica_yield_state_next.O, __silica_yield_state.I)
@@ -379,27 +492,32 @@ __silica_path_state = Buffer()
     for i in range(num_states):
         magma_source += f"__silica_yield_state_next_{i} = And(2, {num_yields})\n"
         magma_source += f"wire(__silica_yield_state_next_{i}.O, __silica_yield_state_next.I{i})\n"
-        for j in range(num_yields):
-            magma_source += f"wire(__silica_yield_state_next_{i}.I0[{j}], __silica_path_state.O[{i}])\n"
+        magma_source += f"""\
+for __silica_j in range({num_yields}):
+    wire(__silica_yield_state_next_{i}.I0[__silica_j], __silica_path_state.O[{i}])
+"""
 
     for register in registers:
         width = width_table[register]
         if width is None:
-            magma_source += f"{register} = DFF() # , ce=True)\n"
+            magma_source += f"{register} = DFF(has_ce=True)\n"
+            magma_source += f"{register}_CE = [CE]\n"
             magma_source += f"wireclock({tree.name}, {register})\n"
             magma_source += f"{register}_next = Or({len(cfg.paths)}, {width})\n"
             magma_source += f"wire({register}_next.O, {register}.I)\n"
         elif isinstance(width, tuple):
             if len(width) > 2:
                 raise NotImplementedError()
-            magma_source += f"{register} = [Register({width[1]}) for _ in range({width[0]})]\n"
+            magma_source += f"{register} = [Register({width[1]}, has_ce=True) for _ in range({width[0]})]\n"
+            magma_source += f"{register}_CE = [[CE] for _ in range({width[0]})]\n"
             magma_source += f"{register}_next = [Or({len(cfg.paths)}, {width[1]}) for _ in range({width[0]})]\n"
             magma_source += f"""\
 for __silica_i in range({width[0]}):
     wire({register}_next[__silica_i].O, {register}[__silica_i].I)
 """
         else:
-            magma_source += f"{register} = Register({width})\n"
+            magma_source += f"{register} = Register({width}, has_ce=True)\n"
+            magma_source += f"{register}_CE = [CE]\n"
             magma_source += f"wireclock({tree.name}, {register})\n"
             magma_source += f"{register}_next = Or({len(cfg.paths)}, {width})\n"
             magma_source += f"wire({register}_next.O, {register}.I)\n"
@@ -413,7 +531,9 @@ for __silica_i in range({width[0]}):
                     raise NotImplementedError()
                 magma_source += f"{register}_next_{i} = [And(2, {width[1]}) for _ in range({width[0]})]\n"
                 magma_source += f"""\
+{register}_next_{i}_tmp = []
 for __silica_j in range({width[0]}):
+    {register}_next_{i}_tmp.append({register}[__silica_j].O)
     wire({register}_next_{i}[__silica_j].O, {register}_next[__silica_j].I{i})
     for __silica_k in range({width[1]}):
         wire({register}_next_{i}[__silica_j].I0[__silica_k], __silica_path_state.O[{i}])
@@ -434,8 +554,10 @@ for __silica_j in range({width[0]}):
             if width is None:
                 magma_source += f"wire({output}_{i}.I0, __silica_path_state.O[{i}])\n"
             else:
-                for j in range(width):
-                    magma_source += f"wire({output}_{i}.I0[{j}], __silica_path_state.O[{i}])\n"
+                magma_source += f"""\
+for __silica_j in range({width}):
+    wire({output}_{i}.I0[__silica_j], __silica_path_state.O[{i}])
+"""
     for i, state in enumerate(cfg.states):
         load_symbol_map = {}
         store_symbol_map = {}
@@ -455,7 +577,9 @@ for __silica_j in range({width[0]}):
             statement = replace_symbols(statement, load_symbol_map, ast.Load)
             statement = replace_symbols(statement, store_symbol_map, ast.Store)
             for array in arrays:
-                statement = replace_arrays(statement, array)
+                statement, stored = replace_arrays(statement, array, i)
+                if stored:
+                    stores.add(array)
             magma_source += astor.to_source(statement)
             for var in stores:
                 if var in registers:
@@ -480,6 +604,7 @@ for __silica_i in range({width_table[register][0]}):
                     magma_source += f"wire({register}_next_{i}_tmp, {register}_next_{i}.I1)\n"
                 else:
                     magma_source += f"wire({register}.O, {register}_next_{i}.I1)\n"
+
         for output in outputs:
             magma_source += f"wire({output}_{i}_tmp, {output}_{i}.I1)\n"
 
@@ -493,6 +618,23 @@ for __silica_i in range({width_table[register][0]}):
         else:
             cond = conds[0]
         magma_source += f"wire(__silica_path_state.I[{i}], {astor.to_source(cond).rstrip()})\n"
+
+    for register in registers:
+        if isinstance(width_table[register], tuple):
+            magma_source += f"""\
+for __silica_i in range({width_table[register][0]}):
+    if len({register}_CE[__silica_i]) == 1:
+        wire({register}_CE[__silica_i][0], {register}[__silica_i].CE)
+    else:
+        wire(and_(*{register}_CE[__silica_i]), {register}[__silica_i].CE)
+"""
+        else:
+            magma_source += f"""\
+if len({register}_CE) == 1:
+    wire({register}_CE[0], {register}.CE)
+else:
+    wire(and_(*{register}_CE), {register}.CE)
+"""
     magma_source += "EndDefine()"
 
     print("\n".join(f"{i + 1}: {line}" for i, line in enumerate(magma_source.splitlines())))

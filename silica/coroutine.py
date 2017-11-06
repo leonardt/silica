@@ -8,6 +8,7 @@ class Coroutine:
     def __init__(self, *args, **kwargs):
         self.args = args
         self.kwargs = kwargs
+        self.has_ce = False
         self.reset()
 
     @classmethod

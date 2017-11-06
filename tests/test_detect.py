@@ -13,7 +13,7 @@ def detect111():
                 cnt = cnt+1
         else:
             cnt = 0
-      
+
 @silica.coroutine
 def inputs_generator(inputs):
     while True:
@@ -27,6 +27,6 @@ def test_detect111():
     outputs = list(map(bool, [0,0,0,0,0,1,0,0,0,0,0,1,1,1,1]))
     for i, o in zip(inputs, outputs):
         assert o == detect.send(i)
-    
+
     magma_detect = silica.compile(detect)
     check(magma_detect, detect111(), len(inputs), inputs_generator(inputs))
