@@ -5,11 +5,11 @@ from magma.testing.coroutine import check
 @silica.coroutine(inputs={"I": silica.Bit})
 def TFF(init=False):
     value = init
-    O = value
+    I = yield
     while True:
-        I = yield O
         O = value
         value = I ^ O
+        I = yield O
 
 
 @silica.coroutine
