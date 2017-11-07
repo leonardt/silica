@@ -2,6 +2,7 @@ import ast
 import astor
 import inspect
 import magma
+import os
 
 import silica
 from silica.coroutine import Coroutine
@@ -637,7 +638,8 @@ else:
 """
     magma_source += "EndDefine()"
 
-    print("\n".join(f"{i + 1}: {line}" for i, line in enumerate(magma_source.splitlines())))
+    if os.environ.get("SILICA_DEBUG_LEVEL", 0) > 1:
+        print("\n".join(f"{i + 1}: {line}" for i, line in enumerate(magma_source.splitlines())))
     if file_name is None:
         exec(magma_source, func_globals, func_locals)
         return eval(tree.name, func_globals, func_locals)
