@@ -281,7 +281,7 @@ class ControlFlowGraph:
             # Emit new blocks for the branching instruction
             branch = self.add_new_branch(stmt.test)
             # stmt.body holds the True path for both If and While nodes
-            for sub_stmt in stmt.body:  
+            for sub_stmt in stmt.body:
                 self.process_stmt(sub_stmt)
             if isinstance(stmt, ast.While):
                 # Exit the current basic block by looping back to the branch
