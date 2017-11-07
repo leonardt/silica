@@ -3,3 +3,4 @@ graphviz
 git+git://github.com/phanrahan/magma.git#egg=magma
 git+git://github.com/phanrahan/mantle.git#egg=mantle
 git+git://github.com/phanrahan/loam.git#egg=loam
+coreir
