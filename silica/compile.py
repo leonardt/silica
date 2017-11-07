@@ -431,7 +431,7 @@ def compile(coroutine, file_name=None):
     DesugarArrays().visit(tree)
     cfg = ControlFlowGraph(tree)
     liveness_analysis(cfg)
-    render_paths_between_yields(cfg.paths)
+    # render_paths_between_yields(cfg.paths)
     # render_fsm(cfg.states)
     registers = set()
     outputs = tuple()
