@@ -1,4 +1,4 @@
-from .coroutine import coroutine, Coroutine
+from .coroutine import coroutine, Coroutine, generator, Generator
 from .compile import compile
 
 import magma
@@ -59,3 +59,7 @@ operators = {
     "uint": uint,
     "BitVector": BitVector
 }
+
+
+def eval(x):
+    return x

@@ -3,6 +3,7 @@ import astor
 import inspect
 import magma
 import os
+import sys
 
 import silica
 from silica.coroutine import Coroutine
@@ -570,6 +571,10 @@ for __silica_j in range({width[0]}):
 for __silica_j in range({width}):
     wire({output}_{i}.I0[__silica_j], __silica_path_state.O[{i}])
 """
+    # cfg.render()
+    # render_paths_between_yields(cfg.paths)
+    # print(len(cfg.states))
+    # exit(1)
     for i, state in enumerate(cfg.states):
         load_symbol_map = {}
         store_symbol_map = {}
@@ -663,3 +668,7 @@ else:
     else:
         with open(file_name, "w") as output_file:
             output_file.write(magma_source)
+        directory = os.path.dirname(os.path.abspath(file_name))
+        sys.path.append(directory)
+        base = os.path.basename(file_name)
+        return getattr(__import__(os.path.splitext(base)[0]), tree.name)

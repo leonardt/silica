@@ -20,13 +20,19 @@ class Coroutine:
         next(self.co)
 
     def __getattr__(self, key):
-        return self.co.gi_frame.f_locals[key]
+        try:
+            return self.co.gi_frame.f_locals[key]
+        except KeyError as e:
+            return self.co.gi_yieldfrom.gi_frame.f_locals[key]
 
     def send(self, *args):
         return self.co.send(*args)
 
     def __next__(self):
         return next(self.co)
+
+    def __iter__(self):
+        return iter(self.co)
 
     def next(self):
         return self.__next__()
@@ -44,3 +50,32 @@ def coroutine(func=None, inputs=None):
             _definition = func
             _inputs = inputs
         return _Coroutine
+
+
+class Generator(Coroutine):
+    def __init__(self, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
+        self.has_ce = False
+        self.co = self.definition(*self.args, **self.kwargs)
+        # self.reset()
+
+    def reset(self):
+        self.co = self.definition(*self.args, **self.kwargs)
+
+    def __getattr__(self, key):
+        return self.co.gi_frame.f_locals[key]
+
+def generator(func=None, inputs=None):
+    if inputs is not None:
+        def wrapper(func):
+            class _Generator(Generator):
+                _definition = func
+                _inputs = inputs
+            return _Generator
+        return wrapper
+    else:
+        class _Generator(Generator):
+            _definition = func
+            _inputs = inputs
+        return _Generator

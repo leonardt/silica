@@ -181,6 +181,11 @@ class ControlFlowGraph:
         paths = []
         for block in self.blocks:
             if isinstance(block, (Yield, HeadBlock)):
+                if isinstance(block, Yield) and (isinstance(block.value, ast.Yield) \
+                                                 and block.value.value is None \
+                                                 or isinstance(block.value, ast.Assign) \
+                                                 and block.value.value.value is None):
+                       continue  # Skip initial yield
                 paths.extend([deepcopy(block)] + path for path in self.find_paths(block.outgoing_edge[0], block))
         for path in paths:
             for i in range(len(path) - 1):
