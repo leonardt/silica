@@ -5,8 +5,7 @@ from magma.testing.coroutine import check
 @coroutine(inputs={"I" : Array(4, Bits(16))})
 def Serializer4():
     data = [uint(0, 16) for i in range(4)]
-    O = data[3]
-    I = yield O
+    I = yield
     while True:
         data = I
         for i in range(4):

@@ -38,6 +38,9 @@ def get_width(node, width_table):
        node.func.id in {"bits", "uint", "BitVector"}:
         assert isinstance(node.args[1], ast.Num), "We should know all widths at compile time"
         return node.args[1].n
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and \
+       node.func.id in {"bit"}:
+        return None
     elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and \
        node.func.id in {"zext"}:
         assert isinstance(node.args[1], ast.Num), "We should know all widths at compile time"
@@ -142,6 +145,8 @@ class CollectInitialWidthsAndTypes(ast.NodeVisitor):
                     if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name) and \
                        node.value.func.id in {"bits", "uint"}:
                         self.type_table[node.targets[0].id] = node.value.func.id
+                    elif isinstance(node.value, ast.NameConstant) and node.value.value in [True, False]:
+                        self.type_table[node.targets[0].id] = "bit"
 
 
 class PromoteWidths(ast.NodeTransformer):
@@ -167,6 +172,9 @@ class PromoteWidths(ast.NodeTransformer):
             width = get_width(node.targets[0], self.width_table)
             self.check_valid(node.value.n.bit_length(), width)
             node.value = self.make(node.value.n, width, self.get_type(node.targets[0]))
+        elif isinstance(node.value, ast.NameConstant):
+            width = get_width(node.targets[0], self.width_table)
+            node.value = ast.parse(f"bit({node.value.value})").body[0].value
         return node
 
     def visit_AugAssign(self, node):
@@ -440,7 +448,7 @@ def compile(coroutine, file_name=None):
         registers |= path[0].live_ins  # Union
         outputs += (collect_names(path[-1].value, ctx=ast.Load), )
     assert all(outputs[1] == output for output in outputs[1:]), "Yield statements must all have the same outputs except for the first"
-    outputs = outputs[0]
+    outputs = outputs[1]
     io_strings = []
     for output in outputs:
         width = width_table[output]
@@ -547,8 +555,11 @@ for __silica_j in range({width[0]}):
 
     for output in outputs:
         width = width_table[output]
+        orig = output
+        if output in registers:
+            output += "_output"
         magma_source += f"{output} = Or({len(cfg.paths)}, {width})\n"
-        magma_source += f"wire({output}.O, {tree.name}.{output})\n"
+        magma_source += f"wire({output}.O, {tree.name}.{orig})\n"
         for i, state in enumerate(states):
             magma_source += f"{output}_{i} = And(2, {width})\n"
             magma_source += f"wire({output}_{i}.O, {output}.I{i})\n"
@@ -571,7 +582,8 @@ for __silica_j in range({width}):
                 load_symbol_map[register] = ast.parse(f"{register}.O").body[0].value
                 store_symbol_map[register] = ast.parse(f"{register}_next_{i}_tmp").body[0].value
         for output in outputs:
-            store_symbol_map[output] = ast.parse(f"{output}_{i}_tmp").body[0].value
+            if output not in registers:
+                store_symbol_map[output] = ast.parse(f"{output}_{i}_tmp").body[0].value
         stores = set()
         for statement in state.statements:
             stores |= collect_names(statement, ast.Store)
@@ -607,7 +619,12 @@ for __silica_i in range({width_table[register][0]}):
                     magma_source += f"wire({register}.O, {register}_next_{i}.I1)\n"
 
         for output in outputs:
-            magma_source += f"wire({output}_{i}_tmp, {output}_{i}.I1)\n"
+            if output not in registers:
+                magma_source += f"wire({output}_{i}_tmp, {output}_{i}.I1)\n"
+            elif output in stores:
+                magma_source += f"wire({output}_next_{i}_tmp, {output}_output_{i}.I1)\n"
+            else:
+                magma_source += f"wire({output}.O, {output}_output_{i}.I1)\n"
 
         # curr = ast.parse(f"__silica_yield_state_next_{i}.O[{state.start_yield_id}]").body[0].value
         conds = [ast.parse(f"__silica_yield_state.O[{state.start_yield_id}]").body[0].value]
@@ -638,7 +655,7 @@ else:
 """
     magma_source += "EndDefine()"
 
-    if os.environ.get("SILICA_DEBUG_LEVEL", 0) > 1:
+    if int(os.environ.get("SILICA_DEBUG_LEVEL", "0")) > 0:
         print("\n".join(f"{i + 1}: {line}" for i, line in enumerate(magma_source.splitlines())))
     if file_name is None:
         exec(magma_source, func_globals, func_locals)

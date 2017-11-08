@@ -148,17 +148,22 @@ class ControlFlowGraph:
         self.remove_if_trues()
 
 
-    def find_paths(self, block):
+    def find_paths(self, block, initial_block):
         """
         Given a block, recursively build paths to yields
         """
         if isinstance(block, Yield):
-            return [[deepcopy(block)]]
+            if isinstance(block.value, ast.Yield) and block.value.value is None or \
+               isinstance(block.value, ast.Assign) and block.value.value.value is None:
+                initial_block.initial_yield = block
+                return [path for path in self.find_paths(block.outgoing_edge[0], initial_block)]
+            else:
+                return [[deepcopy(block)]]
         elif isinstance(block, BasicBlock):
-            return [[deepcopy(block)] + path for path in self.find_paths(block.outgoing_edge[0])]
+            return [[deepcopy(block)] + path for path in self.find_paths(block.outgoing_edge[0], initial_block)]
         elif isinstance(block, Branch):
-            true_paths = [[deepcopy(block)] + path for path in self.find_paths(block.true_edge)]
-            false_paths = [[deepcopy(block)] + path for path in self.find_paths(block.false_edge)]
+            true_paths = [[deepcopy(block)] + path for path in self.find_paths(block.true_edge, initial_block)]
+            false_paths = [[deepcopy(block)] + path for path in self.find_paths(block.false_edge, initial_block)]
             for path in true_paths:
                 path[0].true_edge = path[1]
             for path in false_paths:
@@ -176,7 +181,7 @@ class ControlFlowGraph:
         paths = []
         for block in self.blocks:
             if isinstance(block, (Yield, HeadBlock)):
-                paths.extend([deepcopy(block)] + path for path in self.find_paths(block.outgoing_edge[0]))
+                paths.extend([deepcopy(block)] + path for path in self.find_paths(block.outgoing_edge[0], block))
         for path in paths:
             for i in range(len(path) - 1):
                 path[i].next = path[i + 1]
@@ -385,7 +390,7 @@ class ControlFlowGraph:
                 label = "if " + astor.to_source(block.cond)
                 dot.node(str(id(block)), label.rstrip(), {"shape": "invhouse"})
             elif isinstance(block, Yield):
-                label = "yield " + astor.to_source(block.value)
+                label = astor.to_source(block.value)
                 # label += "\nLive Ins  : " + str(block.live_ins)
                 # label += "\nLive Outs : " + str(block.live_outs)
                 label += "\nGen  : " + str(block.gen)
@@ -478,6 +483,8 @@ def render_paths_between_yields(paths):  # pragma: no cover
                 label = "Initial"
                 dot.node(str(i) + str(id(block)) + "_start", label.rstrip(), {"shape": "doublecircle"})
                 label = "\n".join(astor.to_source(stmt).rstrip() for stmt in block.initial_statements)
+                if hasattr(block, "initial_yield"):
+                    label += "\n" + astor.to_source(block.initial_yield.value)
                 label += "\nLive Ins  : " + str(block.live_ins)
                 label += "\nLive Outs : " + str(block.live_outs)
                 # label += "\nGen  : " + str(block.gen)
@@ -528,6 +535,9 @@ def collect_constant_assigns(statements):
             elif isinstance(stmt.value, ast.Call) and isinstance(stmt.value.func, ast.Name) and \
                  stmt.value.func.id in {"bits", "uint"}:
                 constant_assigns[stmt.targets[0].id] = stmt.value.args[0].n
+            elif isinstance(stmt.value, ast.Call) and isinstance(stmt.value.func, ast.Name) and \
+                 stmt.value.func.id == "bit":
+                constant_assigns[stmt.targets[0].id] = int(stmt.value.args[0].value)
             elif isinstance(stmt.value, ast.NameConstant) and len(stmt.targets) == 1:
                 constant_assigns[stmt.targets[0].id] = int(stmt.value.value)
     return constant_assigns

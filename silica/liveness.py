@@ -43,6 +43,8 @@ def analyze(node):
     elif isinstance(node, cfg_types.HeadBlock):
         for statement in node.initial_statements:
             analyzer.visit(statement)
+        if hasattr(node, "initial_yield"):
+            analyzer.visit(node.initial_yield.value)
     elif isinstance(node, cfg_types.Branch):
         analyzer.visit(node.cond)
     else:

@@ -7,6 +7,7 @@ from magma.testing.coroutine import check
 @silica.coroutine
 def Counter(width, init=0, incr=1):
     value = bits(init, width)
+    yield
     while True:
         O = value
         value, cout = add(value, bits(incr, width), cout=True)
@@ -17,9 +18,9 @@ def test_counter():
     counter = Counter(3)
     for _ in range(2):
         for i in range(1 << 3):
+            next(counter)
             assert counter.O == i
             assert counter.cout == (i == (1 << 3) - 1)
-            next(counter)
 
     magma_counter = silica.compile(counter)
     check(magma_counter, counter, 1<<3 * 2)
