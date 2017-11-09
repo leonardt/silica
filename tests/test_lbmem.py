@@ -13,7 +13,7 @@ def saturating_add(a, b, max_):
 def State0(lbmem_width, depth, lbmem, raddr, waddr):
     valid = 0
     rdata = lbmem[raddr]
-    wdata, wen = yield
+    wdata, wen = yield rdata, valid
     for i in range(lbmem_width):
         wdata, wen = yield rdata, valid
         while not wen:
@@ -25,14 +25,17 @@ def State0(lbmem_width, depth, lbmem, raddr, waddr):
 def State1(lbmem_width, depth, lbmem, raddr, waddr):
     valid = 1
     rdata = lbmem[raddr]
-    wdata, wen = yield
-    for i in range(lbmem_width):
+    wdata, wen = yield rdata, valid
+    not_drained = lbmem_width
+    while not_drained:
         rdata = lbmem[raddr]
         wdata, wen = yield rdata, valid
         raddr = saturating_add(raddr, 1, depth - 1)
         if wen:
             lbmem[waddr] = wdata
             waddr = saturating_add(waddr, 1, depth - 1)
+        else:
+            not_drained -= 1
 
 @si.coroutine
 def LbMem(depth=1024,lbmem_width=5):
@@ -45,8 +48,8 @@ def LbMem(depth=1024,lbmem_width=5):
 
 def test_lbmem():
     lbmem = LbMem()
-    wdata = [i for i in range(30)]
-    wen =   [i%2 for i in range(30)]
+    wdata = [i for i in range(40)]
+    wen =   [i%2 for i in range(40)]
     for inputs in zip(wdata,wen):
         lbmem.send(inputs)
         print(f"inputs={inputs}, rdata={lbmem.rdata}, valid={lbmem.valid}")
