@@ -10,7 +10,12 @@ def saturating_add(a, b, max_):
     return c
 
 @si.generator
-def State0(lbmem_width, depth, lbmem, raddr, waddr):
+def FillingState(lbmem_width, depth, lbmem, raddr, waddr):
+    """
+    Linebuffer filling state
+    rdata is always invalid
+    Remains in this state until `lbmem_width` writes have occured (wen is high for `lbmem` cycles)
+    """
     valid = 0
     rdata = lbmem[raddr]
     wdata, wen = yield rdata, valid
@@ -22,7 +27,12 @@ def State0(lbmem_width, depth, lbmem, raddr, waddr):
         waddr = saturating_add(waddr, 1, depth - 1)
 
 @si.generator
-def State1(lbmem_width, depth, lbmem, raddr, waddr):
+def DrainingState(lbmem_width, depth, lbmem, raddr, waddr):
+    """
+    Linebuffer draining state
+    rdata is always valid
+    Remains in this state until `lbmem_width` cycles without a write have occured
+    """
     valid = 1
     rdata = lbmem[raddr]
     wdata, wen = yield rdata, valid
@@ -43,8 +53,8 @@ def LbMem(depth=1024,lbmem_width=5):
     raddr = uint(0, eval(math.ceil(math.log2(depth))))
     waddr = uint(0, eval(math.ceil(math.log2(depth))))
     while True:
-        yield from State0(lbmem_width, depth, lbmem, raddr, waddr)
-        yield from State1(lbmem_width, depth, lbmem, raddr, waddr)
+        yield from FillingState(lbmem_width, depth, lbmem, raddr, waddr)
+        yield from DrainingState(lbmem_width, depth, lbmem, raddr, waddr)
 
 def test_lbmem():
     lbmem = LbMem()
