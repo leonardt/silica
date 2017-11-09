@@ -5,14 +5,15 @@ from magma.testing.coroutine import check
 @silica.coroutine(inputs={"I" : Bit})
 def detect111():
     cnt = uint(0, 2)
+    I = yield
     while True:
-        O = (cnt == 3)
-        I = yield O
         if (I):
             if (cnt<3):
                 cnt = cnt+1
         else:
             cnt = 0
+        O = (cnt == 3)
+        I = yield O
 
 @silica.coroutine
 def inputs_generator(inputs):

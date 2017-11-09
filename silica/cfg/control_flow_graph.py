@@ -15,6 +15,18 @@ from silica.transformations import specialize_constants, replace_symbols, consta
 from silica.visitors import collect_names
 from silica.cfg.types import BasicBlock, Yield, Branch, HeadBlock, State
 
+def get_constant(node):
+    if isinstance(node, ast.Num) and len(stmt.targets) == 1:
+        return node.n
+    elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and \
+         node.func.id in {"bits", "uint"}:
+        return node.args[0].n
+    elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and \
+         node.func.id == "bit":
+        return int(node.args[0].value)
+    elif isinstance(node, ast.NameConstant):
+        return int(node.value)
+
 
 def parse_arguments(arguments):
     """
@@ -100,7 +112,7 @@ class ControlFlowGraph:
     def __init__(self, tree):
         self.blocks = []
         self.curr_block = None
-        self.curr_yield_id = 1
+        self.curr_yield_id = 0
         self.local_vars = set()
 
         # inputs, outputs = parse_arguments(tree.args.args)
@@ -530,21 +542,9 @@ def collect_constant_assigns(statements):
     constant_assigns = {}
     for stmt in statements:
         if isinstance(stmt, ast.Assign):
-            if isinstance(stmt.value, ast.Num) and len(stmt.targets) == 1:
-                if isinstance(stmt.targets[0], ast.Name):
-                    constant_assigns[stmt.targets[0].id] = stmt.value.n
-                else:
-                    # TODO: This should already be guaranteed by a type checker
-                    assert stmt.targets[0].name in constant_assigns, \
-                           "Assigned to multiple constants"
-            elif isinstance(stmt.value, ast.Call) and isinstance(stmt.value.func, ast.Name) and \
-                 stmt.value.func.id in {"bits", "uint"}:
-                constant_assigns[stmt.targets[0].id] = stmt.value.args[0].n
-            elif isinstance(stmt.value, ast.Call) and isinstance(stmt.value.func, ast.Name) and \
-                 stmt.value.func.id == "bit":
-                constant_assigns[stmt.targets[0].id] = int(stmt.value.args[0].value)
-            elif isinstance(stmt.value, ast.NameConstant) and len(stmt.targets) == 1:
-                constant_assigns[stmt.targets[0].id] = int(stmt.value.value)
+            constant = get_constant(stmt.value)
+            if constant is not None:
+                constant_assigns[stmt.targets[0].id] = constant
     return constant_assigns
 
 
@@ -620,7 +620,8 @@ def build_state_info(paths, outputs, inputs):
             elif isinstance(block, BasicBlock):
                 state.statements.extend(block.statements)
             elif isinstance(block, HeadBlock):
-                state.statements.extend(block.initial_statements)
+                pass
+                # state.statements.extend(block.initial_statements)
         states.append(state)
     return states, state_vars
 

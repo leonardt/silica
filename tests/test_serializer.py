@@ -4,7 +4,6 @@ from magma.testing.coroutine import check
 
 @coroutine(inputs={"I" : Array(4, Bits(16))})
 def Serializer4():
-    data = [uint(0, 16) for i in range(4)]
     I = yield
     while True:
         data = I
@@ -20,7 +19,7 @@ def inputs_generator(inputs):
             I = [BitVector(x, 16) for x in i]
             yield I
             for _ in range(3):
-                I = [BitVector(0, 16) for _ in range(len(i))]
+                I = [BitVector(0xDEAD, 16) for _ in range(len(i))]
                 yield I
 
 def test_ser3():

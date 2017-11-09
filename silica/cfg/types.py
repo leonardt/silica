@@ -32,6 +32,9 @@ class HeadBlock(Block):
     def add(self, stmt):
         self.initial_statements.append(stmt)
 
+    def __iter__(self):
+        return iter(self.initial_statements)
+
 
 class BasicBlock(Block):
     def __init__(self):
@@ -40,6 +43,9 @@ class BasicBlock(Block):
 
     def add(self, stmt):
         self.statements.append(stmt)
+
+    def __iter__(self):
+        return iter(self.statements)
 
 
 

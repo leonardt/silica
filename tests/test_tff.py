@@ -5,11 +5,11 @@ from magma.testing.coroutine import check
 @silica.coroutine(inputs={"I": silica.Bit})
 def TFF(init=False):
     value = init
-    I = yield
+    O = value
     while True:
+        I = yield O
         O = value
         value = I ^ O
-        I = yield O
 
 
 @silica.coroutine
@@ -35,4 +35,5 @@ def test_TFF():
         assert tff.O == True
 
     magma_tff = silica.compile(tff)
+    print(repr(magma_tff))
     check(magma_tff, TFF(), 8, inputs_generator())

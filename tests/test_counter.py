@@ -7,11 +7,12 @@ from magma.testing.coroutine import check
 @silica.coroutine
 def Counter(width, init=0, incr=1):
     value = bits(init, width)
-    yield
+    O = value
+    cout = False
     while True:
+        yield O, cout
         O = value
         value, cout = add(value, bits(incr, width), cout=True)
-        yield O, cout
 
 def test_counter():
     N = 3
