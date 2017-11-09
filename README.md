@@ -8,9 +8,4 @@ A language for constructing hardware finite state machines using coroutines.
 pip install -e .
 ```
 
-# Examples
-* [counter](./notebooks/counter.ipynb)
-* [lfsr](./notebooks/lfsr.ipynb)
-* [rom](./notebooks/rom.ipynb)
-* [shift_register](./notebooks/shift_register.ipynb)
-* [tff](./notebooks/tff.ipynb)
+See `tests/` for known working examples (if the latest Travis build has passed)
