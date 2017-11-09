@@ -530,8 +530,7 @@ for __silica_j in range({num_yields}):
         if width is None:
             init_string = ""
             if register in register_initial_values and register_initial_values[register] is not None:
-                pass
-                # init_string = f", init={register_initial_values[register]}"
+                init_string = f", init={register_initial_values[register]}"
             magma_source += f"{register} = DFF(has_ce=True, name=\"{register}\"{init_string})\n"
             magma_source += f"{register}_CE = [CE]\n"
             magma_source += f"wireclock({tree.name}, {register})\n"
