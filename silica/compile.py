@@ -15,6 +15,18 @@ from silica.transformations import specialize_constants, replace_symbols, consta
 from silica.visitors import collect_names
 
 
+def replace_assign_to_bits(statement, load_symbol_map, store_symbol_map):
+    class Transformer(ast.NodeTransformer):
+        def visit_Assign(self, node):
+            if len(node.targets) == 1 and isinstance(node.targets[0], ast.Subscript):
+                target = replace_symbols(node.targets[0], store_symbol_map, ast.Load)
+                return ast.parse(f"{astor.to_source(target).rstrip()} = {astor.to_source(node.value).rstrip()}").body[0]
+            return node
+
+        def run(self, statement):
+            return self.visit(statement)
+    return Transformer().run(statement)
+
 def specialize_arguments(tree, coroutine):
     arg_map = {}
     for arg, value in zip(tree.args.args, coroutine.args):
@@ -92,7 +104,7 @@ def get_width(node, width_table):
             width = get_width(node.value, width_table)
             if isinstance(width, tuple):
                 return width[1]
-            return width
+            return None
     raise NotImplementedError(ast.dump(node))
 
 
@@ -124,7 +136,7 @@ class TypeChecker(ast.NodeVisitor):
                     self.width_table[target.id] = width
             elif isinstance(node.targets[0], ast.Subscript):
                 if not get_width(node.targets[0], self.width_table) == get_width(node.value, self.width_table):
-                    raise TypeError("FIXME: Better type error message")
+                    raise TypeError(f"Mismatched widths {get_width(node.targets[0], self.width_table)} != {get_width(node.value, self.width_table)} : {astor.to_source(node).rstrip()}")
             else:
                 raise NotImplementedError(ast.dump(node))
         else:
@@ -225,7 +237,28 @@ class PromoteWidths(ast.NodeTransformer):
         return node
 
 
+class ListExprChecker(ast.NodeVisitor):
+    def __init__(self):
+        self.is_list_expr = True
+
+    def visit_List(self, node):
+        return
+
+    def visit_Subscript(self, node):
+        return
+
+    def visit_Name(self, node):
+        self.is_list_expr = False
+
+    def run(self, expr):
+        self.visit(expr)
+        return self.is_list_expr
+
+
 class Desugar(ast.NodeTransformer):
+    def __init__(self, width_table):
+        self.width_table = width_table
+
     def visit(self, node):
         node = super().visit(node)
         if hasattr(node, 'body'):
@@ -238,6 +271,19 @@ class Desugar(ast.NodeTransformer):
                     new_body.append(child)
             node.body = new_body
         return node
+
+    def is_list_expr(self, node):
+        if not len(node.targets) == 1 or not isinstance(node.targets[0], ast.Name) or \
+           node.targets[0].id not in self.width_table or \
+           not isinstance(self.width_table[node.targets[0].id], tuple):
+               return False
+        # Check leaf nodes are list literals or slices
+        return ListExprChecker().run(node.value)
+
+    # def visit_Assign(self, node):
+    #     if self.is_list_expr(node):
+    #         raise NotImplementedError()
+    #     return super().generic_visit(node)
 
     def visit_Call(self, node):
         # Skip wire calls because they are not silica code
@@ -255,6 +301,8 @@ class Desugar(ast.NodeTransformer):
         node.right = self.visit(node.right)
         if isinstance(node.op, ast.Add):
             op = "add"
+        elif isinstance(node.op, ast.Sub):
+            op = "sub"
         elif isinstance(node.op, ast.BitXor):
             op = "xor"
         elif isinstance(node.op, ast.BitAnd):
@@ -271,6 +319,8 @@ class Desugar(ast.NodeTransformer):
     def visit_UnaryOp(self, node):
         if isinstance(node.op, ast.Not):
             op = "not_"
+        if isinstance(node.op, ast.USub):
+            op = "negate"
         else:
             raise NotImplementedError(node.op)
         return ast.parse(f"{op}({astor.to_source(node.operand).rstrip()})").body[0].value
@@ -302,21 +352,22 @@ class Desugar(ast.NodeTransformer):
 
 
 def specialize_list_comps(tree, globals, locals):
+    locals.update(silica.operators)
     class ListCompSpecializer(ast.NodeTransformer):
         def visit_ListComp(self, node):
-            result = eval(astor.to_source(node), globals, silica.operators)
+            result = eval(astor.to_source(node), globals, locals)
             result = ", ".join(repr(x) for x in result)
             return ast.parse(f"[{result}]").body[0].value
 
         def visit_Call(self, node):
             if isinstance(node.func, ast.Name) and node.func.id == "list":
-                result = eval(astor.to_source(node), globals, silica.operators)
+                result = eval(astor.to_source(node), globals, locals)
                 result = ", ".join(repr(x) for x in result)
                 return ast.parse(f"[{result}]").body[0].value
             return node
 
 
-            result = eval(astor.to_source(node), globals, silica.operators)
+            result = eval(astor.to_source(node), globals, locals)
             result = ", ".join(repr(x) for x in result)
             return ast.parse(f"[{result}]").body[0].value
     ListCompSpecializer().visit(tree)
@@ -402,11 +453,12 @@ class DesugarArrays(ast.NodeTransformer):
             array = astor.to_source(node.targets[0].value).rstrip()
             write_address = node.targets[0].slice
             if isinstance(write_address, ast.Index):
+                if isinstance(write_address.value, ast.Num):
+                    return node
                 return ast.parse(f"""
 __silica_decoder_{self.unique_decoder_id} = decoder({astor.to_source(write_address).rstrip()})
 for i in range(len({array})):
     {array}_CE[i].append(__silica_decoder_{self.unique_decoder_id}[i])
-    # TODO: Replace this with wiring to next memory mux input for this state
     {array}[i] = {astor.to_source(node.value).rstrip()}
 """).body
             else:
@@ -421,9 +473,12 @@ def compile(coroutine, file_name=None):
     has_ce = coroutine.has_ce
     tree = get_ast(coroutine._definition).body[0]  # Get the first element of the ast.Module
     stack = inspect.stack()
-    func_locals = stack[1].frame.f_locals  # FIXME: Should include the function scope
+    func_locals = stack[1].frame.f_locals
     func_globals = stack[1].frame.f_globals
+    func_locals.update(coroutine._defn_locals)
     specialize_arguments(tree, coroutine)
+    specialize_constants(tree, coroutine._defn_locals)
+    constant_fold(tree)
     specialize_list_comps(tree, func_globals, func_locals)
     desugar_for_loops(tree)
     width_table = {}
@@ -435,7 +490,7 @@ def compile(coroutine, file_name=None):
     type_table = {}
     CollectInitialWidthsAndTypes(width_table, type_table).visit(tree)
     PromoteWidths(width_table, type_table).visit(tree)
-    Desugar().visit(tree)
+    Desugar(width_table).visit(tree)
     type_table = {}
     TypeChecker(width_table, type_table).check(tree)
     DesugarArrays().visit(tree)
@@ -476,7 +531,8 @@ def compile(coroutine, file_name=None):
         initial_basic_block |= isinstance(node, BasicBlock)
     if not initial_basic_block:
         num_states -= 1
-        num_yields -= 1
+        if num_yields > 1:
+            num_yields -= 1
         states = states[1:]
     CE = f"VCC"
     if has_ce:
@@ -608,12 +664,17 @@ for __silica_j in range({width}):
             else:
                 load_symbol_map[register] = ast.parse(f"{register}.O").body[0].value
                 store_symbol_map[register] = ast.parse(f"{register}_next_{i}_tmp").body[0].value
+                if width_table[register] is None:
+                    magma_source += f"{register}_next_{i}_tmp = {register}.O\n"
+                else:
+                    magma_source += f"{register}_next_{i}_tmp = [{register}.O[__silica_i] for __silica_i in range({width_table[register]})]\n"
         for output in outputs:
             if output not in registers:
                 store_symbol_map[output] = ast.parse(f"{output}_{i}_tmp").body[0].value
         stores = set()
         for statement in state.statements:
             stores |= collect_names(statement, ast.Store)
+            statement = replace_assign_to_bits(statement, load_symbol_map, store_symbol_map)
             statement = replace_symbols(statement, load_symbol_map, ast.Load)
             statement = replace_symbols(statement, store_symbol_map, ast.Store)
             for array in arrays:
@@ -628,7 +689,7 @@ for __silica_j in range({width}):
                     load_symbol_map[var] = ast.parse(f"{var}_{i}_tmp").body[0].value
         if num_states > 1:
             end_yield_id = state.end_yield_id
-            if not initial_basic_block:
+            if not initial_basic_block and num_yields > 1:
                 end_yield_id -= 1
             magma_source += f"wire(__silica_yield_state_next_{i}.I1, bits(1 << {end_yield_id}, {num_yields}))\n"
         for register in registers:
@@ -644,14 +705,17 @@ for __silica_i in range({width_table[register][0]}):
     wire({register}[__silica_i].O, {register}_next_{i}[__silica_i].I1)
 """
             else:
-                if register in stores:
-                    if num_states > 1:
-                        store = f"{register}_next_{i}.I1"
-                    else:
-                        store = f"{register}.I"
+                if num_states > 1:
+                    store = f"{register}_next_{i}.I1"
+                else:
+                    store = f"{register}.I"
+                if width_table[register] is None:
                     magma_source += f"wire({register}_next_{i}_tmp, {store})\n"
                 else:
-                    magma_source += f"wire({register}.O, {register}_next_{i}.I1)\n"
+                    magma_source += f"""\
+for __silica_i in range({width_table[register]}):
+    wire({register}_next_{i}_tmp[__silica_i], {store}[__silica_i])
+"""
 
         for output in outputs:
             if output not in registers:
@@ -666,7 +730,7 @@ for __silica_i in range({width_table[register][0]}):
 
         # curr = ast.parse(f"__silica_yield_state_next_{i}.O[{state.start_yield_id}]").body[0].value
         start_yield_id = state.start_yield_id
-        if not initial_basic_block:
+        if not initial_basic_block and num_yields > 1:
             start_yield_id -= 1
         conds = [ast.parse(f"__silica_yield_state.O[{start_yield_id}]").body[0].value]
         if state.conds:

@@ -1,3 +1,6 @@
+import inspect
+
+
 class Coroutine:
     """
     Makes the initial call to __next__ upon construction to immediately
@@ -38,17 +41,21 @@ class Coroutine:
         return self.__next__()
 
 def coroutine(func=None, inputs=None):
+    stack = inspect.stack()
+    defn_locals = stack[1].frame.f_locals
     if inputs is not None:
         def wrapper(func):
             class _Coroutine(Coroutine):
                 _definition = func
                 _inputs = inputs
+                _defn_locals = defn_locals
             return _Coroutine
         return wrapper
     else:
         class _Coroutine(Coroutine):
             _definition = func
             _inputs = inputs
+            _defn_locals = defn_locals
         return _Coroutine
 
 
@@ -67,15 +74,19 @@ class Generator(Coroutine):
         return self.co.gi_frame.f_locals[key]
 
 def generator(func=None, inputs=None):
+    stack = inspect.stack()
+    defn_locals = stack[1].frame.f_locals
     if inputs is not None:
         def wrapper(func):
             class _Generator(Generator):
                 _definition = func
                 _inputs = inputs
+                _defn_locals = defn_locals
             return _Generator
         return wrapper
     else:
         class _Generator(Generator):
             _definition = func
             _inputs = inputs
+            _defn_locals = defn_locals
         return _Generator

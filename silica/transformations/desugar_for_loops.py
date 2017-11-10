@@ -1,5 +1,8 @@
 import ast
 from silica.ast_utils import *
+from .replace_symbols import replace_symbols
+from .constant_fold import constant_fold
+from copy import deepcopy
 
 class ForLoopDesugarer(ast.NodeTransformer):
     def __init__(self):
@@ -17,13 +20,25 @@ class ForLoopDesugarer(ast.NodeTransformer):
         node.body = new_body
         if is_call(node.iter) and is_name(node.iter.func) and \
            node.iter.func.id == "range":
+            try:
+                range_object = eval(astor.to_source(node.iter))
+                body = []
+                for i in range_object:
+                    symbol_table = {node.target.id: ast.Num(i)}
+                    for child in node.body:
+                        body.append(
+                            constant_fold(replace_symbols(deepcopy(child), symbol_table))
+                        )
+                return body
+            except Exception as e:
+                pass
             # TODO: Support mixed regular and keyword args
             if 4 > len(node.iter.args) > 0:
                 assert isinstance(node.target, ast.Name)
                 if len(node.iter.args) <= 2:
                     incr = 1
                 else:
-                    incr = node.iter.args[2].n
+                    incr = eval(astor.to_source(node.iter.args[2]))
                 if len(node.iter.args) == 1:
                     start = 0
                     stop = node.iter.args[0]
