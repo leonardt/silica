@@ -14,8 +14,6 @@ class InlineConstants(ast.NodeTransformer):
                 return copy.deepcopy(constant)
             elif isinstance(constant, int):
                 return ast.Num(constant)
-            else:
-                raise NotImplementedError()
         return node
 
 

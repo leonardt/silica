@@ -69,9 +69,8 @@ def test_fifo():
                 ren = bool(trace["ren"])
                 yield wdata, wen, ren
 
-    si.compile(fifo, file_name="fifo_magma.py")
-    import fifo_magma
-    check(fifo_magma.Fifo, Fifo(), len(inputs), inputs_generator(2))
+    fifo_magma = si.compile(fifo, file_name="fifo_magma.py")
+    check(fifo_magma, Fifo(), len(inputs), inputs_generator(2))
 
 if __name__ == "__main__":
     test_fifo()

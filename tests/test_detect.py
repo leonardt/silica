@@ -29,5 +29,5 @@ def test_detect111():
     for i, o in zip(inputs, outputs):
         assert o == detect.send(i)
 
-    magma_detect = silica.compile(detect)
+    magma_detect = silica.compile(detect, file_name="magma_detect.py")
     check(magma_detect, detect111(), len(inputs), inputs_generator(inputs))

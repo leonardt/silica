@@ -319,7 +319,7 @@ class Desugar(ast.NodeTransformer):
     def visit_UnaryOp(self, node):
         if isinstance(node.op, ast.Not):
             op = "not_"
-        if isinstance(node.op, ast.USub):
+        elif isinstance(node.op, ast.USub):
             op = "negate"
         else:
             raise NotImplementedError(node.op)
@@ -446,12 +446,18 @@ def replace_arrays(tree, array, state):
 class DesugarArrays(ast.NodeTransformer):
     def __init__(self):
         self.unique_decoder_id = -1
+        self.stored = set()
+
+    def run(self, node):
+        self.visit(node)
+        return self.stored
 
     def visit_Assign(self, node):
         self.unique_decoder_id += 1
         if len(node.targets) == 1 and isinstance(node.targets[0], ast.Subscript):
             array = astor.to_source(node.targets[0].value).rstrip()
             write_address = node.targets[0].slice
+            self.stored.add(array)
             if isinstance(write_address, ast.Index):
                 if isinstance(write_address.value, ast.Num):
                     return node
@@ -493,7 +499,7 @@ def compile(coroutine, file_name=None):
     Desugar(width_table).visit(tree)
     type_table = {}
     TypeChecker(width_table, type_table).check(tree)
-    DesugarArrays().visit(tree)
+    stored_arrays = DesugarArrays().run(tree)
     cfg = ControlFlowGraph(tree)
     liveness_analysis(cfg)
     # cfg.render()
@@ -671,7 +677,7 @@ for __silica_j in range({width}):
         for output in outputs:
             if output not in registers:
                 store_symbol_map[output] = ast.parse(f"{output}_{i}_tmp").body[0].value
-        stores = set()
+        stores = set(stored_arrays)
         for statement in state.statements:
             stores |= collect_names(statement, ast.Store)
             statement = replace_assign_to_bits(statement, load_symbol_map, store_symbol_map)
