@@ -23,6 +23,6 @@ def test_counter():
             assert counter.O == i
             assert counter.cout == (i == (1 << 3) - 1)
 
-    magma_counter = silica.compile(counter, file_name="build/magma_counter.py")
+    magma_counter = silica.compile(counter, file_name="magma_counter.py")
     print(magma_counter)
     check(magma_counter, Counter(3), 1<<3 * 2)
