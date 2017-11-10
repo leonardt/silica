@@ -55,11 +55,36 @@ def LbMem(depth=1024,lbmem_width=5):
         waddr = yield from FillingState(lbmem_width, depth, lbmem, raddr, waddr)
         waddr, raddr = yield from DrainingState(lbmem_width, depth, lbmem, raddr, waddr)
 
+@si.coroutine
+def inputs_generator(inputs):
+    while True:
+        for wdata, wen in inputs:
+            yield wdata, wen
+
 def test_lbmem():
     lbmem = LbMem()
     wdata = [i for i in range(40)]
     wen =   [i%2 for i in range(40)]
-    for inputs in zip(wdata,wen):
+    expected_written = []
+    expected_valid = False
+    num_writes = 0
+    for cycle, inputs in enumerate(zip(wdata,wen)):
         lbmem.send(inputs)
-        print(f"inputs={inputs}, rdata={lbmem.rdata}, valid={lbmem.valid}")
-    # si.compile(lbmem, file_name="lbmem.magma.py")
+        # print(f"inputs={inputs}, rdata={lbmem.rdata}, valid={lbmem.valid}")
+        wen = inputs[1]
+        if wen:
+            expected_written.append(inputs[0])
+        num_writes += wen
+        if not expected_valid and num_writes == 5:
+            expected_valid = True
+            drain_state = 5
+        if expected_valid and drain_state and not wen:
+            drain_state -= 1
+        if expected_valid and not drain_state:
+            expected_valid = False
+            num_writes = 0
+        assert expected_valid == lbmem.valid
+        if expected_valid:
+            assert lbmem.rdata == expected_written.pop(0)
+    # lbmem_magma = si.compile(lbmem, file_name="lbmem_magma.py")
+    # check(lbmem_magma, LbMem(), len(inputs), inputs_generator(list(zip(wdata,wen))))
