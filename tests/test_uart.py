@@ -36,11 +36,14 @@ def UART_TX():
     message = [bits(0xDE, 8), bits(0xAD, 8), bits(0xBE, 8), bits(0xEF, 8)]
     piso = DefinePISO(10)()
     while True:
-        for byte in message:
-            O = piso.send((concat([False], byte, [True]), 0, 1))
+        # for byte in message:
+        #     O = piso.send((concat([False], byte, [True]), 0, 1))
+        for i in range(len(message)):
+            O = piso.send((concat([False], message[i], [True]), 0, 1))
             yield O
-            for i in range(10):
-                O = piso.send((concat([False], byte, [True]), 0, 0))
+            for j in range(10):
+                # O = piso.send((concat([False], byte, [True]), 0, 0))
+                O = piso.send((concat([False], message[i], [True]), 0, 0))
                 yield O
 
 def test_UART():
