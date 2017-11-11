@@ -585,7 +585,6 @@ def DefineSilicaMux(height, width, strategy):
 
 {tree.name} = DefineCircuit("{tree.name}", {io_string}, *ClockInterface(has_ce={has_ce}))
 """
-    print(magma_source)
     if has_ce:
         magma_source += f"CE = {tree.name}.CE\n"
 # CE = {CE}
