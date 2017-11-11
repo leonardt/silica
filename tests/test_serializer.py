@@ -1,13 +1,18 @@
-from silica import coroutine, uint, Bit, BitVector, compile, Array, Bits
+from silica import coroutine, uint, Bit, BitVector, compile, Array, Bits, bits
 from magma.testing.coroutine import check
 
 
 @coroutine(inputs={"I" : Array(4, Bits(16))})
 def Serializer4():
+    data = [bits(0, 16) for _ in range(3)]
     I = yield
     while True:
-        data = I
-        for i in range(4):
+        O = I[0]
+        # data = I[1:]
+        for i in range(3):
+            data[i] = I[i + 1]
+        I = yield O
+        for i in range(3):
             O = data[i]
             I = yield O
 
