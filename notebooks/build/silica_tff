@@ -1,0 +1,80 @@
+from magma import *
+import os
+os.environ["MANTLE"] = os.getenv("MANTLE", "coreir")
+from mantle import *
+import mantle.common.operator
+
+TFF = DefineCircuit("TFF", "O", Out(Bit), "I", In(Bit), *ClockInterface(has_ce=False))
+CE = VCC
+__silica_yield_state = Register(3, init=1, has_ce=True)
+wire(__silica_yield_state.CE, CE)
+wireclock(TFF, __silica_yield_state)
+__silica_yield_state_next = Or(3, 3)
+wire(__silica_yield_state_next.O, __silica_yield_state.I)
+
+Buffer = DefineCircuit("__silica_BufferTFF", "I", In(Bits(3)), "O", Out(Bits(3)))
+wire(Buffer.I, Buffer.O)
+EndDefine()
+__silica_path_state = Buffer()
+I = TFF.I
+__silica_yield_state_next_0 = And(2, 3)
+wire(__silica_yield_state_next_0.O, __silica_yield_state_next.I0)
+for __silica_j in range(3):
+    wire(__silica_yield_state_next_0.I0[__silica_j], __silica_path_state.O[0])
+__silica_yield_state_next_1 = And(2, 3)
+wire(__silica_yield_state_next_1.O, __silica_yield_state_next.I1)
+for __silica_j in range(3):
+    wire(__silica_yield_state_next_1.I0[__silica_j], __silica_path_state.O[1])
+__silica_yield_state_next_2 = And(2, 3)
+wire(__silica_yield_state_next_2.O, __silica_yield_state_next.I2)
+for __silica_j in range(3):
+    wire(__silica_yield_state_next_2.I0[__silica_j], __silica_path_state.O[2])
+value = DFF(has_ce=True)
+value_CE = [CE]
+wireclock(TFF, value)
+value_next = Or(3, None)
+wire(value_next.O, value.I)
+value_next_0 = And(2, None)
+wire(value_next_0.O, value_next.I0)
+wire(value_next_0.I0, __silica_path_state.O[0])
+value_next_1 = And(2, None)
+wire(value_next_1.O, value_next.I1)
+wire(value_next_1.I0, __silica_path_state.O[1])
+value_next_2 = And(2, None)
+wire(value_next_2.O, value_next.I2)
+wire(value_next_2.I0, __silica_path_state.O[2])
+O = Or(3, None)
+wire(O.O, TFF.O)
+O_0 = And(2, None)
+wire(O_0.O, O.I0)
+wire(O_0.I0, __silica_path_state.O[0])
+O_1 = And(2, None)
+wire(O_1.O, O.I1)
+wire(O_1.I0, __silica_path_state.O[1])
+O_2 = And(2, None)
+wire(O_2.O, O.I2)
+wire(O_2.I0, __silica_path_state.O[2])
+value_next_0_tmp = bit(False)
+O_0_tmp = value_next_0_tmp
+value_next_0_tmp = xor(I, value_next_0_tmp)
+wire(__silica_yield_state_next_0.I1, bits(4, 3))
+wire(value_next_0_tmp, value_next_0.I1)
+wire(O_0_tmp, O_0.I1)
+wire(__silica_path_state.I[0], __silica_yield_state.O[0])
+O_1_tmp = value.O
+value_next_1_tmp = xor(I, value.O)
+wire(__silica_yield_state_next_1.I1, bits(4, 3))
+wire(value_next_1_tmp, value_next_1.I1)
+wire(O_1_tmp, O_1.I1)
+wire(__silica_path_state.I[1], __silica_yield_state.O[1])
+O_2_tmp = value.O
+value_next_2_tmp = xor(I, value.O)
+wire(__silica_yield_state_next_2.I1, bits(4, 3))
+wire(value_next_2_tmp, value_next_2.I1)
+wire(O_2_tmp, O_2.I1)
+wire(__silica_path_state.I[2], __silica_yield_state.O[2])
+if len(value_CE) == 1:
+    wire(value_CE[0], value.CE)
+else:
+    wire(and_(*value_CE), value.CE)
+EndDefine()
