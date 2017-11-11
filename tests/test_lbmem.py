@@ -47,7 +47,7 @@ def DrainingState(lbmem_width, depth, lbmem, raddr, waddr):
     return waddr, raddr
 
 @si.coroutine
-def LbMem(depth=1024,lbmem_width=5):
+def LbMem(depth=64, lbmem_width=8):
     lbmem = list(uint(0, lbmem_width) for i in range(depth))
     raddr = uint(0, eval(math.ceil(math.log2(depth))))
     waddr = uint(0, eval(math.ceil(math.log2(depth))))
@@ -75,9 +75,9 @@ def test_lbmem():
         if wen:
             expected_written.append(inputs[0])
         num_writes += wen
-        if not expected_valid and num_writes == 5:
+        if not expected_valid and num_writes == 8:
             expected_valid = True
-            drain_state = 5
+            drain_state = 8
         if expected_valid and drain_state and not wen:
             drain_state -= 1
         if expected_valid and not drain_state:

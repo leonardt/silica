@@ -402,6 +402,8 @@ class ArrayReplacer(ast.NodeTransformer):
             return node
         elif isinstance(node.func, ast.Attribute) and node.func.attr in {"append"}:
             return node
+        if isinstance(node.func, ast.Name) and node.func.id in {"__silica_skip"}:
+            return node.args[0]
         return super().generic_visit(node)
 
     def visit_Subscript(self, node):
@@ -464,8 +466,8 @@ class DesugarArrays(ast.NodeTransformer):
                 return ast.parse(f"""
 __silica_decoder_{self.unique_decoder_id} = decoder({astor.to_source(write_address).rstrip()})
 for i in range(len({array})):
-    {array}_CE[i].append(__silica_decoder_{self.unique_decoder_id}[i])
-    {array}[i] = {astor.to_source(node.value).rstrip()}
+    # {array}_CE[i].append(__silica_decoder_{self.unique_decoder_id}[i])
+    {array}[i] = Mux(2, len({array}[i]))({array}[i], {astor.to_source(node.value).rstrip()}, __silica_decoder_{self.unique_decoder_id}[i])
 """).body
             else:
                 raise NotImplementedError(ast.dump(node))
@@ -539,9 +541,9 @@ def compile(coroutine, file_name=None):
         num_states -= 1
         num_yields -= 1
         states = states[1:]
-    CE = f"VCC"
-    if has_ce:
-        CE = f"{tree.name}.CE"
+    # CE = f"VCC"
+    # if has_ce:
+        # CE = f"{tree.name}.CE"
     magma_source = f"""\
 from magma import *
 import os
@@ -550,8 +552,9 @@ from mantle import *
 import mantle.common.operator
 
 {tree.name} = DefineCircuit("{tree.name}", {io_string}, *ClockInterface(has_ce={has_ce}))
-CE = {CE}
+{f"CE = {tree.name}.CE" if has_ce else ""}
 """
+# CE = {CE}
     if num_states > 1:
         magma_source += f"""\
 Buffer = DefineCircuit("__silica_Buffer{tree.name}", "I", In(Bits({num_states})), "O", Out(Bits({num_states})))
@@ -561,8 +564,8 @@ __silica_path_state = Buffer()
 """
         if num_yields > 0:
             magma_source += f"""\
-__silica_yield_state = Register({num_yields}, init=1, has_ce=True)
-wire(__silica_yield_state.CE, CE)
+__silica_yield_state = Register({num_yields}, init=1, has_ce={has_ce})
+{wire(__silica_yield_state.CE, CE) if has_ce else ""}
 wireclock({tree.name}, __silica_yield_state)
 
 __silica_yield_state_next = Or({num_states}, {num_yields})
@@ -594,8 +597,9 @@ for __silica_j in range({num_yields}):
             init_string = ""
             if register in register_initial_values and register_initial_values[register] is not None:
                 init_string = f", init={register_initial_values[register]}"
-            magma_source += f"{register} = DFF(has_ce=True, name=\"{register}\"{init_string})\n"
-            magma_source += f"{register}_CE = [CE]\n"
+            magma_source += f"{register} = DFF(has_ce={has_ce}, name=\"{register}\"{init_string})\n"
+            # magma_source += f"{register}_CE = [CE]\n"
+            magma_source += f"{wire({register}.CE, CE)}" if has_ce else ""
             magma_source += f"wireclock({tree.name}, {register})\n"
             if num_states > 1:
                 magma_source += f"{register}_next = Or({num_states}, {width})\n"
@@ -603,8 +607,9 @@ for __silica_j in range({num_yields}):
         elif isinstance(width, tuple):
             if len(width) > 2:
                 raise NotImplementedError()
-            magma_source += f"{register} = [Register({width[1]}, has_ce=True) for _ in range({width[0]})]\n"
-            magma_source += f"{register}_CE = [[CE] for _ in range({width[0]})]\n"
+            magma_source += f"{register} = [Register({width[1]}, has_ce={has_ce}) for _ in range({width[0]})]\n"
+            # magma_source += f"{register}_CE = [[CE] for _ in range({width[0]})]\n"
+            magma_source += f"{wire({register}.CE, CE)}" if has_ce else ""
             if num_states > 1:
                 magma_source += f"{register}_next = [Or({num_states}, {width[1]}) for _ in range({width[0]})]\n"
                 magma_source += f"""\
@@ -612,8 +617,9 @@ for __silica_i in range({width[0]}):
     wire({register}_next[__silica_i].O, {register}[__silica_i].I)
 """
         else:
-            magma_source += f"{register} = Register({width}, has_ce=True)\n"
-            magma_source += f"{register}_CE = [CE]\n"
+            magma_source += f"{register} = Register({width}, has_ce={has_ce})\n"
+            # magma_source += f"{register}_CE = [CE]\n"
+            magma_source += f"{wire({register}.CE, CE)}" if has_ce else ""
             magma_source += f"wireclock({tree.name}, {register})\n"
             if num_states > 1:
                 magma_source += f"{register}_next = Or({num_states}, {width})\n"
@@ -757,22 +763,22 @@ for __silica_i in range({width_table[register]}):
         if num_states > 1 :
             magma_source += f"wire(__silica_path_state.I[{i}], {astor.to_source(cond).rstrip()})\n"
 
-    for register in registers:
-        if isinstance(width_table[register], tuple):
-            magma_source += f"""\
-for __silica_i in range({width_table[register][0]}):
-    if len({register}_CE[__silica_i]) == 1:
-        wire({register}_CE[__silica_i][0], {register}[__silica_i].CE)
-    else:
-        wire(and_(*{register}_CE[__silica_i]), {register}[__silica_i].CE)
-"""
-        else:
-            magma_source += f"""\
-if len({register}_CE) == 1:
-    wire({register}_CE[0], {register}.CE)
-else:
-    wire(and_(*{register}_CE), {register}.CE)
-"""
+#     for register in registers:
+#         if isinstance(width_table[register], tuple):
+#             magma_source += f"""\
+# for __silica_i in range({width_table[register][0]}):
+#     if len({register}_CE[__silica_i]) == 1:
+#         wire({register}_CE[__silica_i][0], {register}[__silica_i].CE)
+#     else:
+#         wire(and_(*{register}_CE[__silica_i]), {register}[__silica_i].CE)
+# """
+#         else:
+#             magma_source += f"""\
+# if len({register}_CE) == 1:
+#     wire({register}_CE[0], {register}.CE)
+# else:
+#     wire(and_(*{register}_CE), {register}.CE)
+# """
     magma_source += "EndDefine()"
 
     if int(os.environ.get("SILICA_DEBUG_LEVEL", "0")) > 0:
