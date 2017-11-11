@@ -7,24 +7,24 @@ def Fifo():
     memory = list(bits(0, 4) for i in range(4))
     raddr = uint(0, 2)
     waddr = uint(0, 2)
-    empty = True
-    full  = False
+    prev_empty = True
+    prev_full  = False
     wdata, wen, ren = yield
     while True:
-        next_full = full
-        next_empty = empty
-        if wen and not full:
+        full = prev_full
+        empty = prev_empty
+        if wen and not prev_full:
             memory[waddr] = wdata
             waddr = waddr + 1
-            next_full = raddr == waddr
-            next_empty = False
+            full = raddr == waddr
+            empty = False
         rdata = memory[raddr]
-        if ren and not empty:
+        if ren and not prev_empty:
             raddr = raddr + 1
-            next_empty = raddr == waddr
-            next_full = False
-        full = next_full
-        empty = next_empty
+            empty = raddr == waddr
+            full = False
+        prev_full = full
+        prev_empty = empty
         wdata, wen, ren = yield rdata, empty, full
 
 def test_fifo():

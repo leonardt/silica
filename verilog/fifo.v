@@ -6,7 +6,7 @@ module fifo(
   output [15:0] rdata,
   input ren,
   output empty
-) 
+); 
 
   reg [6:0] waddr = 0;
   reg [6:0] raddr = 0;
@@ -15,8 +15,8 @@ module fifo(
   
   wire wvalid;
   wire rvalid;
-  assign wvalid = wen & ~full
-  assign rvalid = ren & ~empty
+  assign wvalid = wen & ~full;
+  assign rvalid = ren & ~empty;
 
   always @(posedge clk) begin
     if (wvalid) waddr <= waddr+1;
