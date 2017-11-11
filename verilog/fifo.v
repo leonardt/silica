@@ -27,10 +27,10 @@ module fifo(
   end
 
   always @(posedge clk) begin
-    if (wvalid) data[waddr] <= wdata;
+    if (wvalid) data[waddr[5:0]] <= wdata;
   end
   
-  assign rdata = data[raddr];
+  assign rdata = data[raddr[5:0]];
   assign empty = waddr == raddr;
   assign full = (waddr[5:0] == raddr[5:0]) & (waddr[6] == ~raddr[6]);
 
