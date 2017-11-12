@@ -484,7 +484,7 @@ class DesugarArrays(ast.NodeTransformer):
 __silica_decoder_{self.unique_decoder_id} = decoder({astor.to_source(write_address).rstrip()})
 for i in range(len({array})):
     # {array}_CE[i].append(__silica_decoder_{self.unique_decoder_id}[i])
-    {array}[i] = Mux(2, len({array}[i]))({array}[i], {astor.to_source(node.value).rstrip()}, __silica_decoder_{self.unique_decoder_id}[i])
+    {array}[i] = DefineSilicaMux(2, len({array}[i]))()({array}[i], {astor.to_source(node.value).rstrip()}, bits([not_(__silica_decoder_{self.unique_decoder_id}[i]), __silica_decoder_{self.unique_decoder_id}[i]]))
 """).body
             else:
                 raise NotImplementedError(ast.dump(node))
@@ -581,8 +581,8 @@ import mantle.common.operator
 
 
 @cache_definition
-def DefineSilicaMux(height, width, strategy):
-    if strategy == "one-hot":
+def DefineSilicaMux(height, width):
+    if "{mux_strategy}" == "one-hot":
         if width is None:
             T = Bit
         else:
@@ -658,7 +658,7 @@ wireclock({tree.name}, __silica_yield_state)
                             magma_source += f"wire(0, __silica_yield_state.I[{i}])\n"
 
                 else:
-                    magma_source += f"__silica_yield_state_next = DefineSilicaMux({num_states}, {num_yields}, strategy=\"{mux_strategy}\")()\n"
+                    magma_source += f"__silica_yield_state_next = DefineSilicaMux({num_states}, {num_yields})()\n"
                     magma_source += f"wire(__silica_path_state.O, __silica_yield_state_next.S)\n"
                     magma_source += "wire(__silica_yield_state_next.O, __silica_yield_state.I)\n"
                     for i, state in enumerate(states):
@@ -690,7 +690,7 @@ wireclock({tree.name}, __silica_yield_state)
             magma_source += f"{wire({register}.CE, CE)}" if has_ce else ""
             magma_source += f"wireclock({tree.name}, {register})\n"
             if num_states > 1:
-                magma_source += f"{register}_next = DefineSilicaMux({num_states}, {width}, strategy=\"{mux_strategy}\")()\n"
+                magma_source += f"{register}_next = DefineSilicaMux({num_states}, {width})()\n"
                 magma_source += f"wire(__silica_path_state.O, {register}_next.S)\n"
                 magma_source += f"wire({register}_next.O, {register}.I)\n"
         elif isinstance(width, tuple):
@@ -700,7 +700,7 @@ wireclock({tree.name}, __silica_yield_state)
             # magma_source += f"{register}_CE = [[CE] for _ in range({width[0]})]\n"
             magma_source += f"{wire({register}.CE, CE)}" if has_ce else ""
             if num_states > 1:
-                magma_source += f"{register}_next = [DefineSilicaMux({num_states}, {width[1]}, strategy=\"{mux_strategy}\")() for _ in range({width[0]})]\n"
+                magma_source += f"{register}_next = [DefineSilicaMux({num_states}, {width[1]})() for _ in range({width[0]})]\n"
                 magma_source += f"""\
 for __silica_i in range({width[0]}):
     wire(__silica_path_state.O, {register}_next[__silica_i].S)\n
@@ -722,7 +722,7 @@ for __silica_j in range({width[0]}):
             magma_source += f"{wire({register}.CE, CE)}" if has_ce else ""
             magma_source += f"wireclock({tree.name}, {register})\n"
             if num_states > 1:
-                magma_source += f"{register}_next = DefineSilicaMux({num_states}, {width}, strategy=\"{mux_strategy}\")()\n"
+                magma_source += f"{register}_next = DefineSilicaMux({num_states}, {width})()\n"
                 magma_source += f"wire(__silica_path_state.O, {register}_next.S)\n"
                 magma_source += f"wire({register}_next.O, {register}.I)\n"
 
@@ -732,7 +732,7 @@ for __silica_j in range({width[0]}):
         if output in registers:
             output += "_output"
         if num_states > 1:
-            magma_source += f"{output} = DefineSilicaMux({num_states}, {width}, strategy=\"{mux_strategy}\")()\n"
+            magma_source += f"{output} = DefineSilicaMux({num_states}, {width})()\n"
             magma_source += f"wire(__silica_path_state.O, {output}.S)\n"
             magma_source += f"wire({output}.O, {tree.name}.{orig})\n"
     for i, state in enumerate(states):

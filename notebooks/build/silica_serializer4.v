@@ -523,80 +523,6 @@ module DFF_init0_has_ceFalse_has_resetFalse (
 
 endmodule //DFF_init0_has_ceFalse_has_resetFalse
 
-module Register5_0001 (
-  input  CLK,
-  input [4:0] I,
-  output [4:0] O
-);
-  //Wire declarations for instance 'inst0' (Module DFF_init1_has_ceFalse_has_resetFalse)
-  wire  inst0_CLK;
-  wire  inst0_I;
-  wire  inst0_O;
-  DFF_init1_has_ceFalse_has_resetFalse inst0(
-    .CLK(inst0_CLK),
-    .I(inst0_I),
-    .O(inst0_O)
-  );
-
-  //Wire declarations for instance 'inst1' (Module DFF_init0_has_ceFalse_has_resetFalse)
-  wire  inst1_CLK;
-  wire  inst1_I;
-  wire  inst1_O;
-  DFF_init0_has_ceFalse_has_resetFalse inst1(
-    .CLK(inst1_CLK),
-    .I(inst1_I),
-    .O(inst1_O)
-  );
-
-  //Wire declarations for instance 'inst2' (Module DFF_init0_has_ceFalse_has_resetFalse)
-  wire  inst2_CLK;
-  wire  inst2_I;
-  wire  inst2_O;
-  DFF_init0_has_ceFalse_has_resetFalse inst2(
-    .CLK(inst2_CLK),
-    .I(inst2_I),
-    .O(inst2_O)
-  );
-
-  //Wire declarations for instance 'inst3' (Module DFF_init0_has_ceFalse_has_resetFalse)
-  wire  inst3_CLK;
-  wire  inst3_I;
-  wire  inst3_O;
-  DFF_init0_has_ceFalse_has_resetFalse inst3(
-    .CLK(inst3_CLK),
-    .I(inst3_I),
-    .O(inst3_O)
-  );
-
-  //Wire declarations for instance 'inst4' (Module DFF_init0_has_ceFalse_has_resetFalse)
-  wire  inst4_CLK;
-  wire  inst4_I;
-  wire  inst4_O;
-  DFF_init0_has_ceFalse_has_resetFalse inst4(
-    .CLK(inst4_CLK),
-    .I(inst4_I),
-    .O(inst4_O)
-  );
-
-  //All the connections
-  assign inst0_CLK = CLK;
-  assign inst0_I = I[0];
-  assign O[0] = inst0_O;
-  assign inst1_CLK = CLK;
-  assign inst1_I = I[1];
-  assign O[1] = inst1_O;
-  assign inst2_CLK = CLK;
-  assign inst2_I = I[2];
-  assign O[2] = inst2_O;
-  assign inst3_CLK = CLK;
-  assign inst3_I = I[3];
-  assign O[3] = inst3_O;
-  assign inst4_CLK = CLK;
-  assign inst4_I = I[4];
-  assign O[4] = inst4_O;
-
-endmodule //Register5_0001
-
 module Register16 (
   input  CLK,
   input [15:0] I,
@@ -813,6 +739,80 @@ module Register16 (
   assign O[9] = inst9_O;
 
 endmodule //Register16
+
+module Register5_0001 (
+  input  CLK,
+  input [4:0] I,
+  output [4:0] O
+);
+  //Wire declarations for instance 'inst0' (Module DFF_init1_has_ceFalse_has_resetFalse)
+  wire  inst0_CLK;
+  wire  inst0_I;
+  wire  inst0_O;
+  DFF_init1_has_ceFalse_has_resetFalse inst0(
+    .CLK(inst0_CLK),
+    .I(inst0_I),
+    .O(inst0_O)
+  );
+
+  //Wire declarations for instance 'inst1' (Module DFF_init0_has_ceFalse_has_resetFalse)
+  wire  inst1_CLK;
+  wire  inst1_I;
+  wire  inst1_O;
+  DFF_init0_has_ceFalse_has_resetFalse inst1(
+    .CLK(inst1_CLK),
+    .I(inst1_I),
+    .O(inst1_O)
+  );
+
+  //Wire declarations for instance 'inst2' (Module DFF_init0_has_ceFalse_has_resetFalse)
+  wire  inst2_CLK;
+  wire  inst2_I;
+  wire  inst2_O;
+  DFF_init0_has_ceFalse_has_resetFalse inst2(
+    .CLK(inst2_CLK),
+    .I(inst2_I),
+    .O(inst2_O)
+  );
+
+  //Wire declarations for instance 'inst3' (Module DFF_init0_has_ceFalse_has_resetFalse)
+  wire  inst3_CLK;
+  wire  inst3_I;
+  wire  inst3_O;
+  DFF_init0_has_ceFalse_has_resetFalse inst3(
+    .CLK(inst3_CLK),
+    .I(inst3_I),
+    .O(inst3_O)
+  );
+
+  //Wire declarations for instance 'inst4' (Module DFF_init0_has_ceFalse_has_resetFalse)
+  wire  inst4_CLK;
+  wire  inst4_I;
+  wire  inst4_O;
+  DFF_init0_has_ceFalse_has_resetFalse inst4(
+    .CLK(inst4_CLK),
+    .I(inst4_I),
+    .O(inst4_O)
+  );
+
+  //All the connections
+  assign inst0_CLK = CLK;
+  assign inst0_I = I[0];
+  assign O[0] = inst0_O;
+  assign inst1_CLK = CLK;
+  assign inst1_I = I[1];
+  assign O[1] = inst1_O;
+  assign inst2_CLK = CLK;
+  assign inst2_I = I[2];
+  assign O[2] = inst2_O;
+  assign inst3_CLK = CLK;
+  assign inst3_I = I[3];
+  assign O[3] = inst3_O;
+  assign inst4_CLK = CLK;
+  assign inst4_I = I[4];
+  assign O[4] = inst4_O;
+
+endmodule //Register5_0001
 
 module Serializer4 (
   input  CLK,

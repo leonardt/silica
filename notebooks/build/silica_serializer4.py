@@ -6,8 +6,8 @@ import mantle.common.operator
 
 
 @cache_definition
-def DefineSilicaMux(height, width, strategy):
-    if strategy == "one-hot":
+def DefineSilicaMux(height, width):
+    if "one-hot" == "one-hot":
         if width is None:
             T = Bit
         else:
@@ -51,7 +51,7 @@ wire(__silica_yield_state.O[3], __silica_yield_state.I[4])
 wire(0, __silica_yield_state.I[0])
 I = Serializer4.I
 data = [Register(16, has_ce=False) for _ in range(3)]
-data_next = [DefineSilicaMux(4, 16, strategy="one-hot")() for _ in range(3)]
+data_next = [DefineSilicaMux(4, 16)() for _ in range(3)]
 for __silica_i in range(3):
     wire(__silica_path_state.O, data_next[__silica_i].S)
 
@@ -69,7 +69,7 @@ for __silica_j in range(3):
 data_next_3_tmp = []
 for __silica_j in range(3):
     data_next_3_tmp.append(data[__silica_j].O)
-O = DefineSilicaMux(4, 16, strategy="one-hot")()
+O = DefineSilicaMux(4, 16)()
 wire(__silica_path_state.O, O.S)
 wire(O.O, Serializer4.O)
 O_0_tmp = I[0]
