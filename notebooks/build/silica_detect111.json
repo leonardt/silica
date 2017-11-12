@@ -20,6 +20,26 @@
           ["inst0.out","self.O"]
         ]
       },
+      "And3xNone":{
+        "type":["Record",{
+          "I0":"BitIn",
+          "I1":"BitIn",
+          "I2":"BitIn",
+          "O":"Bit"
+        }],
+        "instances":{
+          "inst0":{
+            "genref":"coreir.andr",
+            "genargs":{"width":["Int",3]}
+          }
+        },
+        "connections":[
+          ["inst0.out","self.O"],
+          ["self.I0","inst0.in.0"],
+          ["self.I1","inst0.in.1"],
+          ["self.I2","inst0.in.2"]
+        ]
+      },
       "DFF_init0_has_ceFalse_has_resetFalse":{
         "type":["Record",{
           "I":"BitIn",
@@ -80,183 +100,168 @@
             "modref":"global.Register2_0001"
           },
           "inst10":{
-            "modref":"global.ULT2"
+            "modref":"corebit.not"
           },
           "inst11":{
-            "modref":"corebit.not"
+            "modref":"global.EQ2"
           },
           "inst12":{
-            "modref":"global.EQ2"
+            "modref":"global.And3xNone"
           },
           "inst13":{
-            "modref":"global.fold_and3None"
+            "modref":"corebit.not"
           },
           "inst14":{
-            "modref":"corebit.not"
+            "modref":"global.EQ2"
           },
           "inst15":{
-            "modref":"global.EQ2"
-          },
-          "inst16":{
             "modref":"global.and_wrapped"
           },
-          "inst17":{
+          "inst16":{
             "modref":"global.ULT2"
           },
-          "inst18":{
+          "inst17":{
             "modref":"global.Add2"
           },
-          "inst19":{
+          "inst18":{
             "modref":"global.EQ2"
+          },
+          "inst19":{
+            "modref":"global.And3xNone"
           },
           "inst2":{
-            "modref":"global.SilicaOneHotMux62"
+            "modref":"global.Register2"
           },
           "inst20":{
-            "modref":"global.fold_and3None"
-          },
-          "inst21":{
             "modref":"global.ULT2"
           },
-          "inst22":{
+          "inst21":{
             "modref":"corebit.not"
+          },
+          "inst22":{
+            "modref":"global.EQ2"
           },
           "inst23":{
-            "modref":"global.EQ2"
+            "modref":"global.And3xNone"
           },
           "inst24":{
-            "modref":"global.fold_and3None"
-          },
-          "inst25":{
             "modref":"corebit.not"
           },
-          "inst26":{
+          "inst25":{
             "modref":"global.EQ2"
           },
-          "inst27":{
+          "inst26":{
             "modref":"global.and_wrapped"
           },
           "inst3":{
-            "modref":"global.Register2"
-          },
-          "inst4":{
             "modref":"global.SilicaOneHotMux62"
           },
-          "inst5":{
+          "inst4":{
             "modref":"global.SilicaOneHotMux6None"
           },
-          "inst6":{
+          "inst5":{
             "modref":"global.ULT2"
           },
-          "inst7":{
+          "inst6":{
             "modref":"global.Add2"
           },
-          "inst8":{
+          "inst7":{
             "modref":"global.EQ2"
           },
+          "inst8":{
+            "modref":"global.And3xNone"
+          },
           "inst9":{
-            "modref":"global.fold_and3None"
+            "modref":"global.ULT2"
           }
         },
         "connections":[
-          ["bit_const_GND.out","inst15.I0.0"],
-          ["bit_const_GND.out","inst15.I0.1"],
-          ["bit_const_GND.out","inst18.I1.1"],
-          ["bit_const_GND.out","inst2.I0.0"],
-          ["bit_const_GND.out","inst2.I1.0"],
-          ["bit_const_GND.out","inst2.I2.0"],
-          ["bit_const_GND.out","inst2.I3.0"],
-          ["bit_const_GND.out","inst2.I4.0"],
-          ["bit_const_GND.out","inst2.I5.0"],
-          ["bit_const_GND.out","inst26.I0.0"],
-          ["bit_const_GND.out","inst26.I0.1"],
-          ["bit_const_GND.out","inst4.I2.0"],
-          ["bit_const_GND.out","inst4.I2.1"],
-          ["bit_const_GND.out","inst4.I5.0"],
-          ["bit_const_GND.out","inst4.I5.1"],
-          ["bit_const_GND.out","inst7.I1.1"],
-          ["bit_const_VCC.out","inst10.I1.0"],
-          ["bit_const_VCC.out","inst10.I1.1"],
-          ["bit_const_VCC.out","inst12.I1.0"],
-          ["bit_const_VCC.out","inst12.I1.1"],
-          ["bit_const_VCC.out","inst15.I1.0"],
-          ["bit_const_VCC.out","inst15.I1.1"],
+          ["bit_const_GND.out","inst1.I.0"],
+          ["bit_const_GND.out","inst14.I0.0"],
+          ["bit_const_GND.out","inst14.I0.1"],
+          ["bit_const_GND.out","inst17.I1.1"],
+          ["bit_const_GND.out","inst25.I0.0"],
+          ["bit_const_GND.out","inst25.I0.1"],
+          ["bit_const_GND.out","inst3.I2.0"],
+          ["bit_const_GND.out","inst3.I2.1"],
+          ["bit_const_GND.out","inst3.I5.0"],
+          ["bit_const_GND.out","inst3.I5.1"],
+          ["bit_const_GND.out","inst6.I1.1"],
+          ["bit_const_VCC.out","inst1.I.1"],
+          ["bit_const_VCC.out","inst11.I1.0"],
+          ["bit_const_VCC.out","inst11.I1.1"],
+          ["bit_const_VCC.out","inst14.I1.0"],
+          ["bit_const_VCC.out","inst14.I1.1"],
+          ["bit_const_VCC.out","inst16.I1.0"],
+          ["bit_const_VCC.out","inst16.I1.1"],
           ["bit_const_VCC.out","inst17.I1.0"],
-          ["bit_const_VCC.out","inst17.I1.1"],
           ["bit_const_VCC.out","inst18.I1.0"],
-          ["bit_const_VCC.out","inst19.I1.0"],
-          ["bit_const_VCC.out","inst19.I1.1"],
-          ["bit_const_VCC.out","inst2.I0.1"],
-          ["bit_const_VCC.out","inst2.I1.1"],
-          ["bit_const_VCC.out","inst2.I2.1"],
-          ["bit_const_VCC.out","inst2.I3.1"],
-          ["bit_const_VCC.out","inst2.I4.1"],
-          ["bit_const_VCC.out","inst2.I5.1"],
-          ["bit_const_VCC.out","inst21.I1.0"],
-          ["bit_const_VCC.out","inst21.I1.1"],
-          ["bit_const_VCC.out","inst23.I1.0"],
-          ["bit_const_VCC.out","inst23.I1.1"],
-          ["bit_const_VCC.out","inst26.I1.0"],
-          ["bit_const_VCC.out","inst26.I1.1"],
+          ["bit_const_VCC.out","inst18.I1.1"],
+          ["bit_const_VCC.out","inst20.I1.0"],
+          ["bit_const_VCC.out","inst20.I1.1"],
+          ["bit_const_VCC.out","inst22.I1.0"],
+          ["bit_const_VCC.out","inst22.I1.1"],
+          ["bit_const_VCC.out","inst25.I1.0"],
+          ["bit_const_VCC.out","inst25.I1.1"],
+          ["bit_const_VCC.out","inst5.I1.0"],
+          ["bit_const_VCC.out","inst5.I1.1"],
           ["bit_const_VCC.out","inst6.I1.0"],
-          ["bit_const_VCC.out","inst6.I1.1"],
           ["bit_const_VCC.out","inst7.I1.0"],
-          ["bit_const_VCC.out","inst8.I1.0"],
-          ["bit_const_VCC.out","inst8.I1.1"],
-          ["inst0.O","inst2.S"],
+          ["bit_const_VCC.out","inst7.I1.1"],
+          ["bit_const_VCC.out","inst9.I1.0"],
+          ["bit_const_VCC.out","inst9.I1.1"],
+          ["inst0.O","inst3.S"],
           ["inst0.O","inst4.S"],
-          ["inst0.O","inst5.S"],
           ["inst1.CLK","self.CLK"],
-          ["inst1.I","inst2.O"],
-          ["inst10.I0","inst3.O"],
-          ["inst10.O","inst11.in"],
-          ["inst11.out","inst13.I2"],
-          ["inst12.I0","inst3.O"],
-          ["inst12.O","inst5.I1"],
-          ["inst13.I0","inst1.O.0"],
-          ["inst13.I1","self.I"],
-          ["inst13.O","inst0.I.1"],
-          ["inst14.in","self.I"],
-          ["inst14.out","inst16.I1"],
-          ["inst15.O","inst5.I2"],
-          ["inst16.I0","inst1.O.0"],
-          ["inst16.O","inst0.I.2"],
-          ["inst17.I0","inst3.O"],
-          ["inst17.O","inst20.I2"],
-          ["inst18.I0","inst3.O"],
-          ["inst18.O","inst19.I0"],
+          ["inst10.in","inst9.O"],
+          ["inst10.out","inst12.I2"],
+          ["inst11.I0","inst2.O"],
+          ["inst11.O","inst4.I1"],
+          ["inst12.I0","inst1.O.0"],
+          ["inst12.I1","self.I"],
+          ["inst12.O","inst0.I.1"],
+          ["inst13.in","self.I"],
+          ["inst13.out","inst15.I1"],
+          ["inst14.O","inst4.I2"],
+          ["inst15.I0","inst1.O.0"],
+          ["inst15.O","inst0.I.2"],
+          ["inst16.I0","inst2.O"],
+          ["inst16.O","inst19.I2"],
+          ["inst17.I0","inst2.O"],
+          ["inst17.O","inst18.I0"],
+          ["inst17.O","inst3.I3"],
           ["inst18.O","inst4.I3"],
-          ["inst19.O","inst5.I3"],
-          ["inst20.I0","inst1.O.1"],
-          ["inst20.I1","self.I"],
-          ["inst20.O","inst0.I.3"],
-          ["inst21.I0","inst3.O"],
-          ["inst21.O","inst22.in"],
-          ["inst22.out","inst24.I2"],
-          ["inst23.I0","inst3.O"],
-          ["inst23.O","inst5.I4"],
-          ["inst24.I0","inst1.O.1"],
-          ["inst24.I1","self.I"],
-          ["inst24.O","inst0.I.4"],
-          ["inst25.in","self.I"],
-          ["inst25.out","inst27.I1"],
-          ["inst26.O","inst5.I5"],
-          ["inst27.I0","inst1.O.1"],
-          ["inst27.O","inst0.I.5"],
-          ["inst3.CLK","self.CLK"],
-          ["inst3.I","inst4.O"],
-          ["inst3.O","inst4.I1"],
-          ["inst3.O","inst4.I4"],
-          ["inst3.O","inst6.I0"],
-          ["inst3.O","inst7.I0"],
+          ["inst19.I0","inst1.O.1"],
+          ["inst19.I1","self.I"],
+          ["inst19.O","inst0.I.3"],
+          ["inst2.CLK","self.CLK"],
+          ["inst2.I","inst3.O"],
+          ["inst2.O","inst20.I0"],
+          ["inst2.O","inst22.I0"],
+          ["inst2.O","inst3.I1"],
+          ["inst2.O","inst3.I4"],
+          ["inst2.O","inst5.I0"],
+          ["inst2.O","inst6.I0"],
+          ["inst2.O","inst9.I0"],
+          ["inst20.O","inst21.in"],
+          ["inst21.out","inst23.I2"],
+          ["inst22.O","inst4.I4"],
+          ["inst23.I0","inst1.O.1"],
+          ["inst23.I1","self.I"],
+          ["inst23.O","inst0.I.4"],
+          ["inst24.in","self.I"],
+          ["inst24.out","inst26.I1"],
+          ["inst25.O","inst4.I5"],
+          ["inst26.I0","inst1.O.1"],
+          ["inst26.O","inst0.I.5"],
+          ["inst3.I0","inst6.O"],
           ["inst4.I0","inst7.O"],
-          ["inst5.I0","inst8.O"],
-          ["inst5.O","self.O"],
-          ["inst6.O","inst9.I2"],
-          ["inst7.O","inst8.I0"],
-          ["inst9.I0","inst1.O.0"],
-          ["inst9.I1","self.I"],
-          ["inst9.O","inst0.I.0"]
+          ["inst4.O","self.O"],
+          ["inst5.O","inst8.I2"],
+          ["inst6.O","inst7.I0"],
+          ["inst8.I0","inst1.O.0"],
+          ["inst8.I1","self.I"],
+          ["inst8.O","inst0.I.0"]
         ]
       },
       "EQ2":{
@@ -275,6 +280,69 @@
           ["inst0.in0","self.I0"],
           ["inst0.in1","self.I1"],
           ["inst0.out","self.O"]
+        ]
+      },
+      "Or6x2":{
+        "type":["Record",{
+          "I0":["Array",2,"BitIn"],
+          "I1":["Array",2,"BitIn"],
+          "I2":["Array",2,"BitIn"],
+          "I3":["Array",2,"BitIn"],
+          "I4":["Array",2,"BitIn"],
+          "I5":["Array",2,"BitIn"],
+          "O":["Array",2,"Bit"]
+        }],
+        "instances":{
+          "inst0":{
+            "genref":"coreir.orr",
+            "genargs":{"width":["Int",6]}
+          },
+          "inst1":{
+            "genref":"coreir.orr",
+            "genargs":{"width":["Int",6]}
+          }
+        },
+        "connections":[
+          ["inst0.out","self.O.0"],
+          ["inst1.out","self.O.1"],
+          ["inst0.in.0","self.I0.0"],
+          ["inst0.in.1","self.I1.0"],
+          ["inst0.in.2","self.I2.0"],
+          ["inst0.in.3","self.I3.0"],
+          ["inst0.in.4","self.I4.0"],
+          ["inst0.in.5","self.I5.0"],
+          ["inst1.in.0","self.I0.1"],
+          ["inst1.in.1","self.I1.1"],
+          ["inst1.in.2","self.I2.1"],
+          ["inst1.in.3","self.I3.1"],
+          ["inst1.in.4","self.I4.1"],
+          ["inst1.in.5","self.I5.1"]
+        ]
+      },
+      "Or6xNone":{
+        "type":["Record",{
+          "I0":"BitIn",
+          "I1":"BitIn",
+          "I2":"BitIn",
+          "I3":"BitIn",
+          "I4":"BitIn",
+          "I5":"BitIn",
+          "O":"Bit"
+        }],
+        "instances":{
+          "inst0":{
+            "genref":"coreir.orr",
+            "genargs":{"width":["Int",6]}
+          }
+        },
+        "connections":[
+          ["inst0.out","self.O"],
+          ["self.I0","inst0.in.0"],
+          ["self.I1","inst0.in.1"],
+          ["self.I2","inst0.in.2"],
+          ["self.I3","inst0.in.3"],
+          ["self.I4","inst0.in.4"],
+          ["self.I5","inst0.in.5"]
         ]
       },
       "Register2":{
@@ -336,7 +404,7 @@
         }],
         "instances":{
           "inst0":{
-            "modref":"global.fold_or62"
+            "modref":"global.Or6x2"
           },
           "inst1":{
             "modref":"global.and2_wrapped"
@@ -398,7 +466,7 @@
         }],
         "instances":{
           "inst0":{
-            "modref":"global.fold_or6None"
+            "modref":"global.Or6xNone"
           },
           "inst1":{
             "modref":"global.and_wrapped"
@@ -495,146 +563,6 @@
         "instances":{
           "inst0":{
             "modref":"corebit.and"
-          }
-        },
-        "connections":[
-          ["inst0.in0","self.I0"],
-          ["inst0.in1","self.I1"],
-          ["inst0.out","self.O"]
-        ]
-      },
-      "fold_and3None":{
-        "type":["Record",{
-          "I0":"BitIn",
-          "I1":"BitIn",
-          "I2":"BitIn",
-          "O":"Bit"
-        }],
-        "instances":{
-          "inst0":{
-            "modref":"global.and_wrapped"
-          },
-          "inst1":{
-            "modref":"global.and_wrapped"
-          }
-        },
-        "connections":[
-          ["inst0.I0","self.I0"],
-          ["inst0.I1","self.I1"],
-          ["inst0.O","inst1.I0"],
-          ["inst1.I1","self.I2"],
-          ["inst1.O","self.O"]
-        ]
-      },
-      "fold_or62":{
-        "type":["Record",{
-          "I0":["Array",2,"BitIn"],
-          "I1":["Array",2,"BitIn"],
-          "I2":["Array",2,"BitIn"],
-          "I3":["Array",2,"BitIn"],
-          "I4":["Array",2,"BitIn"],
-          "I5":["Array",2,"BitIn"],
-          "O":["Array",2,"Bit"]
-        }],
-        "instances":{
-          "inst0":{
-            "modref":"global.or2_wrapped"
-          },
-          "inst1":{
-            "modref":"global.or2_wrapped"
-          },
-          "inst2":{
-            "modref":"global.or2_wrapped"
-          },
-          "inst3":{
-            "modref":"global.or2_wrapped"
-          },
-          "inst4":{
-            "modref":"global.or2_wrapped"
-          }
-        },
-        "connections":[
-          ["inst0.I0","self.I0"],
-          ["inst0.I1","self.I1"],
-          ["inst0.O","inst1.I0"],
-          ["inst1.I1","self.I2"],
-          ["inst1.O","inst2.I0"],
-          ["inst2.I1","self.I3"],
-          ["inst2.O","inst3.I0"],
-          ["inst3.I1","self.I4"],
-          ["inst3.O","inst4.I0"],
-          ["inst4.I1","self.I5"],
-          ["inst4.O","self.O"]
-        ]
-      },
-      "fold_or6None":{
-        "type":["Record",{
-          "I0":"BitIn",
-          "I1":"BitIn",
-          "I2":"BitIn",
-          "I3":"BitIn",
-          "I4":"BitIn",
-          "I5":"BitIn",
-          "O":"Bit"
-        }],
-        "instances":{
-          "inst0":{
-            "modref":"global.or_wrapped"
-          },
-          "inst1":{
-            "modref":"global.or_wrapped"
-          },
-          "inst2":{
-            "modref":"global.or_wrapped"
-          },
-          "inst3":{
-            "modref":"global.or_wrapped"
-          },
-          "inst4":{
-            "modref":"global.or_wrapped"
-          }
-        },
-        "connections":[
-          ["inst0.I0","self.I0"],
-          ["inst0.I1","self.I1"],
-          ["inst0.O","inst1.I0"],
-          ["inst1.I1","self.I2"],
-          ["inst1.O","inst2.I0"],
-          ["inst2.I1","self.I3"],
-          ["inst2.O","inst3.I0"],
-          ["inst3.I1","self.I4"],
-          ["inst3.O","inst4.I0"],
-          ["inst4.I1","self.I5"],
-          ["inst4.O","self.O"]
-        ]
-      },
-      "or2_wrapped":{
-        "type":["Record",{
-          "I0":["Array",2,"BitIn"],
-          "I1":["Array",2,"BitIn"],
-          "O":["Array",2,"Bit"]
-        }],
-        "instances":{
-          "inst0":{
-            "genref":"coreir.or",
-            "genargs":{"width":["Int",2]}
-          }
-        },
-        "connections":[
-          ["inst0.in0","self.I0"],
-          ["inst0.in1","self.I1"],
-          ["inst0.out","self.O"]
-        ]
-      },
-      "or_wrapped":{
-        "type":["Record",{
-          "I0":"BitIn",
-          "I1":"BitIn",
-          "O":"Bit"
-        }],
-        "instances":{
-          "inst0":{
-            "modref":"corebit.or"
           }
         },
         "connections":[

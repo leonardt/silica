@@ -445,21 +445,38 @@ def replace_arrays(tree, array, state):
     return ArrayReplacer(array, state).run(tree)
 
 
-class DesugarArrays(ast.NodeTransformer):
+class CollectStoredArrays(ast.NodeVisitor):
     def __init__(self):
-        self.unique_decoder_id = -1
+        self.inside_assign_target = False
         self.stored = set()
 
     def run(self, node):
         self.visit(node)
         return self.stored
 
+    def visit_Subscript(self, node):
+        if self.inside_assign_target and isinstance(node.value, ast.Name):
+            self.stored.add(node.value.id)
+
+    def visit_Assign(self, node):
+        self.inside_assign_target = True
+        for target in node.targets:
+            self.visit(target)
+        self.inside_assign_target = False
+
+
+class DesugarArrays(ast.NodeTransformer):
+    def __init__(self):
+        self.unique_decoder_id = -1
+
+    def run(self, node):
+        self.visit(node)
+
     def visit_Assign(self, node):
         self.unique_decoder_id += 1
         if len(node.targets) == 1 and isinstance(node.targets[0], ast.Subscript):
             array = astor.to_source(node.targets[0].value).rstrip()
             write_address = node.targets[0].slice
-            self.stored.add(array)
             if isinstance(write_address, ast.Index):
                 if isinstance(write_address.value, ast.Num):
                     return node
@@ -501,7 +518,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot"):
     Desugar(width_table).visit(tree)
     type_table = {}
     TypeChecker(width_table, type_table).check(tree)
-    stored_arrays = DesugarArrays().run(tree)
+    DesugarArrays().run(tree)
     cfg = ControlFlowGraph(tree)
     liveness_analysis(cfg)
     # cfg.render()
@@ -544,6 +561,17 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot"):
     # CE = f"VCC"
     # if has_ce:
         # CE = f"{tree.name}.CE"
+    new_states = []
+    for state in states:
+        for new_state in new_states:
+            if "\n".join(astor.to_source(statement) for statement in state.statements) == \
+               "\n".join(astor.to_source(statement) for statement in new_state.statements):
+                   new_state.start_yield_ids.append(state.start_yield_id)
+                   break
+        else:
+            new_states.append(state)
+    states = new_states
+    num_states = len(states)
     magma_source = f"""\
 from magma import *
 import os
@@ -601,14 +629,57 @@ __silica_yield_state = Register({num_yields}, init=1, has_ce={has_ce})
 {wire(__silica_yield_state.CE, CE) if has_ce else ""}
 wireclock({tree.name}, __silica_yield_state)
 """
-            magma_source += f"__silica_yield_state_next = DefineSilicaMux({num_states}, {num_yields}, strategy=\"{mux_strategy}\")()\n"
-            magma_source += f"wire(__silica_path_state.O, __silica_yield_state_next.S)\n"
-            magma_source += "wire(__silica_yield_state_next.O, __silica_yield_state.I)\n"
+            if all(state.end_yield_id == states[0].end_yield_id for state in states):
+                magma_source += f"wire(bits(1 << {states[0].end_yield_id}, {num_yields}), __silica_yield_state.I)\n"
+            else:
+                yield_id_map = {}
+                for i, state in enumerate(states):
+                    for start_yield_id in state.start_yield_ids:
+                        if start_yield_id not in yield_id_map:
+                            yield_id_map[start_yield_id] = []
+                        yield_id_map[start_yield_id].append(state.end_yield_id)
+                if all(len(value) == 1 for value in yield_id_map.values()):
+                    inverse_map = {}
+                    for key, value in yield_id_map.items():
+                        value = value[0]
+                        if value not in inverse_map:
+                            inverse_map[value] = []
+                        inverse_map[value].append(key)
+                    for end_yield_id in inverse_map:
+                        starts = inverse_map[end_yield_id]
+                        if len(starts) == 1:
+                            magma_source += f"wire(__silica_yield_state.O[{starts[0]}], __silica_yield_state.I[{end_yield_id}])\n"
+                        else:
+                            args = ", ".join(f"__silica_yield_state.O[{id_}]" for id_ in starts)
+                            cond = f"or_({args})"
+                            magma_source += f"wire({cond}, __silica_yield_state.I[{end_yield_id}])\n"
+                    for i in range(num_yields):
+                        if i not in inverse_map:
+                            magma_source += f"wire(0, __silica_yield_state.I[{i}])\n"
+
+                else:
+                    magma_source += f"__silica_yield_state_next = DefineSilicaMux({num_states}, {num_yields}, strategy=\"{mux_strategy}\")()\n"
+                    magma_source += f"wire(__silica_path_state.O, __silica_yield_state_next.S)\n"
+                    magma_source += "wire(__silica_yield_state_next.O, __silica_yield_state.I)\n"
+                    for i, state in enumerate(states):
+                        end_yield_id = state.end_yield_id
+                        if not initial_basic_block:
+                            end_yield_id -= 1
+                        if not all(state.end_yield_id == states[0].end_yield_id for state in states):
+                            magma_source += f"wire(__silica_yield_state_next.I{i}, bits(1 << {end_yield_id}, {num_yields}))\n"
     if coroutine._inputs:
         for input_, type_ in coroutine._inputs.items():
             magma_source += f"{input_} = {tree.name}.{input_}\n"
 
     for register in registers:
+        num_stores = 0
+        for state in states:
+            stores = set()
+            for statement in state.statements:
+                stores |= CollectStoredArrays().run(statement)
+                stores |= collect_names(statement, ast.Store)
+            if register in stores:
+                num_stores += 1
         width = width_table[register]
         if width is None:
             init_string = ""
@@ -682,8 +753,9 @@ for __silica_j in range({width[0]}):
         for output in outputs:
             if output not in registers:
                 store_symbol_map[output] = ast.parse(f"{output}_{i}_tmp").body[0].value
-        stores = set(stored_arrays)
+        stores = set()
         for statement in state.statements:
+            stores |= CollectStoredArrays().run(statement)
             stores |= collect_names(statement, ast.Store)
             statement = replace_assign_to_bits(statement, load_symbol_map, store_symbol_map)
             statement = replace_symbols(statement, load_symbol_map, ast.Load)
@@ -698,11 +770,6 @@ for __silica_j in range({width[0]}):
                     load_symbol_map[var] = ast.parse(f"{var}_next_{i}_tmp").body[0].value
                 elif var in outputs:
                     load_symbol_map[var] = ast.parse(f"{var}_{i}_tmp").body[0].value
-        if num_states > 1 and num_yields > 0:
-            end_yield_id = state.end_yield_id
-            if not initial_basic_block:
-                end_yield_id -= 1
-            magma_source += f"wire(__silica_yield_state_next.I{i}, bits(1 << {end_yield_id}, {num_yields}))\n"
         for register in registers:
             if isinstance(width_table[register], tuple):
                 if register in stores:
@@ -743,24 +810,24 @@ wire(bits({register}_next_{i}_tmp), {register}.I)
                 magma_source += f"wire({output}.O, {output}_output.I{i})\n"
 
         # curr = ast.parse(f"__silica_yield_state_next_{i}.O[{state.start_yield_id}]").body[0].value
-        start_yield_id = state.start_yield_id
-        if not initial_basic_block and num_yields > 0:
-            start_yield_id -= 1
         conds = []
         if num_yields > 0:
-            conds.append(ast.parse(f"__silica_yield_state.O[{start_yield_id}]").body[0].value)
+            for start_yield_id in state.start_yield_ids:
+                if not initial_basic_block and num_yields > 0:
+                    start_yield_id -= 1
+                conds.append(ast.parse(f"__silica_yield_state.O[{start_yield_id}]").body[0].value)
+        if len(conds) > 1:
+            conds = [ast.Call(ast.Name("or_", ast.Load()), conds, [])]
         if state.conds:
             for cond in state.conds:
                 cond = replace_symbols(cond, load_symbol_map, ast.Load)
                 conds.append(cond)
-            if len(conds) > 1:
-                cond = ast.Call(ast.Name("and_", ast.Load()), conds, [])
-            else:
-                cond = conds[0]
-        elif conds:
-            cond = conds[0]
-        else:
+        if not conds:
             cond = ast.parse("True")
+        elif len(conds) > 1:
+            cond = ast.Call(ast.Name("and_", ast.Load()), conds, [])
+        else:
+            cond = conds[0]
         if num_states > 1 :
             magma_source += f"wire(__silica_path_state.I[{i}], {astor.to_source(cond).rstrip()})\n"
 

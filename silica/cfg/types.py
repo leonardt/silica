@@ -75,6 +75,7 @@ class State:
         self.end_yield_id = end_yield_id
         self.conds = []
         self.statements = []
+        self.start_yield_ids = [start_yield_id]
         # self.statements.append(ast.Assign(
         #     [ast.Name("yield_state", ast.Store())],
         #     ast.Num(end_yield_id)

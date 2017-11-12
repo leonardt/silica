@@ -36,13 +36,13 @@ assign O = {inst3_O,inst2_O,inst1_O,inst0_O};
 assign COUT = inst3_COUT;
 endmodule
 
-module Counter (output [3:0] O, output  cout, input  CLK);
+module Counter (output  cout, output [3:0] O, input  CLK);
 wire [3:0] inst0_O;
 wire [3:0] inst1_O;
 wire  inst1_COUT;
 Register4 inst0 (.I(inst1_O), .O(inst0_O), .CLK(CLK));
 Add4Cout inst1 (.I0(inst0_O), .I1({1'b0,1'b0,1'b0,1'b1}), .O(inst1_O), .COUT(inst1_COUT));
-assign O = inst0_O;
 assign cout = inst1_COUT;
+assign O = inst0_O;
 endmodule
 

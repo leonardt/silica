@@ -24,7 +24,7 @@ def inputs_generator(inputs):
             I = [BitVector(x, 16) for x in i]
             yield I
             for _ in range(3):
-                I = [BitVector(0xDEAD, 16) for _ in range(len(i))]
+                I = [BitVector((_ * len(i)) + j, 16) for j in range(len(i))]
                 yield I
 
 def test_ser3():
