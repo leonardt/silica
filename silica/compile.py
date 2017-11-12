@@ -97,7 +97,7 @@ def get_width(node, width_table):
         return None
     elif isinstance(node, ast.List):
         widths = [get_width(arg, width_table) for arg in node.elts]
-        assert all(widths[0] == width for width in widths) 
+        assert all(widths[0] == width for width in widths)
         return (len(node.elts), widths[0])
     elif isinstance(node, ast.Subscript):
         if isinstance(node.slice, ast.Index):
@@ -338,7 +338,7 @@ class Desugar(ast.NodeTransformer):
         node.left = self.visit(node.left)
         node.comparators = [self.visit(x) for x in node.comparators]
         if all(isinstance(op, ast.Eq) for op in node.ops):
-            args = ", ".join([astor.to_source(node.left).rstrip()] + 
+            args = ", ".join([astor.to_source(node.left).rstrip()] +
                 [astor.to_source(x).rstrip() for x in node.comparators])
             return ast.parse(f"eq({args})").body[0].value
         if len(node.ops) == 1:

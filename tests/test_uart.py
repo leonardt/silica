@@ -39,11 +39,11 @@ def UART_TX():
         # for byte in message:
         #     O = piso.send((concat([False], byte, [True]), 0, 1))
         for i in range(len(message)):
-            O = piso.send((concat([False], message[i], [True]), 0, 1))
+            O = piso.send((concat([True], message[i], [False]), 0, 1))
             yield O
             for j in range(10):
                 # O = piso.send((concat([False], byte, [True]), 0, 0))
-                O = piso.send((concat([False], message[i], [True]), 0, 0))
+                O = piso.send((concat([True], message[i], [False]), 0, 0))
                 yield O
 
 def test_UART():
@@ -55,8 +55,8 @@ def test_UART():
             message.insert(0, uart_tx.O)
             next(uart_tx)
         # print(message)
-        assert message[-1] == 1
-        assert message[0] == 0
+        assert message[0] == 1
+        assert message[-1] == 0
         assert seq2int(message[1:-1]) == [0xDE, 0xAD, 0xBE, 0xEF][i]
         # print(f"{seq2int(message[1:-1]):X}")
 
