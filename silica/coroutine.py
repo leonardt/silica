@@ -49,6 +49,7 @@ def coroutine(func=None, inputs=None):
                 _definition = func
                 _inputs = inputs
                 _defn_locals = defn_locals
+                _name = func.__name__
             return _Coroutine
         return wrapper
     else:
@@ -56,6 +57,7 @@ def coroutine(func=None, inputs=None):
             _definition = func
             _inputs = inputs
             _defn_locals = defn_locals
+            _name = func.__name__
         return _Coroutine
 
 

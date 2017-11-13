@@ -11,7 +11,7 @@ module detect111(
     cnt <= cnt_next;
   end
 
-  assign cnt_next = I ? (cnt==3 ? cnt+1 : cnt) : 0;
+  assign cnt_next = I ? (cnt==3 ? cnt : cnt+1) : 0;
   assign O = (cnt==3);
 
 endmodule

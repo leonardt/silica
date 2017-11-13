@@ -7,11 +7,11 @@
 .names $true
 1
 .names $undef
-.gate SB_LUT4 I0=cnt[1] I1=cnt[0] I2=I I3=$false O=$abc$150$n4
-.param LUT_INIT 10001111
+.gate SB_LUT4 I0=I I1=cnt[1] I2=cnt[0] I3=$false O=$abc$150$n4
+.param LUT_INIT 01111111
 .gate SB_LUT4 I0=cnt[1] I1=cnt[0] I2=$false I3=$false O=O
 .param LUT_INIT 1000
-.gate SB_LUT4 I0=cnt[1] I1=cnt[0] I2=$false I3=$false O=$abc$150$n12
+.gate SB_LUT4 I0=cnt[1] I1=cnt[0] I2=$false I3=$false O=$abc$150$n11
 .param LUT_INIT 0110
 .gate SB_LUT4 I0=I I1=$false I2=$false I3=$false O=$abc$150$n1
 .param LUT_INIT 01
@@ -19,6 +19,6 @@
 .param LUT_INIT 01
 .gate SB_DFFESR C=clk D=$abc$150$n5 E=$abc$150$n4 Q=cnt[0] R=$abc$150$n1
 .attr src "../verilog/detect111.v:10"
-.gate SB_DFFESR C=clk D=$abc$150$n12 E=$abc$150$n4 Q=cnt[1] R=$abc$150$n1
+.gate SB_DFFESR C=clk D=$abc$150$n11 E=$abc$150$n4 Q=cnt[1] R=$abc$150$n1
 .attr src "../verilog/detect111.v:10"
 .end

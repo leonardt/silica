@@ -63,3 +63,6 @@ operators = {
 
 def eval(x):
     return x
+
+def coroutine_create(x):
+    return x()

@@ -121,7 +121,11 @@ class TypeChecker(ast.NodeVisitor):
         if isinstance(node.value, ast.Yield):
             return  # width specified at compile time
         if len(node.targets) == 1:
-            if isinstance(node.targets[0], ast.Name):
+            if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name) and node.value.func.id == "coroutine_create":
+                pass
+            elif isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Attribute) and node.value.func.attr == "send":
+                pass
+            elif isinstance(node.targets[0], ast.Name):
                 if node.targets[0].id not in self.width_table:
                     self.width_table[node.targets[0].id] = get_width(node.value, self.width_table)
                 elif self.width_table[node.targets[0].id] != get_width(node.value, self.width_table):
@@ -153,6 +157,10 @@ class CollectInitialWidthsAndTypes(ast.NodeVisitor):
             if isinstance(node.targets[0], ast.Name):
                 if isinstance(node.value, ast.Yield):
                     pass  # width specified at compile time
+                elif isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name) and node.value.func.id == "coroutine_create":
+                    pass
+                elif isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Attribute) and node.value.func.attr == "send":
+                    pass
                 elif node.targets[0].id not in self.width_table:
                     self.width_table[node.targets[0].id] = get_width(node.value, self.width_table)
                     if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name) and \
@@ -490,16 +498,10 @@ for i in range(len({array})):
                 raise NotImplementedError(ast.dump(node))
         return super().generic_visit(node)
 
-
-def compile(coroutine, file_name=None, mux_strategy="one-hot"):
-    if not isinstance(coroutine, Coroutine):
-        raise ValueError("silica.compile expects a silica.Coroutine")
+def magma_compile(coroutine, func_globals, func_locals):
     # TODO: Simplify clock enables wired up to 1
     has_ce = coroutine.has_ce
     tree = get_ast(coroutine._definition).body[0]  # Get the first element of the ast.Module
-    stack = inspect.stack()
-    func_locals = stack[1].frame.f_locals
-    func_globals = stack[1].frame.f_globals
     func_locals.update(coroutine._defn_locals)
     specialize_arguments(tree, coroutine)
     specialize_constants(tree, coroutine._defn_locals)
@@ -548,11 +550,20 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot"):
     num_states = len(states)
     register_initial_values = {}
     initial_basic_block = False
+    sub_coroutines = []
     # cfg.render()
+    magma_source = ""
     for node in cfg.paths[0][:-1]:
         if isinstance(node, HeadBlock):
             for statement in node:
-                register_initial_values[statement.targets[0].id] = get_constant(statement.value)
+                if isinstance(statement.value, ast.Call) and isinstance(statement.value.func, ast.Name) and statement.value.func.id == "coroutine_create":
+                    sub_coroutine = eval(astor.to_source(statement.value.args[0]), func_globals, func_locals)
+                    magma_source += magma_compile(sub_coroutine(), func_globals, func_locals)
+                    statement.value.func = ast.Name(sub_coroutine._name, ast.Load())
+                    statement.value.args = []
+                    sub_coroutines.append((statement, sub_coroutine))
+                else:
+                    register_initial_values[statement.targets[0].id] = get_constant(statement.value)
         initial_basic_block |= isinstance(node, BasicBlock)
     if not initial_basic_block:
         num_states -= 1
@@ -561,56 +572,33 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot"):
     # CE = f"VCC"
     # if has_ce:
         # CE = f"{tree.name}.CE"
-    new_states = []
-    for state in states:
-        for new_state in new_states:
-            if "\n".join(astor.to_source(statement) for statement in state.statements) == \
-               "\n".join(astor.to_source(statement) for statement in new_state.statements):
-                   new_state.start_yield_ids.append(state.start_yield_id)
-                   break
-        else:
-            new_states.append(state)
-    states = new_states
+    if False:
+        new_states = []
+        for state in states:
+            for new_state in new_states:
+                if "\n".join(astor.to_source(statement) for statement in state.statements) == \
+                   "\n".join(astor.to_source(statement) for statement in new_state.statements):
+                       new_state.start_yield_ids.append(state.start_yield_id)
+                       break
+            else:
+                new_states.append(state)
+        states = new_states
     num_states = len(states)
-    magma_source = f"""\
-from magma import *
-import os
-os.environ["MANTLE"] = os.getenv("MANTLE", "coreir")
-from mantle import *
-import mantle.common.operator
-
-
-@cache_definition
-def DefineSilicaMux(height, width):
-    if "{mux_strategy}" == "one-hot":
-        if width is None:
-            T = Bit
-        else:
-            T = Bits(width)
-        inputs = []
-        for i in range(height):
-            inputs += [f"I{{i}}", In(T)]
-        class OneHotMux(Circuit):
-            name = "SilicaOneHotMux{{}}{{}}".format(height, width)
-            IO = inputs + ["S", In(Bits(height)), "O", Out(T)]
-            @classmethod
-            def definition(io):
-                or_ = Or(height, width)
-                wire(io.O, or_.O)
-                for i in range(height):
-                    and_ = And(2, width)
-                    wire(and_.I0, getattr(io, f"I{{i}}"))
-                    if width is not None:
-                        for j in range(width):
-                            wire(and_.I1[j], io.S[i])
-                    else:
-                        wire(and_.I1, io.S[i])
-                    wire(getattr(or_, f"I{{i}}"), and_.O)
-        return OneHotMux
-    else:
-        raise NotImplementedError()
-
-
+    for i, state in enumerate(states):
+        new_statements = []
+        for statement in state.statements:
+            if isinstance(statement, ast.Assign) and isinstance(statement.value, ast.Call) and isinstance(statement.value.func, ast.Attribute) and statement.value.func.attr == "send":
+                if len(statement.targets) == 1:
+                    target = statement.targets[0].id
+                    sub_coroutine = statement.value.func.value
+                    for j, arg in enumerate(statement.value.args[0].elts):
+                        new_statements.append(ast.parse(f"wire({astor.to_source(sub_coroutine).rstrip()}_inputs_{j}.I{i}, {astor.to_source(arg).rstrip()})"))
+                    statement.value = ast.Attribute(sub_coroutine, target, ast.Load)
+                else:
+                    raise NotImplementedError()
+            new_statements.append(statement)
+        state.statements = new_statements
+    magma_source += f"""
 {tree.name} = DefineCircuit("{tree.name}", {io_string}, *ClockInterface(has_ce={has_ce}))
 """
     if has_ce:
@@ -638,7 +626,7 @@ wireclock({tree.name}, __silica_yield_state)
                         if start_yield_id not in yield_id_map:
                             yield_id_map[start_yield_id] = []
                         yield_id_map[start_yield_id].append(state.end_yield_id)
-                if all(len(value) == 1 for value in yield_id_map.values()):
+                if False and all(len(value) == 1 for value in yield_id_map.values()):
                     inverse_map = {}
                     for key, value in yield_id_map.items():
                         value = value[0]
@@ -670,6 +658,17 @@ wireclock({tree.name}, __silica_yield_state)
     if coroutine._inputs:
         for input_, type_ in coroutine._inputs.items():
             magma_source += f"{input_} = {tree.name}.{input_}\n"
+
+    for statement, sub_coroutine in sub_coroutines:
+        magma_source += astor.to_source(statement)
+        name = statement.targets[0].id
+        if num_states > 1:
+            for i, (input_, type_) in enumerate(sub_coroutine._inputs.items()):
+                magma_source += f"""\
+{name}_inputs_{i} = DefineSilicaMux({num_states}, {get_input_width(type_)})()
+wire({name}_inputs_{i}.O, {name}.{input_})
+wire(__silica_path_state.O, {name}_inputs_{i}.S)
+"""
 
     for register in registers:
         num_stores = 0
@@ -849,15 +848,63 @@ wire(bits({register}_next_{i}_tmp), {register}.I)
 # """
     magma_source += "EndDefine()"
 
+    return magma_source
+
+def compile(coroutine, file_name=None, mux_strategy="one-hot"):
+    if not isinstance(coroutine, Coroutine):
+        raise ValueError("silica.compile expects a silica.Coroutine")
+    stack = inspect.stack()
+    func_locals = stack[1].frame.f_locals
+    func_globals = stack[1].frame.f_globals
+    magma_source = magma_compile(coroutine, func_globals, func_locals)
+    magma_source = f"""\
+from magma import *
+import os
+os.environ["MANTLE"] = os.getenv("MANTLE", "coreir")
+from mantle import *
+import mantle.common.operator
+
+
+@cache_definition
+def DefineSilicaMux(height, width):
+    if "{mux_strategy}" == "one-hot":
+        if width is None:
+            T = Bit
+        else:
+            T = Bits(width)
+        inputs = []
+        for i in range(height):
+            inputs += [f"I{{i}}", In(T)]
+        class OneHotMux(Circuit):
+            name = "SilicaOneHotMux{{}}{{}}".format(height, width)
+            IO = inputs + ["S", In(Bits(height)), "O", Out(T)]
+            @classmethod
+            def definition(io):
+                or_ = Or(height, width)
+                wire(io.O, or_.O)
+                for i in range(height):
+                    and_ = And(2, width)
+                    wire(and_.I0, getattr(io, f"I{{i}}"))
+                    if width is not None:
+                        for j in range(width):
+                            wire(and_.I1[j], io.S[i])
+                    else:
+                        wire(and_.I1, io.S[i])
+                    wire(getattr(or_, f"I{{i}}"), and_.O)
+        return OneHotMux
+    else:
+        raise NotImplementedError()
+
+""" + magma_source
     if int(os.environ.get("SILICA_DEBUG_LEVEL", "0")) > 0:
         print("\n".join(f"{i + 1}: {line}" for i, line in enumerate(magma_source.splitlines())))
     if file_name is None:
         exec(magma_source, func_globals, func_locals)
-        return eval(tree.name, func_globals, func_locals)
+        return eval(coroutine._name, func_globals, func_locals)
     else:
         with open(file_name, "w") as output_file:
             output_file.write(magma_source)
         directory = os.path.dirname(os.path.abspath(file_name))
         sys.path.append(directory)
         base = os.path.basename(file_name)
-        return getattr(__import__(os.path.splitext(base)[0]), tree.name)
+        return getattr(__import__(os.path.splitext(base)[0]), coroutine._name)

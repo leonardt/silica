@@ -1,5 +1,5 @@
 import silica
-from silica import bits
+from silica import bits, Bits, coroutine_create
 from magma.bitutils import seq2int, int2seq
 from magma.testing.coroutine import check
 
@@ -31,34 +31,47 @@ def concat(*args):
             result += arg.as_bool_list()
     return silica.BitVector(result)
 
-@silica.coroutine
+
+@silica.coroutine(inputs={"message": Bits(8)})
 def UART_TX():
-    message = [bits(0xDE, 8), bits(0xAD, 8), bits(0xBE, 8), bits(0xEF, 8)]
-    piso = DefinePISO(10)()
+    piso = coroutine_create(DefinePISO(8))
+    message = yield
     while True:
-        # for byte in message:
-        #     O = piso.send((concat([False], byte, [True]), 0, 1))
-        for i in range(len(message)):
-            O = piso.send((concat([True], message[i], [False]), 0, 1))
-            yield O
-            for j in range(10):
-                # O = piso.send((concat([False], byte, [True]), 0, 0))
-                O = piso.send((concat([True], message[i], [False]), 0, 0))
-                yield O
+        O = piso.send((message, 1, 1))
+        O = False
+        message = yield O
+        for j in range(9):
+            O = piso.send((message, 1, 0))
+            message = yield O
+
+@silica.coroutine
+def inputs_generator(messages):
+    while True:
+        for message in messages:
+            message = int2seq(message, 8)
+            yield message
+            for j in range(9):
+                message = int2seq(0, 8)
+                yield message
+
 
 def test_UART():
+    messages = [0xDE, 0xAD, 0xBE, 0xEF]
     uart_tx = UART_TX()
+    inputs = inputs_generator(messages)
     for i in range(4):
-        next(uart_tx)
         message = []
         for j in range(10):
+            uart_tx.send(inputs.message)
+            next(inputs)
             message.insert(0, uart_tx.O)
-            next(uart_tx)
-        # print(message)
+        print(f"Got      : {seq2int(message[1:-1])}")
+        print(f"Expected : {messages[i]}")
         assert message[0] == 1
         assert message[-1] == 0
-        assert seq2int(message[1:-1]) == [0xDE, 0xAD, 0xBE, 0xEF][i]
+        assert seq2int(message[1:-1]) == messages[i]
         # print(f"{seq2int(message[1:-1]):X}")
 
-    # magma_piso = silica.compile(piso, "piso_magma.py")
-    # check(magma_piso, DefinePISO(10)(), 20, inputs_generator(message))
+    magma_uart = silica.compile(uart_tx, "uart_magma.py")
+    print(repr(magma_uart))
+    check(magma_uart, UART_TX(), len(messages) * 10, inputs_generator(messages))
