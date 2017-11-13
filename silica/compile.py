@@ -626,7 +626,7 @@ wireclock({tree.name}, __silica_yield_state)
                         if start_yield_id not in yield_id_map:
                             yield_id_map[start_yield_id] = []
                         yield_id_map[start_yield_id].append(state.end_yield_id)
-                if False and all(len(value) == 1 for value in yield_id_map.values()):
+                if all(len(value) == 1 for value in yield_id_map.values()):
                     inverse_map = {}
                     for key, value in yield_id_map.items():
                         value = value[0]
