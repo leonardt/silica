@@ -65,7 +65,7 @@ def get_width(node, width_table):
     elif isinstance(node, ast.Call):
         if isinstance(node.func, ast.Name):
             widths = [get_width(arg, width_table) for arg in node.args]
-            if node.func.id in {"add", "xor"}:
+            if node.func.id in {"add", "xor", "sub"}:
                 if not all(widths[0] == x for x in widths):
                     raise TypeError(f"Calling {node.func.id} with different length types")
                 width = widths[0]
@@ -354,6 +354,8 @@ class Desugar(ast.NodeTransformer):
             right = astor.to_source(node.comparators[0]).rstrip()
             if isinstance(node.ops[0], ast.Lt):
                 return ast.parse(f"lt({left}, {right})").body[0].value
+            elif isinstance(node.ops[0], ast.Gt):
+                return ast.parse(f"gt({left}, {right})").body[0].value
             # elif isinstance(node.ops[0], ast.And):
             #     return ast.parse(f"and_({left}, {right})").body[0].value
         return node

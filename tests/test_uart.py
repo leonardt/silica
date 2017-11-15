@@ -40,9 +40,11 @@ def UART_TX():
         O = piso.send((message, 1, 1))
         O = False
         message = yield O
-        for j in range(9):
+        for j in range(8):
             O = piso.send((message, 1, 0))
             message = yield O
+        O = piso.send((message, 1, 0))
+        message = yield O
 
 @silica.coroutine
 def inputs_generator(messages):
