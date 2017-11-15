@@ -46,436 +46,25 @@ assign out = outReg;
 
 endmodule //coreir_reg
 
-module Or4x16 (
-  input [15:0] I0,
-  input [15:0] I1,
-  input [15:0] I2,
-  input [15:0] I3,
-  output [15:0] O
-);
-  //Wire declarations for instance 'inst0' (Module coreir_orr)
-  wire [3:0] inst0_in;
-  wire  inst0_out;
-  coreir_orr #(.width(4)) inst0(
-    .in(inst0_in),
-    .out(inst0_out)
-  );
-
-  //Wire declarations for instance 'inst1' (Module coreir_orr)
-  wire [3:0] inst1_in;
-  wire  inst1_out;
-  coreir_orr #(.width(4)) inst1(
-    .in(inst1_in),
-    .out(inst1_out)
-  );
-
-  //Wire declarations for instance 'inst10' (Module coreir_orr)
-  wire [3:0] inst10_in;
-  wire  inst10_out;
-  coreir_orr #(.width(4)) inst10(
-    .in(inst10_in),
-    .out(inst10_out)
-  );
-
-  //Wire declarations for instance 'inst11' (Module coreir_orr)
-  wire [3:0] inst11_in;
-  wire  inst11_out;
-  coreir_orr #(.width(4)) inst11(
-    .in(inst11_in),
-    .out(inst11_out)
-  );
-
-  //Wire declarations for instance 'inst12' (Module coreir_orr)
-  wire [3:0] inst12_in;
-  wire  inst12_out;
-  coreir_orr #(.width(4)) inst12(
-    .in(inst12_in),
-    .out(inst12_out)
-  );
-
-  //Wire declarations for instance 'inst13' (Module coreir_orr)
-  wire [3:0] inst13_in;
-  wire  inst13_out;
-  coreir_orr #(.width(4)) inst13(
-    .in(inst13_in),
-    .out(inst13_out)
-  );
-
-  //Wire declarations for instance 'inst14' (Module coreir_orr)
-  wire [3:0] inst14_in;
-  wire  inst14_out;
-  coreir_orr #(.width(4)) inst14(
-    .in(inst14_in),
-    .out(inst14_out)
-  );
-
-  //Wire declarations for instance 'inst15' (Module coreir_orr)
-  wire [3:0] inst15_in;
-  wire  inst15_out;
-  coreir_orr #(.width(4)) inst15(
-    .in(inst15_in),
-    .out(inst15_out)
-  );
-
-  //Wire declarations for instance 'inst2' (Module coreir_orr)
-  wire [3:0] inst2_in;
-  wire  inst2_out;
-  coreir_orr #(.width(4)) inst2(
-    .in(inst2_in),
-    .out(inst2_out)
-  );
-
-  //Wire declarations for instance 'inst3' (Module coreir_orr)
-  wire [3:0] inst3_in;
-  wire  inst3_out;
-  coreir_orr #(.width(4)) inst3(
-    .in(inst3_in),
-    .out(inst3_out)
-  );
-
-  //Wire declarations for instance 'inst4' (Module coreir_orr)
-  wire [3:0] inst4_in;
-  wire  inst4_out;
-  coreir_orr #(.width(4)) inst4(
-    .in(inst4_in),
-    .out(inst4_out)
-  );
-
-  //Wire declarations for instance 'inst5' (Module coreir_orr)
-  wire [3:0] inst5_in;
-  wire  inst5_out;
-  coreir_orr #(.width(4)) inst5(
-    .in(inst5_in),
-    .out(inst5_out)
-  );
-
-  //Wire declarations for instance 'inst6' (Module coreir_orr)
-  wire [3:0] inst6_in;
-  wire  inst6_out;
-  coreir_orr #(.width(4)) inst6(
-    .in(inst6_in),
-    .out(inst6_out)
-  );
-
-  //Wire declarations for instance 'inst7' (Module coreir_orr)
-  wire [3:0] inst7_in;
-  wire  inst7_out;
-  coreir_orr #(.width(4)) inst7(
-    .in(inst7_in),
-    .out(inst7_out)
-  );
-
-  //Wire declarations for instance 'inst8' (Module coreir_orr)
-  wire [3:0] inst8_in;
-  wire  inst8_out;
-  coreir_orr #(.width(4)) inst8(
-    .in(inst8_in),
-    .out(inst8_out)
-  );
-
-  //Wire declarations for instance 'inst9' (Module coreir_orr)
-  wire [3:0] inst9_in;
-  wire  inst9_out;
-  coreir_orr #(.width(4)) inst9(
-    .in(inst9_in),
-    .out(inst9_out)
-  );
-
-  //All the connections
-  assign O[0] = inst0_out;
-  assign O[1] = inst1_out;
-  assign O[10] = inst10_out;
-  assign O[11] = inst11_out;
-  assign O[12] = inst12_out;
-  assign O[13] = inst13_out;
-  assign O[14] = inst14_out;
-  assign O[15] = inst15_out;
-  assign O[2] = inst2_out;
-  assign O[3] = inst3_out;
-  assign O[4] = inst4_out;
-  assign O[5] = inst5_out;
-  assign O[6] = inst6_out;
-  assign O[7] = inst7_out;
-  assign O[8] = inst8_out;
-  assign O[9] = inst9_out;
-  assign inst0_in[0] = I0[0];
-  assign inst0_in[1] = I1[0];
-  assign inst0_in[2] = I2[0];
-  assign inst0_in[3] = I3[0];
-  assign inst1_in[0] = I0[1];
-  assign inst1_in[1] = I1[1];
-  assign inst1_in[2] = I2[1];
-  assign inst1_in[3] = I3[1];
-  assign inst10_in[0] = I0[10];
-  assign inst10_in[1] = I1[10];
-  assign inst10_in[2] = I2[10];
-  assign inst10_in[3] = I3[10];
-  assign inst11_in[0] = I0[11];
-  assign inst11_in[1] = I1[11];
-  assign inst11_in[2] = I2[11];
-  assign inst11_in[3] = I3[11];
-  assign inst12_in[0] = I0[12];
-  assign inst12_in[1] = I1[12];
-  assign inst12_in[2] = I2[12];
-  assign inst12_in[3] = I3[12];
-  assign inst13_in[0] = I0[13];
-  assign inst13_in[1] = I1[13];
-  assign inst13_in[2] = I2[13];
-  assign inst13_in[3] = I3[13];
-  assign inst14_in[0] = I0[14];
-  assign inst14_in[1] = I1[14];
-  assign inst14_in[2] = I2[14];
-  assign inst14_in[3] = I3[14];
-  assign inst15_in[0] = I0[15];
-  assign inst15_in[1] = I1[15];
-  assign inst15_in[2] = I2[15];
-  assign inst15_in[3] = I3[15];
-  assign inst2_in[0] = I0[2];
-  assign inst2_in[1] = I1[2];
-  assign inst2_in[2] = I2[2];
-  assign inst2_in[3] = I3[2];
-  assign inst3_in[0] = I0[3];
-  assign inst3_in[1] = I1[3];
-  assign inst3_in[2] = I2[3];
-  assign inst3_in[3] = I3[3];
-  assign inst4_in[0] = I0[4];
-  assign inst4_in[1] = I1[4];
-  assign inst4_in[2] = I2[4];
-  assign inst4_in[3] = I3[4];
-  assign inst5_in[0] = I0[5];
-  assign inst5_in[1] = I1[5];
-  assign inst5_in[2] = I2[5];
-  assign inst5_in[3] = I3[5];
-  assign inst6_in[0] = I0[6];
-  assign inst6_in[1] = I1[6];
-  assign inst6_in[2] = I2[6];
-  assign inst6_in[3] = I3[6];
-  assign inst7_in[0] = I0[7];
-  assign inst7_in[1] = I1[7];
-  assign inst7_in[2] = I2[7];
-  assign inst7_in[3] = I3[7];
-  assign inst8_in[0] = I0[8];
-  assign inst8_in[1] = I1[8];
-  assign inst8_in[2] = I2[8];
-  assign inst8_in[3] = I3[8];
-  assign inst9_in[0] = I0[9];
-  assign inst9_in[1] = I1[9];
-  assign inst9_in[2] = I2[9];
-  assign inst9_in[3] = I3[9];
-
-endmodule //Or4x16
-
-module __silica_BufferSerializer4 (
-  input [3:0] I,
-  output [3:0] O
-);
-  //All the connections
-  assign O[3:0] = I[3:0];
-
-endmodule //__silica_BufferSerializer4
-
-module and16_wrapped (
-  input [15:0] I0,
-  input [15:0] I1,
-  output [15:0] O
-);
-  //Wire declarations for instance 'inst0' (Module coreir_and)
-  wire [15:0] inst0_in0;
-  wire [15:0] inst0_out;
-  wire [15:0] inst0_in1;
-  coreir_and #(.width(16)) inst0(
-    .in0(inst0_in0),
-    .in1(inst0_in1),
-    .out(inst0_out)
-  );
-
-  //All the connections
-  assign inst0_in0[15:0] = I0[15:0];
-  assign inst0_in1[15:0] = I1[15:0];
-  assign O[15:0] = inst0_out[15:0];
-
-endmodule //and16_wrapped
-
-module SilicaOneHotMux416 (
-  input [15:0] I0,
-  input [15:0] I1,
-  input [15:0] I2,
-  input [15:0] I3,
-  output [15:0] O,
-  input [3:0] S
-);
-  //Wire declarations for instance 'inst0' (Module Or4x16)
-  wire [15:0] inst0_I0;
-  wire [15:0] inst0_I1;
-  wire [15:0] inst0_I2;
-  wire [15:0] inst0_I3;
-  wire [15:0] inst0_O;
-  Or4x16 inst0(
-    .I0(inst0_I0),
-    .I1(inst0_I1),
-    .I2(inst0_I2),
-    .I3(inst0_I3),
-    .O(inst0_O)
-  );
-
-  //Wire declarations for instance 'inst1' (Module and16_wrapped)
-  wire [15:0] inst1_I0;
-  wire [15:0] inst1_I1;
-  wire [15:0] inst1_O;
-  and16_wrapped inst1(
-    .I0(inst1_I0),
-    .I1(inst1_I1),
-    .O(inst1_O)
-  );
-
-  //Wire declarations for instance 'inst2' (Module and16_wrapped)
-  wire [15:0] inst2_I0;
-  wire [15:0] inst2_I1;
-  wire [15:0] inst2_O;
-  and16_wrapped inst2(
-    .I0(inst2_I0),
-    .I1(inst2_I1),
-    .O(inst2_O)
-  );
-
-  //Wire declarations for instance 'inst3' (Module and16_wrapped)
-  wire [15:0] inst3_I0;
-  wire [15:0] inst3_I1;
-  wire [15:0] inst3_O;
-  and16_wrapped inst3(
-    .I0(inst3_I0),
-    .I1(inst3_I1),
-    .O(inst3_O)
-  );
-
-  //Wire declarations for instance 'inst4' (Module and16_wrapped)
-  wire [15:0] inst4_I0;
-  wire [15:0] inst4_I1;
-  wire [15:0] inst4_O;
-  and16_wrapped inst4(
-    .I0(inst4_I0),
-    .I1(inst4_I1),
-    .O(inst4_O)
-  );
-
-  //All the connections
-  assign inst0_I0[15:0] = inst1_O[15:0];
-  assign inst0_I1[15:0] = inst2_O[15:0];
-  assign inst0_I2[15:0] = inst3_O[15:0];
-  assign inst0_I3[15:0] = inst4_O[15:0];
-  assign O[15:0] = inst0_O[15:0];
-  assign inst1_I0[15:0] = I0[15:0];
-  assign inst2_I0[15:0] = I1[15:0];
-  assign inst3_I0[15:0] = I2[15:0];
-  assign inst4_I0[15:0] = I3[15:0];
-  assign inst1_I1[0] = S[0];
-  assign inst1_I1[1] = S[0];
-  assign inst1_I1[10] = S[0];
-  assign inst1_I1[11] = S[0];
-  assign inst1_I1[12] = S[0];
-  assign inst1_I1[13] = S[0];
-  assign inst1_I1[14] = S[0];
-  assign inst1_I1[15] = S[0];
-  assign inst1_I1[2] = S[0];
-  assign inst1_I1[3] = S[0];
-  assign inst1_I1[4] = S[0];
-  assign inst1_I1[5] = S[0];
-  assign inst1_I1[6] = S[0];
-  assign inst1_I1[7] = S[0];
-  assign inst1_I1[8] = S[0];
-  assign inst1_I1[9] = S[0];
-  assign inst2_I1[0] = S[1];
-  assign inst2_I1[1] = S[1];
-  assign inst2_I1[10] = S[1];
-  assign inst2_I1[11] = S[1];
-  assign inst2_I1[12] = S[1];
-  assign inst2_I1[13] = S[1];
-  assign inst2_I1[14] = S[1];
-  assign inst2_I1[15] = S[1];
-  assign inst2_I1[2] = S[1];
-  assign inst2_I1[3] = S[1];
-  assign inst2_I1[4] = S[1];
-  assign inst2_I1[5] = S[1];
-  assign inst2_I1[6] = S[1];
-  assign inst2_I1[7] = S[1];
-  assign inst2_I1[8] = S[1];
-  assign inst2_I1[9] = S[1];
-  assign inst3_I1[0] = S[2];
-  assign inst3_I1[1] = S[2];
-  assign inst3_I1[10] = S[2];
-  assign inst3_I1[11] = S[2];
-  assign inst3_I1[12] = S[2];
-  assign inst3_I1[13] = S[2];
-  assign inst3_I1[14] = S[2];
-  assign inst3_I1[15] = S[2];
-  assign inst3_I1[2] = S[2];
-  assign inst3_I1[3] = S[2];
-  assign inst3_I1[4] = S[2];
-  assign inst3_I1[5] = S[2];
-  assign inst3_I1[6] = S[2];
-  assign inst3_I1[7] = S[2];
-  assign inst3_I1[8] = S[2];
-  assign inst3_I1[9] = S[2];
-  assign inst4_I1[0] = S[3];
-  assign inst4_I1[1] = S[3];
-  assign inst4_I1[10] = S[3];
-  assign inst4_I1[11] = S[3];
-  assign inst4_I1[12] = S[3];
-  assign inst4_I1[13] = S[3];
-  assign inst4_I1[14] = S[3];
-  assign inst4_I1[15] = S[3];
-  assign inst4_I1[2] = S[3];
-  assign inst4_I1[3] = S[3];
-  assign inst4_I1[4] = S[3];
-  assign inst4_I1[5] = S[3];
-  assign inst4_I1[6] = S[3];
-  assign inst4_I1[7] = S[3];
-  assign inst4_I1[8] = S[3];
-  assign inst4_I1[9] = S[3];
-
-endmodule //SilicaOneHotMux416
-
-module or_wrapped (
-  input  I0,
-  input  I1,
-  output  O
-);
-  //Wire declarations for instance 'inst0' (Module corebit_or)
-  wire  inst0_in0;
-  wire  inst0_out;
-  wire  inst0_in1;
-  corebit_or inst0(
-    .in0(inst0_in0),
-    .in1(inst0_in1),
-    .out(inst0_out)
-  );
-
-  //All the connections
-  assign inst0_in0 = I0;
-  assign inst0_in1 = I1;
-  assign O = inst0_out;
-
-endmodule //or_wrapped
-
 module reg_U0 #(parameter init=1) (
   input  clk,
   input [0:0] in,
   output [0:0] out
 );
   //Wire declarations for instance 'reg0' (Module coreir_reg)
-  wire  reg0_clk;
-  wire [0:0] reg0_in;
-  wire [0:0] reg0_out;
+  wire  reg0__clk;
+  wire [0:0] reg0__in;
+  wire [0:0] reg0__out;
   coreir_reg #(.init(init),.width(1)) reg0(
-    .clk(reg0_clk),
-    .in(reg0_in),
-    .out(reg0_out)
+    .clk(reg0__clk),
+    .in(reg0__in),
+    .out(reg0__out)
   );
 
   //All the connections
-  assign reg0_clk = clk;
-  assign reg0_in[0:0] = in[0:0];
-  assign out[0:0] = reg0_out[0:0];
+  assign reg0__clk = clk;
+  assign reg0__in[0:0] = in[0:0];
+  assign out[0:0] = reg0__out[0:0];
 
 endmodule //reg_U0
 
@@ -485,19 +74,19 @@ module DFF_init1_has_ceFalse_has_resetFalse (
   output  O
 );
   //Wire declarations for instance 'inst0' (Module reg_U0)
-  wire [0:0] inst0_in;
-  wire  inst0_clk;
-  wire [0:0] inst0_out;
+  wire  inst0__clk;
+  wire [0:0] inst0__in;
+  wire [0:0] inst0__out;
   reg_U0 #(.init(1'd1)) inst0(
-    .clk(inst0_clk),
-    .in(inst0_in),
-    .out(inst0_out)
+    .clk(inst0__clk),
+    .in(inst0__in),
+    .out(inst0__out)
   );
 
   //All the connections
-  assign inst0_clk = CLK;
-  assign inst0_in[0] = I;
-  assign O = inst0_out[0];
+  assign inst0__clk = CLK;
+  assign inst0__in[0] = I;
+  assign O = inst0__out[0];
 
 endmodule //DFF_init1_has_ceFalse_has_resetFalse
 
@@ -507,238 +96,21 @@ module DFF_init0_has_ceFalse_has_resetFalse (
   output  O
 );
   //Wire declarations for instance 'inst0' (Module reg_U0)
-  wire [0:0] inst0_in;
-  wire  inst0_clk;
-  wire [0:0] inst0_out;
+  wire  inst0__clk;
+  wire [0:0] inst0__in;
+  wire [0:0] inst0__out;
   reg_U0 #(.init(1'd0)) inst0(
-    .clk(inst0_clk),
-    .in(inst0_in),
-    .out(inst0_out)
+    .clk(inst0__clk),
+    .in(inst0__in),
+    .out(inst0__out)
   );
 
   //All the connections
-  assign inst0_clk = CLK;
-  assign inst0_in[0] = I;
-  assign O = inst0_out[0];
+  assign inst0__clk = CLK;
+  assign inst0__in[0] = I;
+  assign O = inst0__out[0];
 
 endmodule //DFF_init0_has_ceFalse_has_resetFalse
-
-module Register16 (
-  input  CLK,
-  input [15:0] I,
-  output [15:0] O
-);
-  //Wire declarations for instance 'inst0' (Module DFF_init0_has_ceFalse_has_resetFalse)
-  wire  inst0_CLK;
-  wire  inst0_I;
-  wire  inst0_O;
-  DFF_init0_has_ceFalse_has_resetFalse inst0(
-    .CLK(inst0_CLK),
-    .I(inst0_I),
-    .O(inst0_O)
-  );
-
-  //Wire declarations for instance 'inst1' (Module DFF_init0_has_ceFalse_has_resetFalse)
-  wire  inst1_CLK;
-  wire  inst1_I;
-  wire  inst1_O;
-  DFF_init0_has_ceFalse_has_resetFalse inst1(
-    .CLK(inst1_CLK),
-    .I(inst1_I),
-    .O(inst1_O)
-  );
-
-  //Wire declarations for instance 'inst10' (Module DFF_init0_has_ceFalse_has_resetFalse)
-  wire  inst10_CLK;
-  wire  inst10_I;
-  wire  inst10_O;
-  DFF_init0_has_ceFalse_has_resetFalse inst10(
-    .CLK(inst10_CLK),
-    .I(inst10_I),
-    .O(inst10_O)
-  );
-
-  //Wire declarations for instance 'inst11' (Module DFF_init0_has_ceFalse_has_resetFalse)
-  wire  inst11_CLK;
-  wire  inst11_I;
-  wire  inst11_O;
-  DFF_init0_has_ceFalse_has_resetFalse inst11(
-    .CLK(inst11_CLK),
-    .I(inst11_I),
-    .O(inst11_O)
-  );
-
-  //Wire declarations for instance 'inst12' (Module DFF_init0_has_ceFalse_has_resetFalse)
-  wire  inst12_CLK;
-  wire  inst12_I;
-  wire  inst12_O;
-  DFF_init0_has_ceFalse_has_resetFalse inst12(
-    .CLK(inst12_CLK),
-    .I(inst12_I),
-    .O(inst12_O)
-  );
-
-  //Wire declarations for instance 'inst13' (Module DFF_init0_has_ceFalse_has_resetFalse)
-  wire  inst13_CLK;
-  wire  inst13_I;
-  wire  inst13_O;
-  DFF_init0_has_ceFalse_has_resetFalse inst13(
-    .CLK(inst13_CLK),
-    .I(inst13_I),
-    .O(inst13_O)
-  );
-
-  //Wire declarations for instance 'inst14' (Module DFF_init0_has_ceFalse_has_resetFalse)
-  wire  inst14_CLK;
-  wire  inst14_I;
-  wire  inst14_O;
-  DFF_init0_has_ceFalse_has_resetFalse inst14(
-    .CLK(inst14_CLK),
-    .I(inst14_I),
-    .O(inst14_O)
-  );
-
-  //Wire declarations for instance 'inst15' (Module DFF_init0_has_ceFalse_has_resetFalse)
-  wire  inst15_CLK;
-  wire  inst15_I;
-  wire  inst15_O;
-  DFF_init0_has_ceFalse_has_resetFalse inst15(
-    .CLK(inst15_CLK),
-    .I(inst15_I),
-    .O(inst15_O)
-  );
-
-  //Wire declarations for instance 'inst2' (Module DFF_init0_has_ceFalse_has_resetFalse)
-  wire  inst2_CLK;
-  wire  inst2_I;
-  wire  inst2_O;
-  DFF_init0_has_ceFalse_has_resetFalse inst2(
-    .CLK(inst2_CLK),
-    .I(inst2_I),
-    .O(inst2_O)
-  );
-
-  //Wire declarations for instance 'inst3' (Module DFF_init0_has_ceFalse_has_resetFalse)
-  wire  inst3_CLK;
-  wire  inst3_I;
-  wire  inst3_O;
-  DFF_init0_has_ceFalse_has_resetFalse inst3(
-    .CLK(inst3_CLK),
-    .I(inst3_I),
-    .O(inst3_O)
-  );
-
-  //Wire declarations for instance 'inst4' (Module DFF_init0_has_ceFalse_has_resetFalse)
-  wire  inst4_CLK;
-  wire  inst4_I;
-  wire  inst4_O;
-  DFF_init0_has_ceFalse_has_resetFalse inst4(
-    .CLK(inst4_CLK),
-    .I(inst4_I),
-    .O(inst4_O)
-  );
-
-  //Wire declarations for instance 'inst5' (Module DFF_init0_has_ceFalse_has_resetFalse)
-  wire  inst5_CLK;
-  wire  inst5_I;
-  wire  inst5_O;
-  DFF_init0_has_ceFalse_has_resetFalse inst5(
-    .CLK(inst5_CLK),
-    .I(inst5_I),
-    .O(inst5_O)
-  );
-
-  //Wire declarations for instance 'inst6' (Module DFF_init0_has_ceFalse_has_resetFalse)
-  wire  inst6_CLK;
-  wire  inst6_I;
-  wire  inst6_O;
-  DFF_init0_has_ceFalse_has_resetFalse inst6(
-    .CLK(inst6_CLK),
-    .I(inst6_I),
-    .O(inst6_O)
-  );
-
-  //Wire declarations for instance 'inst7' (Module DFF_init0_has_ceFalse_has_resetFalse)
-  wire  inst7_CLK;
-  wire  inst7_I;
-  wire  inst7_O;
-  DFF_init0_has_ceFalse_has_resetFalse inst7(
-    .CLK(inst7_CLK),
-    .I(inst7_I),
-    .O(inst7_O)
-  );
-
-  //Wire declarations for instance 'inst8' (Module DFF_init0_has_ceFalse_has_resetFalse)
-  wire  inst8_CLK;
-  wire  inst8_I;
-  wire  inst8_O;
-  DFF_init0_has_ceFalse_has_resetFalse inst8(
-    .CLK(inst8_CLK),
-    .I(inst8_I),
-    .O(inst8_O)
-  );
-
-  //Wire declarations for instance 'inst9' (Module DFF_init0_has_ceFalse_has_resetFalse)
-  wire  inst9_CLK;
-  wire  inst9_I;
-  wire  inst9_O;
-  DFF_init0_has_ceFalse_has_resetFalse inst9(
-    .CLK(inst9_CLK),
-    .I(inst9_I),
-    .O(inst9_O)
-  );
-
-  //All the connections
-  assign inst0_CLK = CLK;
-  assign inst0_I = I[0];
-  assign O[0] = inst0_O;
-  assign inst1_CLK = CLK;
-  assign inst1_I = I[1];
-  assign O[1] = inst1_O;
-  assign inst10_CLK = CLK;
-  assign inst10_I = I[10];
-  assign O[10] = inst10_O;
-  assign inst11_CLK = CLK;
-  assign inst11_I = I[11];
-  assign O[11] = inst11_O;
-  assign inst12_CLK = CLK;
-  assign inst12_I = I[12];
-  assign O[12] = inst12_O;
-  assign inst13_CLK = CLK;
-  assign inst13_I = I[13];
-  assign O[13] = inst13_O;
-  assign inst14_CLK = CLK;
-  assign inst14_I = I[14];
-  assign O[14] = inst14_O;
-  assign inst15_CLK = CLK;
-  assign inst15_I = I[15];
-  assign O[15] = inst15_O;
-  assign inst2_CLK = CLK;
-  assign inst2_I = I[2];
-  assign O[2] = inst2_O;
-  assign inst3_CLK = CLK;
-  assign inst3_I = I[3];
-  assign O[3] = inst3_O;
-  assign inst4_CLK = CLK;
-  assign inst4_I = I[4];
-  assign O[4] = inst4_O;
-  assign inst5_CLK = CLK;
-  assign inst5_I = I[5];
-  assign O[5] = inst5_O;
-  assign inst6_CLK = CLK;
-  assign inst6_I = I[6];
-  assign O[6] = inst6_O;
-  assign inst7_CLK = CLK;
-  assign inst7_I = I[7];
-  assign O[7] = inst7_O;
-  assign inst8_CLK = CLK;
-  assign inst8_I = I[8];
-  assign O[8] = inst8_O;
-  assign inst9_CLK = CLK;
-  assign inst9_I = I[9];
-  assign O[9] = inst9_O;
-
-endmodule //Register16
 
 module Register5_0001 (
   input  CLK,
@@ -746,73 +118,749 @@ module Register5_0001 (
   output [4:0] O
 );
   //Wire declarations for instance 'inst0' (Module DFF_init1_has_ceFalse_has_resetFalse)
-  wire  inst0_CLK;
-  wire  inst0_I;
-  wire  inst0_O;
+  wire  inst0__CLK;
+  wire  inst0__I;
+  wire  inst0__O;
   DFF_init1_has_ceFalse_has_resetFalse inst0(
-    .CLK(inst0_CLK),
-    .I(inst0_I),
-    .O(inst0_O)
+    .CLK(inst0__CLK),
+    .I(inst0__I),
+    .O(inst0__O)
   );
 
   //Wire declarations for instance 'inst1' (Module DFF_init0_has_ceFalse_has_resetFalse)
-  wire  inst1_CLK;
-  wire  inst1_I;
-  wire  inst1_O;
+  wire  inst1__CLK;
+  wire  inst1__I;
+  wire  inst1__O;
   DFF_init0_has_ceFalse_has_resetFalse inst1(
-    .CLK(inst1_CLK),
-    .I(inst1_I),
-    .O(inst1_O)
+    .CLK(inst1__CLK),
+    .I(inst1__I),
+    .O(inst1__O)
   );
 
   //Wire declarations for instance 'inst2' (Module DFF_init0_has_ceFalse_has_resetFalse)
-  wire  inst2_CLK;
-  wire  inst2_I;
-  wire  inst2_O;
+  wire  inst2__CLK;
+  wire  inst2__I;
+  wire  inst2__O;
   DFF_init0_has_ceFalse_has_resetFalse inst2(
-    .CLK(inst2_CLK),
-    .I(inst2_I),
-    .O(inst2_O)
+    .CLK(inst2__CLK),
+    .I(inst2__I),
+    .O(inst2__O)
   );
 
   //Wire declarations for instance 'inst3' (Module DFF_init0_has_ceFalse_has_resetFalse)
-  wire  inst3_CLK;
-  wire  inst3_I;
-  wire  inst3_O;
+  wire  inst3__CLK;
+  wire  inst3__I;
+  wire  inst3__O;
   DFF_init0_has_ceFalse_has_resetFalse inst3(
-    .CLK(inst3_CLK),
-    .I(inst3_I),
-    .O(inst3_O)
+    .CLK(inst3__CLK),
+    .I(inst3__I),
+    .O(inst3__O)
   );
 
   //Wire declarations for instance 'inst4' (Module DFF_init0_has_ceFalse_has_resetFalse)
-  wire  inst4_CLK;
-  wire  inst4_I;
-  wire  inst4_O;
+  wire  inst4__CLK;
+  wire  inst4__I;
+  wire  inst4__O;
   DFF_init0_has_ceFalse_has_resetFalse inst4(
-    .CLK(inst4_CLK),
-    .I(inst4_I),
-    .O(inst4_O)
+    .CLK(inst4__CLK),
+    .I(inst4__I),
+    .O(inst4__O)
   );
 
   //All the connections
-  assign inst0_CLK = CLK;
-  assign inst0_I = I[0];
-  assign O[0] = inst0_O;
-  assign inst1_CLK = CLK;
-  assign inst1_I = I[1];
-  assign O[1] = inst1_O;
-  assign inst2_CLK = CLK;
-  assign inst2_I = I[2];
-  assign O[2] = inst2_O;
-  assign inst3_CLK = CLK;
-  assign inst3_I = I[3];
-  assign O[3] = inst3_O;
-  assign inst4_CLK = CLK;
-  assign inst4_I = I[4];
-  assign O[4] = inst4_O;
+  assign inst0__CLK = CLK;
+  assign inst0__I = I[0];
+  assign O[0] = inst0__O;
+  assign inst1__CLK = CLK;
+  assign inst1__I = I[1];
+  assign O[1] = inst1__O;
+  assign inst2__CLK = CLK;
+  assign inst2__I = I[2];
+  assign O[2] = inst2__O;
+  assign inst3__CLK = CLK;
+  assign inst3__I = I[3];
+  assign O[3] = inst3__O;
+  assign inst4__CLK = CLK;
+  assign inst4__I = I[4];
+  assign O[4] = inst4__O;
 
 endmodule //Register5_0001
+
+module Or5x16 (
+  input [15:0] I0,
+  input [15:0] I1,
+  input [15:0] I2,
+  input [15:0] I3,
+  input [15:0] I4,
+  output [15:0] O
+);
+  //Wire declarations for instance 'inst0' (Module coreir_orr)
+  wire [4:0] inst0__in;
+  wire  inst0__out;
+  coreir_orr #(.width(5)) inst0(
+    .in(inst0__in),
+    .out(inst0__out)
+  );
+
+  //Wire declarations for instance 'inst1' (Module coreir_orr)
+  wire [4:0] inst1__in;
+  wire  inst1__out;
+  coreir_orr #(.width(5)) inst1(
+    .in(inst1__in),
+    .out(inst1__out)
+  );
+
+  //Wire declarations for instance 'inst10' (Module coreir_orr)
+  wire [4:0] inst10__in;
+  wire  inst10__out;
+  coreir_orr #(.width(5)) inst10(
+    .in(inst10__in),
+    .out(inst10__out)
+  );
+
+  //Wire declarations for instance 'inst11' (Module coreir_orr)
+  wire [4:0] inst11__in;
+  wire  inst11__out;
+  coreir_orr #(.width(5)) inst11(
+    .in(inst11__in),
+    .out(inst11__out)
+  );
+
+  //Wire declarations for instance 'inst12' (Module coreir_orr)
+  wire [4:0] inst12__in;
+  wire  inst12__out;
+  coreir_orr #(.width(5)) inst12(
+    .in(inst12__in),
+    .out(inst12__out)
+  );
+
+  //Wire declarations for instance 'inst13' (Module coreir_orr)
+  wire [4:0] inst13__in;
+  wire  inst13__out;
+  coreir_orr #(.width(5)) inst13(
+    .in(inst13__in),
+    .out(inst13__out)
+  );
+
+  //Wire declarations for instance 'inst14' (Module coreir_orr)
+  wire [4:0] inst14__in;
+  wire  inst14__out;
+  coreir_orr #(.width(5)) inst14(
+    .in(inst14__in),
+    .out(inst14__out)
+  );
+
+  //Wire declarations for instance 'inst15' (Module coreir_orr)
+  wire [4:0] inst15__in;
+  wire  inst15__out;
+  coreir_orr #(.width(5)) inst15(
+    .in(inst15__in),
+    .out(inst15__out)
+  );
+
+  //Wire declarations for instance 'inst2' (Module coreir_orr)
+  wire [4:0] inst2__in;
+  wire  inst2__out;
+  coreir_orr #(.width(5)) inst2(
+    .in(inst2__in),
+    .out(inst2__out)
+  );
+
+  //Wire declarations for instance 'inst3' (Module coreir_orr)
+  wire [4:0] inst3__in;
+  wire  inst3__out;
+  coreir_orr #(.width(5)) inst3(
+    .in(inst3__in),
+    .out(inst3__out)
+  );
+
+  //Wire declarations for instance 'inst4' (Module coreir_orr)
+  wire [4:0] inst4__in;
+  wire  inst4__out;
+  coreir_orr #(.width(5)) inst4(
+    .in(inst4__in),
+    .out(inst4__out)
+  );
+
+  //Wire declarations for instance 'inst5' (Module coreir_orr)
+  wire [4:0] inst5__in;
+  wire  inst5__out;
+  coreir_orr #(.width(5)) inst5(
+    .in(inst5__in),
+    .out(inst5__out)
+  );
+
+  //Wire declarations for instance 'inst6' (Module coreir_orr)
+  wire [4:0] inst6__in;
+  wire  inst6__out;
+  coreir_orr #(.width(5)) inst6(
+    .in(inst6__in),
+    .out(inst6__out)
+  );
+
+  //Wire declarations for instance 'inst7' (Module coreir_orr)
+  wire [4:0] inst7__in;
+  wire  inst7__out;
+  coreir_orr #(.width(5)) inst7(
+    .in(inst7__in),
+    .out(inst7__out)
+  );
+
+  //Wire declarations for instance 'inst8' (Module coreir_orr)
+  wire [4:0] inst8__in;
+  wire  inst8__out;
+  coreir_orr #(.width(5)) inst8(
+    .in(inst8__in),
+    .out(inst8__out)
+  );
+
+  //Wire declarations for instance 'inst9' (Module coreir_orr)
+  wire [4:0] inst9__in;
+  wire  inst9__out;
+  coreir_orr #(.width(5)) inst9(
+    .in(inst9__in),
+    .out(inst9__out)
+  );
+
+  //All the connections
+  assign O[0] = inst0__out;
+  assign O[1] = inst1__out;
+  assign O[10] = inst10__out;
+  assign O[11] = inst11__out;
+  assign O[12] = inst12__out;
+  assign O[13] = inst13__out;
+  assign O[14] = inst14__out;
+  assign O[15] = inst15__out;
+  assign O[2] = inst2__out;
+  assign O[3] = inst3__out;
+  assign O[4] = inst4__out;
+  assign O[5] = inst5__out;
+  assign O[6] = inst6__out;
+  assign O[7] = inst7__out;
+  assign O[8] = inst8__out;
+  assign O[9] = inst9__out;
+  assign inst0__in[0] = I0[0];
+  assign inst0__in[1] = I1[0];
+  assign inst0__in[2] = I2[0];
+  assign inst0__in[3] = I3[0];
+  assign inst0__in[4] = I4[0];
+  assign inst1__in[0] = I0[1];
+  assign inst1__in[1] = I1[1];
+  assign inst1__in[2] = I2[1];
+  assign inst1__in[3] = I3[1];
+  assign inst1__in[4] = I4[1];
+  assign inst10__in[0] = I0[10];
+  assign inst10__in[1] = I1[10];
+  assign inst10__in[2] = I2[10];
+  assign inst10__in[3] = I3[10];
+  assign inst10__in[4] = I4[10];
+  assign inst11__in[0] = I0[11];
+  assign inst11__in[1] = I1[11];
+  assign inst11__in[2] = I2[11];
+  assign inst11__in[3] = I3[11];
+  assign inst11__in[4] = I4[11];
+  assign inst12__in[0] = I0[12];
+  assign inst12__in[1] = I1[12];
+  assign inst12__in[2] = I2[12];
+  assign inst12__in[3] = I3[12];
+  assign inst12__in[4] = I4[12];
+  assign inst13__in[0] = I0[13];
+  assign inst13__in[1] = I1[13];
+  assign inst13__in[2] = I2[13];
+  assign inst13__in[3] = I3[13];
+  assign inst13__in[4] = I4[13];
+  assign inst14__in[0] = I0[14];
+  assign inst14__in[1] = I1[14];
+  assign inst14__in[2] = I2[14];
+  assign inst14__in[3] = I3[14];
+  assign inst14__in[4] = I4[14];
+  assign inst15__in[0] = I0[15];
+  assign inst15__in[1] = I1[15];
+  assign inst15__in[2] = I2[15];
+  assign inst15__in[3] = I3[15];
+  assign inst15__in[4] = I4[15];
+  assign inst2__in[0] = I0[2];
+  assign inst2__in[1] = I1[2];
+  assign inst2__in[2] = I2[2];
+  assign inst2__in[3] = I3[2];
+  assign inst2__in[4] = I4[2];
+  assign inst3__in[0] = I0[3];
+  assign inst3__in[1] = I1[3];
+  assign inst3__in[2] = I2[3];
+  assign inst3__in[3] = I3[3];
+  assign inst3__in[4] = I4[3];
+  assign inst4__in[0] = I0[4];
+  assign inst4__in[1] = I1[4];
+  assign inst4__in[2] = I2[4];
+  assign inst4__in[3] = I3[4];
+  assign inst4__in[4] = I4[4];
+  assign inst5__in[0] = I0[5];
+  assign inst5__in[1] = I1[5];
+  assign inst5__in[2] = I2[5];
+  assign inst5__in[3] = I3[5];
+  assign inst5__in[4] = I4[5];
+  assign inst6__in[0] = I0[6];
+  assign inst6__in[1] = I1[6];
+  assign inst6__in[2] = I2[6];
+  assign inst6__in[3] = I3[6];
+  assign inst6__in[4] = I4[6];
+  assign inst7__in[0] = I0[7];
+  assign inst7__in[1] = I1[7];
+  assign inst7__in[2] = I2[7];
+  assign inst7__in[3] = I3[7];
+  assign inst7__in[4] = I4[7];
+  assign inst8__in[0] = I0[8];
+  assign inst8__in[1] = I1[8];
+  assign inst8__in[2] = I2[8];
+  assign inst8__in[3] = I3[8];
+  assign inst8__in[4] = I4[8];
+  assign inst9__in[0] = I0[9];
+  assign inst9__in[1] = I1[9];
+  assign inst9__in[2] = I2[9];
+  assign inst9__in[3] = I3[9];
+  assign inst9__in[4] = I4[9];
+
+endmodule //Or5x16
+
+module Register16 (
+  input  CLK,
+  input [15:0] I,
+  output [15:0] O
+);
+  //Wire declarations for instance 'inst0' (Module DFF_init0_has_ceFalse_has_resetFalse)
+  wire  inst0__CLK;
+  wire  inst0__I;
+  wire  inst0__O;
+  DFF_init0_has_ceFalse_has_resetFalse inst0(
+    .CLK(inst0__CLK),
+    .I(inst0__I),
+    .O(inst0__O)
+  );
+
+  //Wire declarations for instance 'inst1' (Module DFF_init0_has_ceFalse_has_resetFalse)
+  wire  inst1__CLK;
+  wire  inst1__I;
+  wire  inst1__O;
+  DFF_init0_has_ceFalse_has_resetFalse inst1(
+    .CLK(inst1__CLK),
+    .I(inst1__I),
+    .O(inst1__O)
+  );
+
+  //Wire declarations for instance 'inst10' (Module DFF_init0_has_ceFalse_has_resetFalse)
+  wire  inst10__CLK;
+  wire  inst10__I;
+  wire  inst10__O;
+  DFF_init0_has_ceFalse_has_resetFalse inst10(
+    .CLK(inst10__CLK),
+    .I(inst10__I),
+    .O(inst10__O)
+  );
+
+  //Wire declarations for instance 'inst11' (Module DFF_init0_has_ceFalse_has_resetFalse)
+  wire  inst11__CLK;
+  wire  inst11__I;
+  wire  inst11__O;
+  DFF_init0_has_ceFalse_has_resetFalse inst11(
+    .CLK(inst11__CLK),
+    .I(inst11__I),
+    .O(inst11__O)
+  );
+
+  //Wire declarations for instance 'inst12' (Module DFF_init0_has_ceFalse_has_resetFalse)
+  wire  inst12__CLK;
+  wire  inst12__I;
+  wire  inst12__O;
+  DFF_init0_has_ceFalse_has_resetFalse inst12(
+    .CLK(inst12__CLK),
+    .I(inst12__I),
+    .O(inst12__O)
+  );
+
+  //Wire declarations for instance 'inst13' (Module DFF_init0_has_ceFalse_has_resetFalse)
+  wire  inst13__CLK;
+  wire  inst13__I;
+  wire  inst13__O;
+  DFF_init0_has_ceFalse_has_resetFalse inst13(
+    .CLK(inst13__CLK),
+    .I(inst13__I),
+    .O(inst13__O)
+  );
+
+  //Wire declarations for instance 'inst14' (Module DFF_init0_has_ceFalse_has_resetFalse)
+  wire  inst14__CLK;
+  wire  inst14__I;
+  wire  inst14__O;
+  DFF_init0_has_ceFalse_has_resetFalse inst14(
+    .CLK(inst14__CLK),
+    .I(inst14__I),
+    .O(inst14__O)
+  );
+
+  //Wire declarations for instance 'inst15' (Module DFF_init0_has_ceFalse_has_resetFalse)
+  wire  inst15__CLK;
+  wire  inst15__I;
+  wire  inst15__O;
+  DFF_init0_has_ceFalse_has_resetFalse inst15(
+    .CLK(inst15__CLK),
+    .I(inst15__I),
+    .O(inst15__O)
+  );
+
+  //Wire declarations for instance 'inst2' (Module DFF_init0_has_ceFalse_has_resetFalse)
+  wire  inst2__CLK;
+  wire  inst2__I;
+  wire  inst2__O;
+  DFF_init0_has_ceFalse_has_resetFalse inst2(
+    .CLK(inst2__CLK),
+    .I(inst2__I),
+    .O(inst2__O)
+  );
+
+  //Wire declarations for instance 'inst3' (Module DFF_init0_has_ceFalse_has_resetFalse)
+  wire  inst3__CLK;
+  wire  inst3__I;
+  wire  inst3__O;
+  DFF_init0_has_ceFalse_has_resetFalse inst3(
+    .CLK(inst3__CLK),
+    .I(inst3__I),
+    .O(inst3__O)
+  );
+
+  //Wire declarations for instance 'inst4' (Module DFF_init0_has_ceFalse_has_resetFalse)
+  wire  inst4__CLK;
+  wire  inst4__I;
+  wire  inst4__O;
+  DFF_init0_has_ceFalse_has_resetFalse inst4(
+    .CLK(inst4__CLK),
+    .I(inst4__I),
+    .O(inst4__O)
+  );
+
+  //Wire declarations for instance 'inst5' (Module DFF_init0_has_ceFalse_has_resetFalse)
+  wire  inst5__CLK;
+  wire  inst5__I;
+  wire  inst5__O;
+  DFF_init0_has_ceFalse_has_resetFalse inst5(
+    .CLK(inst5__CLK),
+    .I(inst5__I),
+    .O(inst5__O)
+  );
+
+  //Wire declarations for instance 'inst6' (Module DFF_init0_has_ceFalse_has_resetFalse)
+  wire  inst6__CLK;
+  wire  inst6__I;
+  wire  inst6__O;
+  DFF_init0_has_ceFalse_has_resetFalse inst6(
+    .CLK(inst6__CLK),
+    .I(inst6__I),
+    .O(inst6__O)
+  );
+
+  //Wire declarations for instance 'inst7' (Module DFF_init0_has_ceFalse_has_resetFalse)
+  wire  inst7__CLK;
+  wire  inst7__I;
+  wire  inst7__O;
+  DFF_init0_has_ceFalse_has_resetFalse inst7(
+    .CLK(inst7__CLK),
+    .I(inst7__I),
+    .O(inst7__O)
+  );
+
+  //Wire declarations for instance 'inst8' (Module DFF_init0_has_ceFalse_has_resetFalse)
+  wire  inst8__CLK;
+  wire  inst8__I;
+  wire  inst8__O;
+  DFF_init0_has_ceFalse_has_resetFalse inst8(
+    .CLK(inst8__CLK),
+    .I(inst8__I),
+    .O(inst8__O)
+  );
+
+  //Wire declarations for instance 'inst9' (Module DFF_init0_has_ceFalse_has_resetFalse)
+  wire  inst9__CLK;
+  wire  inst9__I;
+  wire  inst9__O;
+  DFF_init0_has_ceFalse_has_resetFalse inst9(
+    .CLK(inst9__CLK),
+    .I(inst9__I),
+    .O(inst9__O)
+  );
+
+  //All the connections
+  assign inst0__CLK = CLK;
+  assign inst0__I = I[0];
+  assign O[0] = inst0__O;
+  assign inst1__CLK = CLK;
+  assign inst1__I = I[1];
+  assign O[1] = inst1__O;
+  assign inst10__CLK = CLK;
+  assign inst10__I = I[10];
+  assign O[10] = inst10__O;
+  assign inst11__CLK = CLK;
+  assign inst11__I = I[11];
+  assign O[11] = inst11__O;
+  assign inst12__CLK = CLK;
+  assign inst12__I = I[12];
+  assign O[12] = inst12__O;
+  assign inst13__CLK = CLK;
+  assign inst13__I = I[13];
+  assign O[13] = inst13__O;
+  assign inst14__CLK = CLK;
+  assign inst14__I = I[14];
+  assign O[14] = inst14__O;
+  assign inst15__CLK = CLK;
+  assign inst15__I = I[15];
+  assign O[15] = inst15__O;
+  assign inst2__CLK = CLK;
+  assign inst2__I = I[2];
+  assign O[2] = inst2__O;
+  assign inst3__CLK = CLK;
+  assign inst3__I = I[3];
+  assign O[3] = inst3__O;
+  assign inst4__CLK = CLK;
+  assign inst4__I = I[4];
+  assign O[4] = inst4__O;
+  assign inst5__CLK = CLK;
+  assign inst5__I = I[5];
+  assign O[5] = inst5__O;
+  assign inst6__CLK = CLK;
+  assign inst6__I = I[6];
+  assign O[6] = inst6__O;
+  assign inst7__CLK = CLK;
+  assign inst7__I = I[7];
+  assign O[7] = inst7__O;
+  assign inst8__CLK = CLK;
+  assign inst8__I = I[8];
+  assign O[8] = inst8__O;
+  assign inst9__CLK = CLK;
+  assign inst9__I = I[9];
+  assign O[9] = inst9__O;
+
+endmodule //Register16
+
+module or_wrapped (
+  input  I0,
+  input  I1,
+  output  O
+);
+  //Wire declarations for instance 'inst0' (Module corebit_or)
+  wire  inst0__in0;
+  wire  inst0__in1;
+  wire  inst0__out;
+  corebit_or inst0(
+    .in0(inst0__in0),
+    .in1(inst0__in1),
+    .out(inst0__out)
+  );
+
+  //All the connections
+  assign inst0__in0 = I0;
+  assign inst0__in1 = I1;
+  assign O = inst0__out;
+
+endmodule //or_wrapped
+
+module __silica_BufferSerializer4 (
+  input [4:0] I,
+  output [4:0] O
+);
+  //All the connections
+  assign O[4:0] = I[4:0];
+
+endmodule //__silica_BufferSerializer4
+
+module and16_wrapped (
+  input [15:0] I0,
+  input [15:0] I1,
+  output [15:0] O
+);
+  //Wire declarations for instance 'inst0' (Module coreir_and)
+  wire [15:0] inst0__in0;
+  wire [15:0] inst0__in1;
+  wire [15:0] inst0__out;
+  coreir_and #(.width(16)) inst0(
+    .in0(inst0__in0),
+    .in1(inst0__in1),
+    .out(inst0__out)
+  );
+
+  //All the connections
+  assign inst0__in0[15:0] = I0[15:0];
+  assign inst0__in1[15:0] = I1[15:0];
+  assign O[15:0] = inst0__out[15:0];
+
+endmodule //and16_wrapped
+
+module SilicaOneHotMux516 (
+  input [15:0] I0,
+  input [15:0] I1,
+  input [15:0] I2,
+  input [15:0] I3,
+  input [15:0] I4,
+  output [15:0] O,
+  input [4:0] S
+);
+  //Wire declarations for instance 'inst0' (Module Or5x16)
+  wire [15:0] inst0__I0;
+  wire [15:0] inst0__I1;
+  wire [15:0] inst0__I2;
+  wire [15:0] inst0__I3;
+  wire [15:0] inst0__I4;
+  wire [15:0] inst0__O;
+  Or5x16 inst0(
+    .I0(inst0__I0),
+    .I1(inst0__I1),
+    .I2(inst0__I2),
+    .I3(inst0__I3),
+    .I4(inst0__I4),
+    .O(inst0__O)
+  );
+
+  //Wire declarations for instance 'inst1' (Module and16_wrapped)
+  wire [15:0] inst1__I0;
+  wire [15:0] inst1__I1;
+  wire [15:0] inst1__O;
+  and16_wrapped inst1(
+    .I0(inst1__I0),
+    .I1(inst1__I1),
+    .O(inst1__O)
+  );
+
+  //Wire declarations for instance 'inst2' (Module and16_wrapped)
+  wire [15:0] inst2__I0;
+  wire [15:0] inst2__I1;
+  wire [15:0] inst2__O;
+  and16_wrapped inst2(
+    .I0(inst2__I0),
+    .I1(inst2__I1),
+    .O(inst2__O)
+  );
+
+  //Wire declarations for instance 'inst3' (Module and16_wrapped)
+  wire [15:0] inst3__I0;
+  wire [15:0] inst3__I1;
+  wire [15:0] inst3__O;
+  and16_wrapped inst3(
+    .I0(inst3__I0),
+    .I1(inst3__I1),
+    .O(inst3__O)
+  );
+
+  //Wire declarations for instance 'inst4' (Module and16_wrapped)
+  wire [15:0] inst4__I0;
+  wire [15:0] inst4__I1;
+  wire [15:0] inst4__O;
+  and16_wrapped inst4(
+    .I0(inst4__I0),
+    .I1(inst4__I1),
+    .O(inst4__O)
+  );
+
+  //Wire declarations for instance 'inst5' (Module and16_wrapped)
+  wire [15:0] inst5__I0;
+  wire [15:0] inst5__I1;
+  wire [15:0] inst5__O;
+  and16_wrapped inst5(
+    .I0(inst5__I0),
+    .I1(inst5__I1),
+    .O(inst5__O)
+  );
+
+  //All the connections
+  assign inst0__I0[15:0] = inst1__O[15:0];
+  assign inst0__I1[15:0] = inst2__O[15:0];
+  assign inst0__I2[15:0] = inst3__O[15:0];
+  assign inst0__I3[15:0] = inst4__O[15:0];
+  assign inst0__I4[15:0] = inst5__O[15:0];
+  assign O[15:0] = inst0__O[15:0];
+  assign inst1__I0[15:0] = I0[15:0];
+  assign inst2__I0[15:0] = I1[15:0];
+  assign inst3__I0[15:0] = I2[15:0];
+  assign inst4__I0[15:0] = I3[15:0];
+  assign inst5__I0[15:0] = I4[15:0];
+  assign inst1__I1[0] = S[0];
+  assign inst1__I1[1] = S[0];
+  assign inst1__I1[10] = S[0];
+  assign inst1__I1[11] = S[0];
+  assign inst1__I1[12] = S[0];
+  assign inst1__I1[13] = S[0];
+  assign inst1__I1[14] = S[0];
+  assign inst1__I1[15] = S[0];
+  assign inst1__I1[2] = S[0];
+  assign inst1__I1[3] = S[0];
+  assign inst1__I1[4] = S[0];
+  assign inst1__I1[5] = S[0];
+  assign inst1__I1[6] = S[0];
+  assign inst1__I1[7] = S[0];
+  assign inst1__I1[8] = S[0];
+  assign inst1__I1[9] = S[0];
+  assign inst2__I1[0] = S[1];
+  assign inst2__I1[1] = S[1];
+  assign inst2__I1[10] = S[1];
+  assign inst2__I1[11] = S[1];
+  assign inst2__I1[12] = S[1];
+  assign inst2__I1[13] = S[1];
+  assign inst2__I1[14] = S[1];
+  assign inst2__I1[15] = S[1];
+  assign inst2__I1[2] = S[1];
+  assign inst2__I1[3] = S[1];
+  assign inst2__I1[4] = S[1];
+  assign inst2__I1[5] = S[1];
+  assign inst2__I1[6] = S[1];
+  assign inst2__I1[7] = S[1];
+  assign inst2__I1[8] = S[1];
+  assign inst2__I1[9] = S[1];
+  assign inst3__I1[0] = S[2];
+  assign inst3__I1[1] = S[2];
+  assign inst3__I1[10] = S[2];
+  assign inst3__I1[11] = S[2];
+  assign inst3__I1[12] = S[2];
+  assign inst3__I1[13] = S[2];
+  assign inst3__I1[14] = S[2];
+  assign inst3__I1[15] = S[2];
+  assign inst3__I1[2] = S[2];
+  assign inst3__I1[3] = S[2];
+  assign inst3__I1[4] = S[2];
+  assign inst3__I1[5] = S[2];
+  assign inst3__I1[6] = S[2];
+  assign inst3__I1[7] = S[2];
+  assign inst3__I1[8] = S[2];
+  assign inst3__I1[9] = S[2];
+  assign inst4__I1[0] = S[3];
+  assign inst4__I1[1] = S[3];
+  assign inst4__I1[10] = S[3];
+  assign inst4__I1[11] = S[3];
+  assign inst4__I1[12] = S[3];
+  assign inst4__I1[13] = S[3];
+  assign inst4__I1[14] = S[3];
+  assign inst4__I1[15] = S[3];
+  assign inst4__I1[2] = S[3];
+  assign inst4__I1[3] = S[3];
+  assign inst4__I1[4] = S[3];
+  assign inst4__I1[5] = S[3];
+  assign inst4__I1[6] = S[3];
+  assign inst4__I1[7] = S[3];
+  assign inst4__I1[8] = S[3];
+  assign inst4__I1[9] = S[3];
+  assign inst5__I1[0] = S[4];
+  assign inst5__I1[1] = S[4];
+  assign inst5__I1[10] = S[4];
+  assign inst5__I1[11] = S[4];
+  assign inst5__I1[12] = S[4];
+  assign inst5__I1[13] = S[4];
+  assign inst5__I1[14] = S[4];
+  assign inst5__I1[15] = S[4];
+  assign inst5__I1[2] = S[4];
+  assign inst5__I1[3] = S[4];
+  assign inst5__I1[4] = S[4];
+  assign inst5__I1[5] = S[4];
+  assign inst5__I1[6] = S[4];
+  assign inst5__I1[7] = S[4];
+  assign inst5__I1[8] = S[4];
+  assign inst5__I1[9] = S[4];
+
+endmodule //SilicaOneHotMux516
 
 module Serializer4 (
   input  CLK,
@@ -823,184 +871,181 @@ module Serializer4 (
   output [15:0] O
 );
   //Wire declarations for instance 'bit_const_GND' (Module corebit_const)
-  wire  bit_const_GND_out;
+  wire  bit_const_GND__out;
   corebit_const #(.value(0)) bit_const_GND(
-    .out(bit_const_GND_out)
+    .out(bit_const_GND__out)
   );
 
   //Wire declarations for instance 'inst0' (Module __silica_BufferSerializer4)
-  wire [3:0] inst0_I;
-  wire [3:0] inst0_O;
+  wire [4:0] inst0__I;
+  wire [4:0] inst0__O;
   __silica_BufferSerializer4 inst0(
-    .I(inst0_I),
-    .O(inst0_O)
+    .I(inst0__I),
+    .O(inst0__O)
   );
 
   //Wire declarations for instance 'inst1' (Module Register5_0001)
-  wire  inst1_CLK;
-  wire [4:0] inst1_I;
-  wire [4:0] inst1_O;
+  wire  inst1__CLK;
+  wire [4:0] inst1__I;
+  wire [4:0] inst1__O;
   Register5_0001 inst1(
-    .CLK(inst1_CLK),
-    .I(inst1_I),
-    .O(inst1_O)
-  );
-
-  //Wire declarations for instance 'inst10' (Module or_wrapped)
-  wire  inst10_I0;
-  wire  inst10_I1;
-  wire  inst10_O;
-  or_wrapped inst10(
-    .I0(inst10_I0),
-    .I1(inst10_I1),
-    .O(inst10_O)
+    .CLK(inst1__CLK),
+    .I(inst1__I),
+    .O(inst1__O)
   );
 
   //Wire declarations for instance 'inst2' (Module or_wrapped)
-  wire  inst2_I0;
-  wire  inst2_I1;
-  wire  inst2_O;
+  wire  inst2__I0;
+  wire  inst2__I1;
+  wire  inst2__O;
   or_wrapped inst2(
-    .I0(inst2_I0),
-    .I1(inst2_I1),
-    .O(inst2_O)
+    .I0(inst2__I0),
+    .I1(inst2__I1),
+    .O(inst2__O)
   );
 
   //Wire declarations for instance 'inst3' (Module Register16)
-  wire  inst3_CLK;
-  wire [15:0] inst3_I;
-  wire [15:0] inst3_O;
+  wire  inst3__CLK;
+  wire [15:0] inst3__I;
+  wire [15:0] inst3__O;
   Register16 inst3(
-    .CLK(inst3_CLK),
-    .I(inst3_I),
-    .O(inst3_O)
+    .CLK(inst3__CLK),
+    .I(inst3__I),
+    .O(inst3__O)
   );
 
   //Wire declarations for instance 'inst4' (Module Register16)
-  wire  inst4_CLK;
-  wire [15:0] inst4_I;
-  wire [15:0] inst4_O;
+  wire  inst4__CLK;
+  wire [15:0] inst4__I;
+  wire [15:0] inst4__O;
   Register16 inst4(
-    .CLK(inst4_CLK),
-    .I(inst4_I),
-    .O(inst4_O)
+    .CLK(inst4__CLK),
+    .I(inst4__I),
+    .O(inst4__O)
   );
 
   //Wire declarations for instance 'inst5' (Module Register16)
-  wire  inst5_CLK;
-  wire [15:0] inst5_I;
-  wire [15:0] inst5_O;
+  wire  inst5__CLK;
+  wire [15:0] inst5__I;
+  wire [15:0] inst5__O;
   Register16 inst5(
-    .CLK(inst5_CLK),
-    .I(inst5_I),
-    .O(inst5_O)
+    .CLK(inst5__CLK),
+    .I(inst5__I),
+    .O(inst5__O)
   );
 
-  //Wire declarations for instance 'inst6' (Module SilicaOneHotMux416)
-  wire [15:0] inst6_I0;
-  wire [15:0] inst6_I1;
-  wire [15:0] inst6_I2;
-  wire [15:0] inst6_I3;
-  wire [15:0] inst6_O;
-  wire [3:0] inst6_S;
-  SilicaOneHotMux416 inst6(
-    .I0(inst6_I0),
-    .I1(inst6_I1),
-    .I2(inst6_I2),
-    .I3(inst6_I3),
-    .O(inst6_O),
-    .S(inst6_S)
+  //Wire declarations for instance 'inst6' (Module SilicaOneHotMux516)
+  wire [15:0] inst6__I0;
+  wire [15:0] inst6__I1;
+  wire [15:0] inst6__I2;
+  wire [15:0] inst6__I3;
+  wire [15:0] inst6__I4;
+  wire [15:0] inst6__O;
+  wire [4:0] inst6__S;
+  SilicaOneHotMux516 inst6(
+    .I0(inst6__I0),
+    .I1(inst6__I1),
+    .I2(inst6__I2),
+    .I3(inst6__I3),
+    .I4(inst6__I4),
+    .O(inst6__O),
+    .S(inst6__S)
   );
 
-  //Wire declarations for instance 'inst7' (Module SilicaOneHotMux416)
-  wire [15:0] inst7_I0;
-  wire [15:0] inst7_I1;
-  wire [15:0] inst7_I2;
-  wire [15:0] inst7_I3;
-  wire [15:0] inst7_O;
-  wire [3:0] inst7_S;
-  SilicaOneHotMux416 inst7(
-    .I0(inst7_I0),
-    .I1(inst7_I1),
-    .I2(inst7_I2),
-    .I3(inst7_I3),
-    .O(inst7_O),
-    .S(inst7_S)
+  //Wire declarations for instance 'inst7' (Module SilicaOneHotMux516)
+  wire [15:0] inst7__I0;
+  wire [15:0] inst7__I1;
+  wire [15:0] inst7__I2;
+  wire [15:0] inst7__I3;
+  wire [15:0] inst7__I4;
+  wire [15:0] inst7__O;
+  wire [4:0] inst7__S;
+  SilicaOneHotMux516 inst7(
+    .I0(inst7__I0),
+    .I1(inst7__I1),
+    .I2(inst7__I2),
+    .I3(inst7__I3),
+    .I4(inst7__I4),
+    .O(inst7__O),
+    .S(inst7__S)
   );
 
-  //Wire declarations for instance 'inst8' (Module SilicaOneHotMux416)
-  wire [15:0] inst8_I0;
-  wire [15:0] inst8_I1;
-  wire [15:0] inst8_I2;
-  wire [15:0] inst8_I3;
-  wire [15:0] inst8_O;
-  wire [3:0] inst8_S;
-  SilicaOneHotMux416 inst8(
-    .I0(inst8_I0),
-    .I1(inst8_I1),
-    .I2(inst8_I2),
-    .I3(inst8_I3),
-    .O(inst8_O),
-    .S(inst8_S)
+  //Wire declarations for instance 'inst8' (Module SilicaOneHotMux516)
+  wire [15:0] inst8__I0;
+  wire [15:0] inst8__I1;
+  wire [15:0] inst8__I2;
+  wire [15:0] inst8__I3;
+  wire [15:0] inst8__I4;
+  wire [15:0] inst8__O;
+  wire [4:0] inst8__S;
+  SilicaOneHotMux516 inst8(
+    .I0(inst8__I0),
+    .I1(inst8__I1),
+    .I2(inst8__I2),
+    .I3(inst8__I3),
+    .I4(inst8__I4),
+    .O(inst8__O),
+    .S(inst8__S)
   );
 
-  //Wire declarations for instance 'inst9' (Module SilicaOneHotMux416)
-  wire [15:0] inst9_I0;
-  wire [15:0] inst9_I1;
-  wire [15:0] inst9_I2;
-  wire [15:0] inst9_I3;
-  wire [15:0] inst9_O;
-  wire [3:0] inst9_S;
-  SilicaOneHotMux416 inst9(
-    .I0(inst9_I0),
-    .I1(inst9_I1),
-    .I2(inst9_I2),
-    .I3(inst9_I3),
-    .O(inst9_O),
-    .S(inst9_S)
+  //Wire declarations for instance 'inst9' (Module SilicaOneHotMux516)
+  wire [15:0] inst9__I0;
+  wire [15:0] inst9__I1;
+  wire [15:0] inst9__I2;
+  wire [15:0] inst9__I3;
+  wire [15:0] inst9__I4;
+  wire [15:0] inst9__O;
+  wire [4:0] inst9__S;
+  SilicaOneHotMux516 inst9(
+    .I0(inst9__I0),
+    .I1(inst9__I1),
+    .I2(inst9__I2),
+    .I3(inst9__I3),
+    .I4(inst9__I4),
+    .O(inst9__O),
+    .S(inst9__S)
   );
 
   //All the connections
-  assign inst1_I[0] = bit_const_GND_out;
-  assign inst6_S[3:0] = inst0_O[3:0];
-  assign inst7_S[3:0] = inst0_O[3:0];
-  assign inst8_S[3:0] = inst0_O[3:0];
-  assign inst9_S[3:0] = inst0_O[3:0];
-  assign inst1_CLK = CLK;
-  assign inst10_I0 = inst1_O[0];
-  assign inst10_I1 = inst1_O[4];
-  assign inst0_I[0] = inst10_O;
-  assign inst2_I0 = inst1_O[0];
-  assign inst2_I1 = inst1_O[4];
-  assign inst1_I[1] = inst2_O;
-  assign inst3_CLK = CLK;
-  assign inst3_I[15:0] = inst6_O[15:0];
-  assign inst6_I1[15:0] = inst3_O[15:0];
-  assign inst6_I2[15:0] = inst3_O[15:0];
-  assign inst6_I3[15:0] = inst3_O[15:0];
-  assign inst9_I1[15:0] = inst3_O[15:0];
-  assign inst4_CLK = CLK;
-  assign inst4_I[15:0] = inst7_O[15:0];
-  assign inst7_I1[15:0] = inst4_O[15:0];
-  assign inst7_I2[15:0] = inst4_O[15:0];
-  assign inst7_I3[15:0] = inst4_O[15:0];
-  assign inst9_I2[15:0] = inst4_O[15:0];
-  assign inst5_CLK = CLK;
-  assign inst5_I[15:0] = inst8_O[15:0];
-  assign inst8_I1[15:0] = inst5_O[15:0];
-  assign inst8_I2[15:0] = inst5_O[15:0];
-  assign inst8_I3[15:0] = inst5_O[15:0];
-  assign inst9_I3[15:0] = inst5_O[15:0];
-  assign inst6_I0[15:0] = I_1[15:0];
-  assign inst7_I0[15:0] = I_2[15:0];
-  assign inst8_I0[15:0] = I_3[15:0];
-  assign inst9_I0[15:0] = I_0[15:0];
-  assign O[15:0] = inst9_O[15:0];
-  assign inst0_I[1] = inst1_O[1];
-  assign inst0_I[2] = inst1_O[2];
-  assign inst0_I[3] = inst1_O[3];
-  assign inst1_I[2] = inst1_O[1];
-  assign inst1_I[3] = inst1_O[2];
-  assign inst1_I[4] = inst1_O[3];
+  assign inst1__I[0] = bit_const_GND__out;
+  assign inst0__I[4:0] = inst1__O[4:0];
+  assign inst6__S[4:0] = inst0__O[4:0];
+  assign inst7__S[4:0] = inst0__O[4:0];
+  assign inst8__S[4:0] = inst0__O[4:0];
+  assign inst9__S[4:0] = inst0__O[4:0];
+  assign inst1__CLK = CLK;
+  assign inst2__I0 = inst1__O[0];
+  assign inst2__I1 = inst1__O[4];
+  assign inst1__I[1] = inst2__O;
+  assign inst3__CLK = CLK;
+  assign inst3__I[15:0] = inst6__O[15:0];
+  assign inst6__I1[15:0] = inst3__O[15:0];
+  assign inst6__I2[15:0] = inst3__O[15:0];
+  assign inst6__I3[15:0] = inst3__O[15:0];
+  assign inst9__I1[15:0] = inst3__O[15:0];
+  assign inst4__CLK = CLK;
+  assign inst4__I[15:0] = inst7__O[15:0];
+  assign inst7__I1[15:0] = inst4__O[15:0];
+  assign inst7__I2[15:0] = inst4__O[15:0];
+  assign inst7__I3[15:0] = inst4__O[15:0];
+  assign inst9__I2[15:0] = inst4__O[15:0];
+  assign inst5__CLK = CLK;
+  assign inst5__I[15:0] = inst8__O[15:0];
+  assign inst8__I1[15:0] = inst5__O[15:0];
+  assign inst8__I2[15:0] = inst5__O[15:0];
+  assign inst8__I3[15:0] = inst5__O[15:0];
+  assign inst9__I3[15:0] = inst5__O[15:0];
+  assign inst6__I0[15:0] = I_1[15:0];
+  assign inst6__I4[15:0] = I_1[15:0];
+  assign inst7__I0[15:0] = I_2[15:0];
+  assign inst7__I4[15:0] = I_2[15:0];
+  assign inst8__I0[15:0] = I_3[15:0];
+  assign inst8__I4[15:0] = I_3[15:0];
+  assign inst9__I0[15:0] = I_0[15:0];
+  assign inst9__I4[15:0] = I_0[15:0];
+  assign O[15:0] = inst9__O[15:0];
+  assign inst1__I[2] = inst1__O[1];
+  assign inst1__I[3] = inst1__O[2];
+  assign inst1__I[4] = inst1__O[3];
 
 endmodule //Serializer4

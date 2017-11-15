@@ -1,38 +1,38 @@
 module fifo(
-  input clk,
-  input [15:0] wdata,
+  input CLK,
+  input [4:0] wdata,
   input wen,
   output full,
-  output [15:0] rdata,
+  output [4:0] rdata,
   input ren,
   output empty
 ); 
 
-  reg [6:0] waddr = 0;
-  reg [6:0] raddr = 0;
+  reg [2:0] waddr = 0;
+  reg [2:0] raddr = 0;
   
-  reg [15:0] data[64];
+  reg [4:0] data[4];
   
   wire wvalid;
   wire rvalid;
   assign wvalid = wen & ~full;
   assign rvalid = ren & ~empty;
 
-  always @(posedge clk) begin
+  always @(posedge CLK) begin
     if (wvalid) waddr <= waddr+1;
   end
 
-  always @(posedge clk) begin
+  always @(posedge CLK) begin
     if (rvalid) raddr <= raddr+1;
   end
 
-  always @(posedge clk) begin
-    if (wvalid) data[waddr[5:0]] <= wdata;
+  always @(posedge CLK) begin
+    if (wvalid) data[waddr[1:0]] <= wdata;
   end
   
-  assign rdata = data[raddr[5:0]];
+  assign rdata = data[raddr[1:0]];
   assign empty = waddr == raddr;
-  assign full = (waddr[5:0] == raddr[5:0]) & (waddr[6] == ~raddr[6]);
+  assign full = (waddr[1:0] == raddr[1:0]) & (waddr[2] == ~raddr[2]);
 
 
 endmodule

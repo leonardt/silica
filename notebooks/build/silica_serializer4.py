@@ -37,7 +37,7 @@ def DefineSilicaMux(height, width):
 
 
 Serializer4 = DefineCircuit("Serializer4", "O", Out(Bits(16)), "I", In(Array(4,Bits(16))), *ClockInterface(has_ce=False))
-Buffer = DefineCircuit("__silica_BufferSerializer4", "I", In(Bits(4)), "O", Out(Bits(4)))
+Buffer = DefineCircuit("__silica_BufferSerializer4", "I", In(Bits(5)), "O", Out(Bits(5)))
 wire(Buffer.I, Buffer.O)
 EndDefine()
 __silica_path_state = Buffer()
@@ -51,7 +51,7 @@ wire(__silica_yield_state.O[3], __silica_yield_state.I[4])
 wire(0, __silica_yield_state.I[0])
 I = Serializer4.I
 data = [Register(16, has_ce=False) for _ in range(3)]
-data_next = [DefineSilicaMux(4, 16)() for _ in range(3)]
+data_next = [DefineSilicaMux(5, 16)() for _ in range(3)]
 for __silica_i in range(3):
     wire(__silica_path_state.O, data_next[__silica_i].S)
 
@@ -69,7 +69,10 @@ for __silica_j in range(3):
 data_next_3_tmp = []
 for __silica_j in range(3):
     data_next_3_tmp.append(data[__silica_j].O)
-O = DefineSilicaMux(4, 16)()
+data_next_4_tmp = []
+for __silica_j in range(3):
+    data_next_4_tmp.append(data[__silica_j].O)
+O = DefineSilicaMux(5, 16)()
 wire(__silica_path_state.O, O.S)
 wire(O.O, Serializer4.O)
 O_0_tmp = I[0]
@@ -79,7 +82,7 @@ data_next_0_tmp[2] = I[3]
 for __silica_i in range(3):
     wire(data_next_0_tmp[__silica_i], data_next[__silica_i].I0)
 wire(O_0_tmp, O.I0)
-wire(__silica_path_state.I[0], or_(__silica_yield_state.O[0], __silica_yield_state.O[4]))
+wire(__silica_path_state.I[0], __silica_yield_state.O[0])
 O_1_tmp = data[0].O
 for __silica_i in range(3):
     wire(data[__silica_i].O, data_next[__silica_i].I1)
@@ -95,4 +98,12 @@ for __silica_i in range(3):
     wire(data[__silica_i].O, data_next[__silica_i].I3)
 wire(O_3_tmp, O.I3)
 wire(__silica_path_state.I[3], __silica_yield_state.O[3])
+O_4_tmp = I[0]
+data_next_4_tmp[0] = I[1]
+data_next_4_tmp[1] = I[2]
+data_next_4_tmp[2] = I[3]
+for __silica_i in range(3):
+    wire(data_next_4_tmp[__silica_i], data_next[__silica_i].I4)
+wire(O_4_tmp, O.I4)
+wire(__silica_path_state.I[4], __silica_yield_state.O[4])
 EndDefine()

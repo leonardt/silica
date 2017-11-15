@@ -37,73 +37,37 @@
             "modref":"global.Register10"
           },
           "inst2":{
-            "modref":"global.or10_wrapped"
+            "modref":"global.SilicaOneHotMux210"
           },
           "inst3":{
-            "modref":"global.and10_wrapped"
+            "modref":"global.SilicaOneHotMux2None"
           },
           "inst4":{
-            "modref":"global.and10_wrapped"
-          },
-          "inst5":{
-            "modref":"global.or_wrapped"
-          },
-          "inst6":{
-            "modref":"global.and_wrapped"
-          },
-          "inst7":{
-            "modref":"global.and_wrapped"
-          },
-          "inst8":{
             "modref":"corebit.not"
           }
         },
         "connections":[
+          ["inst0.O","inst2.S"],
+          ["inst0.O","inst3.S"],
           ["inst1.CLK","self.CLK"],
           ["inst1.I","inst2.O"],
-          ["inst2.I0","inst3.O"],
-          ["inst2.I1","inst4.O"],
-          ["inst3.I1","self.PI"],
-          ["inst5.I0","inst6.O"],
-          ["inst5.I1","inst7.O"],
-          ["inst5.O","self.O"],
-          ["inst6.I0","inst0.O.0"],
-          ["inst6.I1","inst1.O.9"],
-          ["inst7.I0","inst0.O.1"],
-          ["inst7.I1","inst1.O.9"],
-          ["inst8.in","self.LOAD"],
-          ["inst8.out","inst0.I.1"],
+          ["inst2.I0","self.PI"],
+          ["inst3.I0","inst1.O.9"],
+          ["inst3.I1","inst1.O.9"],
+          ["inst3.O","self.O"],
+          ["inst4.in","self.LOAD"],
+          ["inst4.out","inst0.I.1"],
           ["self.LOAD","inst0.I.0"],
-          ["self.SI","inst4.I1.0"],
-          ["inst0.O.0","inst3.I0.0"],
-          ["inst0.O.0","inst3.I0.1"],
-          ["inst0.O.0","inst3.I0.2"],
-          ["inst0.O.0","inst3.I0.3"],
-          ["inst0.O.0","inst3.I0.4"],
-          ["inst0.O.0","inst3.I0.5"],
-          ["inst0.O.0","inst3.I0.6"],
-          ["inst0.O.0","inst3.I0.7"],
-          ["inst0.O.0","inst3.I0.8"],
-          ["inst0.O.0","inst3.I0.9"],
-          ["inst0.O.1","inst4.I0.0"],
-          ["inst0.O.1","inst4.I0.1"],
-          ["inst0.O.1","inst4.I0.2"],
-          ["inst0.O.1","inst4.I0.3"],
-          ["inst0.O.1","inst4.I0.4"],
-          ["inst0.O.1","inst4.I0.5"],
-          ["inst0.O.1","inst4.I0.6"],
-          ["inst0.O.1","inst4.I0.7"],
-          ["inst0.O.1","inst4.I0.8"],
-          ["inst0.O.1","inst4.I0.9"],
-          ["inst1.O.0","inst4.I1.1"],
-          ["inst1.O.1","inst4.I1.2"],
-          ["inst1.O.2","inst4.I1.3"],
-          ["inst1.O.3","inst4.I1.4"],
-          ["inst1.O.4","inst4.I1.5"],
-          ["inst1.O.5","inst4.I1.6"],
-          ["inst1.O.6","inst4.I1.7"],
-          ["inst1.O.7","inst4.I1.8"],
-          ["inst1.O.8","inst4.I1.9"]
+          ["self.SI","inst2.I1.0"],
+          ["inst1.O.0","inst2.I1.1"],
+          ["inst1.O.1","inst2.I1.2"],
+          ["inst1.O.2","inst2.I1.3"],
+          ["inst1.O.3","inst2.I1.4"],
+          ["inst1.O.4","inst2.I1.5"],
+          ["inst1.O.5","inst2.I1.6"],
+          ["inst1.O.6","inst2.I1.7"],
+          ["inst1.O.7","inst2.I1.8"],
+          ["inst1.O.8","inst2.I1.9"]
         ]
       },
       "Register10":{
@@ -175,6 +139,80 @@
           ["inst9.CLK","self.CLK"],
           ["inst9.I","self.I.9"],
           ["inst9.O","self.O.9"]
+        ]
+      },
+      "SilicaOneHotMux210":{
+        "type":["Record",{
+          "I0":["Array",10,"BitIn"],
+          "I1":["Array",10,"BitIn"],
+          "S":["Array",2,"BitIn"],
+          "O":["Array",10,"Bit"]
+        }],
+        "instances":{
+          "inst0":{
+            "modref":"global.or10_wrapped"
+          },
+          "inst1":{
+            "modref":"global.and10_wrapped"
+          },
+          "inst2":{
+            "modref":"global.and10_wrapped"
+          }
+        },
+        "connections":[
+          ["inst0.I0","inst1.O"],
+          ["inst0.I1","inst2.O"],
+          ["inst0.O","self.O"],
+          ["inst1.I0","self.I0"],
+          ["inst2.I0","self.I1"],
+          ["inst1.I1.0","self.S.0"],
+          ["inst1.I1.1","self.S.0"],
+          ["inst1.I1.2","self.S.0"],
+          ["inst1.I1.3","self.S.0"],
+          ["inst1.I1.4","self.S.0"],
+          ["inst1.I1.5","self.S.0"],
+          ["inst1.I1.6","self.S.0"],
+          ["inst1.I1.7","self.S.0"],
+          ["inst1.I1.8","self.S.0"],
+          ["inst1.I1.9","self.S.0"],
+          ["inst2.I1.0","self.S.1"],
+          ["inst2.I1.1","self.S.1"],
+          ["inst2.I1.2","self.S.1"],
+          ["inst2.I1.3","self.S.1"],
+          ["inst2.I1.4","self.S.1"],
+          ["inst2.I1.5","self.S.1"],
+          ["inst2.I1.6","self.S.1"],
+          ["inst2.I1.7","self.S.1"],
+          ["inst2.I1.8","self.S.1"],
+          ["inst2.I1.9","self.S.1"]
+        ]
+      },
+      "SilicaOneHotMux2None":{
+        "type":["Record",{
+          "I0":"BitIn",
+          "I1":"BitIn",
+          "S":["Array",2,"BitIn"],
+          "O":"Bit"
+        }],
+        "instances":{
+          "inst0":{
+            "modref":"global.or_wrapped"
+          },
+          "inst1":{
+            "modref":"global.and_wrapped"
+          },
+          "inst2":{
+            "modref":"global.and_wrapped"
+          }
+        },
+        "connections":[
+          ["inst0.I0","inst1.O"],
+          ["inst0.I1","inst2.O"],
+          ["inst0.O","self.O"],
+          ["inst1.I0","self.I0"],
+          ["inst1.I1","self.S.0"],
+          ["inst2.I0","self.I1"],
+          ["inst2.I1","self.S.1"]
         ]
       },
       "__silica_BufferPISO":{

@@ -1,5 +1,5 @@
 module detect111(
-  input clk,
+  input CLK,
   input I,
   output O
 );
@@ -7,7 +7,7 @@ module detect111(
 
   wire [1:0] cnt_next;
 
-  always @(posedge clk) begin
+  always @(posedge CLK) begin
     cnt <= cnt_next;
   end
 

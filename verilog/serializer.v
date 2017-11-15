@@ -1,6 +1,6 @@
 
 module serializer(
-  input clk,
+  input CLK,
   // yosys doesn't like this syntax
   // input [3:0][15:0] I,
   input [63:0] I,
@@ -12,11 +12,11 @@ module serializer(
   
   reg [1:0] cnt = 0;
 
-  always @(posedge clk) begin
+  always @(posedge CLK) begin
     cnt <= (cnt==3) ? 0 : (cnt + 1);
   end
   
-  always @(posedge clk) begin
+  always @(posedge CLK) begin
     if (cnt==2'h0) begin
       // s1 <= I[1];
       // s2 <= I[2];

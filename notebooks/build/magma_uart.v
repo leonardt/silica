@@ -46,16 +46,6 @@ assign O = inst1_O;
 assign COUT = inst0_COUT;
 endmodule
 
-module Counter4Mod10 (output [3:0] O, output  COUT, input  CLK);
-wire [3:0] inst0_O;
-wire  inst0_COUT;
-wire  inst1_O;
-Counter4R inst0 (.O(inst0_O), .COUT(inst0_COUT), .CLK(CLK), .RESET(inst1_O));
-SB_LUT4 #(.LUT_INIT(16'h0200)) inst1 (.I0(inst0_O[0]), .I1(inst0_O[1]), .I2(inst0_O[2]), .I3(inst0_O[3]), .O(inst1_O));
-assign O = inst0_O;
-assign COUT = inst1_O;
-endmodule
-
 module Mux2 (input [1:0] I, input  S, output  O);
 wire  inst0_O;
 SB_LUT4 #(.LUT_INIT(16'hCACA)) inst0 (.I0(I[0]), .I1(I[1]), .I2(S), .I3(1'b0), .O(inst0_O));
@@ -108,26 +98,20 @@ Register9 inst9 (.I({inst8_O,inst7_O,inst6_O,inst5_O,inst4_O,inst3_O,inst2_O,ins
 assign O = inst9_O[8];
 endmodule
 
-module EQ4 (input [3:0] I0, input [3:0] I1, output  O);
-wire  inst0_O;
-wire  inst1_O;
-wire  inst2_O;
-wire  inst3_O;
-SB_LUT4 #(.LUT_INIT(16'h8282)) inst0 (.I0(1'b1), .I1(I0[0]), .I2(I1[0]), .I3(1'b0), .O(inst0_O));
-SB_LUT4 #(.LUT_INIT(16'h8282)) inst1 (.I0(inst0_O), .I1(I0[1]), .I2(I1[1]), .I3(1'b0), .O(inst1_O));
-SB_LUT4 #(.LUT_INIT(16'h8282)) inst2 (.I0(inst1_O), .I1(I0[2]), .I2(I1[2]), .I3(1'b0), .O(inst2_O));
-SB_LUT4 #(.LUT_INIT(16'h8282)) inst3 (.I0(inst2_O), .I1(I0[3]), .I2(I1[3]), .I3(1'b0), .O(inst3_O));
-assign O = inst3_O;
-endmodule
-
-module main (input [7:0] message, output  O);
+module main4 (input  valid, input [7:0] message, output  O, input  CLK);
 wire [3:0] inst0_O;
 wire  inst0_COUT;
-wire  inst1_O;
+wire  inst1_Q;
 wire  inst2_O;
-Counter4Mod10 inst0 (.O(inst0_O), .COUT(inst0_COUT));
-PISO9 inst1 (.SI(1'b1), .PI({message[7],message[6],message[5],message[4],message[3],message[2],message[1],message[0],1'b0}), .LOAD(inst2_O), .O(inst1_O));
-EQ4 inst2 (.I0(inst0_O), .I1({1'b0,1'b0,1'b0,1'b0}), .O(inst2_O));
-assign O = inst1_O;
+wire  inst3_O;
+wire  inst4_O;
+wire  inst5_O;
+Counter4R inst0 (.O(inst0_O), .COUT(inst0_COUT), .CLK(CLK), .RESET(inst3_O));
+SB_DFF inst1 (.C(CLK), .D(inst2_O), .Q(inst1_Q));
+SB_LUT4 #(.LUT_INIT(16'h0054)) inst2 (.I0(inst1_O), .I1(valid), .I2(inst1_Q), .I3(1'b0), .O(inst2_O));
+SB_LUT4 #(.LUT_INIT(16'h2222)) inst3 (.I0(inst1_O), .I1(inst1_Q), .I2(1'b0), .I3(1'b0), .O(inst3_O));
+SB_LUT4 #(.LUT_INIT(16'h2222)) inst4 (.I0(valid), .I1(inst1_Q), .I2(1'b0), .I3(1'b0), .O(inst4_O));
+PISO9 inst5 (.SI(1'b1), .PI({message[7],message[6],message[5],message[4],message[3],message[2],message[1],message[0],1'b0}), .LOAD(inst4_O), .O(inst5_O), .CLK(CLK));
+assign O = inst5_O;
 endmodule
 
