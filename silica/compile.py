@@ -416,6 +416,9 @@ class ArrayReplacer(ast.NodeTransformer):
         self.array = array
         self.state = state
         self.stored = False
+        self.raddr = None
+        self.waddr = None
+        self.wdata = None
 
     def visit_Call(self, node):
         # Skip wire calls because they are not silica code
@@ -439,27 +442,38 @@ class ArrayReplacer(ast.NodeTransformer):
                         else:
                             return ast.parse(f"{astor.to_source(node).rstrip()}.O").body[0].value
                     else:
-                        if "_tmp" in node.value.id:
-                            return ast.parse(f"mux([x for x in {astor.to_source(node.value).rstrip()}], {astor.to_source(node.slice).rstrip()})").body[0].value
-                        else:
-                            return ast.parse(f"mux([x.O for x in {astor.to_source(node.value).rstrip()}], {astor.to_source(node.slice).rstrip()})").body[0].value
+                        self.raddr = astor.to_source(node.slice).rstrip(0)
+                    # else:
+                    #     if "_tmp" in node.value.id:
+                    #         return ast.parse(f"mux([x for x in {astor.to_source(node.value).rstrip()}], {astor.to_source(node.slice).rstrip()})").body[0].value
+                    #     else:
+                    #         return ast.parse(f"mux([x.O for x in {astor.to_source(node.value).rstrip()}], {astor.to_source(node.slice).rstrip()})").body[0].value
         return node
 
     def visit_Assign(self, node):
         if len(node.targets) == 1 and isinstance(node.targets[0], ast.Subscript) and \
                                       isinstance(node.targets[0].value, ast.Name) and \
                                       node.targets[0].value.id == self.array:
+            self.waddr = astor.to_source(node.targets[0].slice.value).rstrip()
+            self.wdata = astor.to_source(node.value).rstrip()
+            return ast.parse("None")
             target = replace_symbols(node.targets[0], {self.array: ast.parse(f"{self.array}_next_{self.state}_tmp").body[0].value})
             target = astor.to_source(target).rstrip()
             value = astor.to_source(node.value).rstrip()
             self.stored = True
             return ast.parse(f"{target} = {value}")
+        elif isinstance(node.value, ast.Subscript) and \
+             isinstance(node.value.value, ast.Name) and \
+             node.value.value.id == self.array:
+            self.raddr = astor.to_source(node.value.slice).rstrip()
+            node.value = ast.parse(f"{self.array}.rdata").body[0].value
+            return node
         return super().generic_visit(node)
 
 
     def run(self, tree):
-        self.visit(tree)
-        return tree, self.stored
+        tree = self.visit(tree)
+        return tree, self.stored, self.raddr, self.waddr, self.wdata
 
 
 def replace_arrays(tree, array, state):
@@ -501,6 +515,7 @@ class DesugarArrays(ast.NodeTransformer):
             if isinstance(write_address, ast.Index):
                 if isinstance(write_address.value, ast.Num):
                     return node
+                return ast.parse("None")
                 return ast.parse(f"""
 __silica_decoder_{self.unique_decoder_id} = decoder({astor.to_source(write_address).rstrip()})
 for i in range(len({array})):
@@ -533,7 +548,7 @@ def magma_compile(coroutine, func_globals, func_locals):
     Desugar(width_table).visit(tree)
     type_table = {}
     TypeChecker(width_table, type_table).check(tree)
-    DesugarArrays().run(tree)
+    # DesugarArrays().run(tree)
     cfg = ControlFlowGraph(tree)
     liveness_analysis(cfg)
     # cfg.render()
@@ -636,9 +651,8 @@ def generate_fsm_mux(next, width, reg, path_state, output=False):
         if len(filtered_next) == 2:
             muxs = [DefineMux(2, width[1])() for _ in range(width[0])]
         else:
-            muxs = [DefineSilicaMux(len(filtered_next), width[1])() for _ in range(width[0])]
-        for i in range(width[0]):
-            wire(muxs[i].O, reg[i].I)
+            mux = DefineSilicaMux(len(filtered_next), width[1])()
+        wire(mux.O, reg.wdata)
         CES = []
         for i, (input_, state) in enumerate(filtered_next):
             curr = list(filter(lambda x: x, curr))
@@ -652,8 +666,8 @@ def generate_fsm_mux(next, width, reg, path_state, output=False):
                 else:
                     wire(muxs[j].S[i], path_state.O[state])
             CES.append(path_state.O[state])
-        for i in range(width[0]):
-            wire(or_(*CES), reg[i].CE)
+        if len(CES) == 1:
+            wire(CES[0], reg.wen)
     else:
         mux = DefineSilicaMux(len(next), width)()
         if output:
@@ -751,7 +765,8 @@ wire(__silica_path_state.O, {name}_inputs_{i}.S)
         elif isinstance(width, tuple):
             if len(width) > 2:
                 raise NotImplementedError()
-            magma_source += f"{register} = [Register({width[1]}, has_ce=True) for _ in range({width[0]})]\n"
+            # magma_source += f"{register} = [Register({width[1]}, has_ce=True) for _ in range({width[0]})]\n"
+            magma_source += f"{register} = DefineCoreirMem({width[0]}, {width[1]})()\n"
             # magma_source += f"{register}_CE = [[CE] for _ in range({width[0]})]\n"
             magma_source += f"{wire({register}.CE, CE)}" if has_ce else ""
             if num_states > 1:
@@ -793,6 +808,10 @@ wire(__silica_path_state.O, {name}_inputs_{i}.S)
             # magma_source += f"{output} = DefineSilicaMux({num_states}, {width})()\n"
             # magma_source += f"wire(__silica_path_state.O, {output}.S)\n"
             # magma_source += f"wire({output}.O, {tree.name}.{orig})\n"
+    raddrs = {}
+    waddrs = {}
+    wdatas = {}
+    wens = {}
     for i, state in enumerate(states):
         load_symbol_map = {}
         store_symbol_map = {}
@@ -800,7 +819,7 @@ wire(__silica_path_state.O, {name}_inputs_{i}.S)
         for register in registers:
             if isinstance(width_table[register], tuple):
                 arrays.add(register)
-                store_symbol_map[register] = ast.parse(f"{register}_next_{i}_tmp").body[0].value
+                # store_symbol_map[register] = ast.parse(f"{register}_next_{i}_tmp").body[0].value
             else:
                 load_symbol_map[register] = ast.parse(f"{register}.O").body[0].value
                 store_symbol_map[register] = ast.parse(f"{register}_next_{i}_tmp").body[0].value
@@ -815,13 +834,25 @@ wire(__silica_path_state.O, {name}_inputs_{i}.S)
         for statement in state.statements:
             stores |= CollectStoredArrays().run(statement)
             stores |= collect_names(statement, ast.Store)
+            for array in arrays:
+                statement, stored, raddr, waddr, wdata = replace_arrays(statement, array, i)
+                if stored:
+                    stores.add(array)
+                if raddr:
+                    assert array not in raddrs or raddrs[array] == raddr
+                    raddrs[array] = raddr
+                if waddr:
+                    assert array not in waddrs or waddrs[array] == waddr, (waddr, array, waddrs[array])
+                    waddrs[array] = waddr
+                    if array not in wens:
+                        wens[array] = set()
+                    wens[array].add(i)
+                if wdata:
+                    assert array not in wdatas or wdatas[array] == wdata
+                    wdatas[array] = wdata
             statement = replace_assign_to_bits(statement, load_symbol_map, store_symbol_map)
             statement = replace_symbols(statement, load_symbol_map, ast.Load)
             statement = replace_symbols(statement, store_symbol_map, ast.Store)
-            for array in arrays:
-                statement, stored = replace_arrays(statement, array, i)
-                if stored:
-                    stores.add(array)
             magma_source += astor.to_source(statement)
             for var in stores:
                 if var in registers:
@@ -895,10 +926,20 @@ wire(__silica_path_state.O, {name}_inputs_{i}.S)
             cond = conds[0]
         if num_states > 1 :
             magma_source += f"wire(__silica_path_state.I[{i}], {astor.to_source(cond).rstrip()})\n"
+    for array, raddr in raddrs.items():
+        magma_source += f"wire({array}.raddr, {raddr}.O)\n"
+    for array, waddr in waddrs.items():
+        magma_source += f"wire({array}.waddr, {waddr}.O)\n"
+    for array, wdata in wdatas.items():
+        magma_source += f"wire({array}.wdata, {wdata})\n"
+    for array, wens in wens.items():
+        wens = ", ".join(f"__silica_path_state.O[{i}]" for i in wens)
+        magma_source += f"wire({array}.wen, or_({wens}))\n"
     if num_states > 1:
         for register in registers:
             width = width_table[register]
-            magma_source += f"generate_fsm_mux({register}_next, {width}, {register}, __silica_path_state)\n"
+            if not isinstance(width, tuple):
+                magma_source += f"generate_fsm_mux({register}_next, {width}, {register}, __silica_path_state)\n"
         for output in outputs:
             width = width_table[output]
             magma_source += f"generate_fsm_mux({output}_output, {width}, {tree.name}.{output}, __silica_path_state, output=True)\n"
