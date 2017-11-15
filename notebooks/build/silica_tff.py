@@ -6,8 +6,8 @@ import mantle.common.operator
 
 
 @cache_definition
-def DefineSilicaMux(height, width, strategy):
-    if strategy == "one-hot":
+def DefineSilicaMux(height, width):
+    if "one-hot" == "one-hot":
         if width is None:
             T = Bit
         else:

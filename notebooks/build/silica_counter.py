@@ -6,8 +6,8 @@ import mantle.common.operator
 
 
 @cache_definition
-def DefineSilicaMux(height, width, strategy):
-    if strategy == "one-hot":
+def DefineSilicaMux(height, width):
+    if "one-hot" == "one-hot":
         if width is None:
             T = Bit
         else:
@@ -36,13 +36,13 @@ def DefineSilicaMux(height, width, strategy):
         raise NotImplementedError()
 
 
-Counter = DefineCircuit("Counter", "cout", Out(Bit), "O", Out(Bits(4)), *ClockInterface(has_ce=False))
+Counter = DefineCircuit("Counter", "O", Out(Bits(4)), "COUT", Out(Bit), *ClockInterface(has_ce=False))
 value = Register(4, has_ce=False)
 wireclock(Counter, value)
 value_next_0_tmp = [value.O[__silica_i] for __silica_i in range(4)]
 O_0_tmp = value.O
-value_next_0_tmp, cout_0_tmp = add(value.O, bits(1, 4), cout=True)
+value_next_0_tmp, COUT_0_tmp = add(value.O, bits(1, 4), cout=True)
 wire(bits(value_next_0_tmp), value.I)
-wire(cout_0_tmp, Counter.cout)
 wire(O_0_tmp, Counter.O)
+wire(COUT_0_tmp, Counter.COUT)
 EndDefine()
