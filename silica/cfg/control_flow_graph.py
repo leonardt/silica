@@ -410,15 +410,15 @@ class ControlFlowGraph:
                 label = astor.to_source(block.value)
                 # label += "\nLive Ins  : " + str(block.live_ins)
                 # label += "\nLive Outs : " + str(block.live_outs)
-                label += "\nGen  : " + str(block.gen)
-                label += "\nKill : " + str(block.kill)
+                # label += "\nGen  : " + str(block.gen)
+                # label += "\nKill : " + str(block.kill)
                 dot.node(str(id(block)), label.rstrip(), {"shape": "oval"})
             elif isinstance(block, BasicBlock):
-                label = "\n".join(astor.to_source(stmt) for stmt in block.statements)
+                label = "\n".join(astor.to_source(stmt).rstrip() for stmt in block.statements)
                 # label += "\nLive Ins  : " + str(block.live_ins)
                 # label += "\nLive Outs : " + str(block.live_outs)
-                label += "\nGen  : " + str(block.gen)
-                label += "\nKill : " + str(block.kill)
+                # label += "\nGen  : " + str(block.gen)
+                # label += "\nKill : " + str(block.kill)
                 dot.node(str(id(block)), label.rstrip(), {"shape": "box"})
             elif isinstance(block, HeadBlock):
                 label = "Initial"
@@ -426,8 +426,8 @@ class ControlFlowGraph:
                 label = "\n".join(astor.to_source(stmt).rstrip() for stmt in block.initial_statements)
                 # label += "\nLive Ins  : " + str(block.live_ins)
                 # label += "\nLive Outs : " + str(block.live_outs)
-                label += "\nGen  : " + str(block.gen)
-                label += "\nKill : " + str(block.kill)
+                # label += "\nGen  : " + str(block.gen)
+                # label += "\nKill : " + str(block.kill)
                 dot.node(str(id(block)), label.rstrip(), {"shape": "box"})
                 dot.edge(str(id(block)) + "_start", str(id(block)))
             else:
@@ -439,7 +439,8 @@ class ControlFlowGraph:
 
         file_name = tempfile.mktemp("gv")
         dot.render(file_name, view=True)
-        # print(file_name)
+        # with open("cfg.dot", "w") as file:
+        #     file.write(dot.source)
         # exit()
 
     def get_basic_blocks_followed_by_branches(self):
