@@ -24,8 +24,8 @@
       "PISO":{
         "type":["Record",{
           "O":"Bit",
-          "PI":["Array",10,"BitIn"],
           "SI":"BitIn",
+          "PI":["Array",10,"BitIn"],
           "LOAD":"BitIn",
           "CLK":["Named","coreir.clkIn"]
         }],
@@ -37,37 +37,37 @@
             "modref":"global.Register10"
           },
           "inst2":{
-            "modref":"global.SilicaOneHotMux210"
+            "modref":"corebit.not"
           },
           "inst3":{
-            "modref":"global.SilicaOneHotMux2None"
+            "modref":"global.SilicaOneHotMux210"
           },
           "inst4":{
-            "modref":"corebit.not"
+            "modref":"global.SilicaOneHotMux2None"
           }
         },
         "connections":[
-          ["inst0.O","inst2.S"],
           ["inst0.O","inst3.S"],
+          ["inst0.O","inst4.S"],
           ["inst1.CLK","self.CLK"],
-          ["inst1.I","inst2.O"],
-          ["inst2.I0","self.PI"],
-          ["inst3.I0","inst1.O.9"],
-          ["inst3.I1","inst1.O.9"],
-          ["inst3.O","self.O"],
-          ["inst4.in","self.LOAD"],
-          ["inst4.out","inst0.I.1"],
+          ["inst1.I","inst3.O"],
+          ["inst2.in","self.LOAD"],
+          ["inst2.out","inst0.I.1"],
+          ["inst3.I0","self.PI"],
+          ["inst4.I0","inst1.O.9"],
+          ["inst4.I1","inst1.O.9"],
+          ["inst4.O","self.O"],
           ["self.LOAD","inst0.I.0"],
-          ["self.SI","inst2.I1.0"],
-          ["inst1.O.0","inst2.I1.1"],
-          ["inst1.O.1","inst2.I1.2"],
-          ["inst1.O.2","inst2.I1.3"],
-          ["inst1.O.3","inst2.I1.4"],
-          ["inst1.O.4","inst2.I1.5"],
-          ["inst1.O.5","inst2.I1.6"],
-          ["inst1.O.6","inst2.I1.7"],
-          ["inst1.O.7","inst2.I1.8"],
-          ["inst1.O.8","inst2.I1.9"]
+          ["self.SI","inst3.I1.0"],
+          ["inst1.O.0","inst3.I1.1"],
+          ["inst1.O.1","inst3.I1.2"],
+          ["inst1.O.2","inst3.I1.3"],
+          ["inst1.O.3","inst3.I1.4"],
+          ["inst1.O.4","inst3.I1.5"],
+          ["inst1.O.5","inst3.I1.6"],
+          ["inst1.O.6","inst3.I1.7"],
+          ["inst1.O.7","inst3.I1.8"],
+          ["inst1.O.8","inst3.I1.9"]
         ]
       },
       "Register10":{

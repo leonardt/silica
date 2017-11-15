@@ -15,9 +15,9 @@
 .param LUT_INIT 11100000
 .gate SB_LUT4 I0=$abc$234$n11 I1=inst2.inst1.inst0.reg0.outReg I2=$false I3=$false O=O
 .param LUT_INIT 1000
-.gate SB_DFF C=CLK D=$true Q=inst1.inst1.inst0.reg0.outReg
-.attr src "build/silica_detect111.v:697"
 .gate SB_DFF C=CLK D=$true Q=$abc$234$n0
+.attr src "build/silica_detect111.v:697"
+.gate SB_DFF C=CLK D=$true Q=inst1.inst1.inst0.reg0.outReg
 .attr src "build/silica_detect111.v:697"
 .gate SB_DFF C=CLK D=inst2.inst0.inst0.reg0.in Q=inst2.inst0.inst0.reg0.outReg
 .attr src "build/silica_detect111.v:807"
@@ -63,107 +63,123 @@
 1 1
 .names inst1.inst1.inst0.reg0.outReg inst1.inst1__O
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst11.I0[0]
+.names I inst10.I1
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst11.I0[1]
+.names inst1.O[0] inst10.inst0.in[0]
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst11.inst0.in0[0]
+.names I inst10.inst0.in[1]
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst11.inst0.in0[1]
+.names inst10.I2 inst10.inst0.in[2]
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst11.inst0__in0[0]
+.names inst1.O[0] inst10.inst0__in[0]
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst11.inst0__in0[1]
+.names I inst10.inst0__in[1]
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst11__I0[0]
+.names inst10.I2 inst10.inst0__in[2]
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst11__I0[1]
+.names inst1.O[0] inst10__I0
 1 1
-.names I inst12.I1
+.names I inst10__I1
 1 1
-.names inst1.O[0] inst12.inst0.in[0]
+.names inst10.I2 inst10__I2
 1 1
-.names I inst12.inst0.in[1]
+.names I inst11.in
 1 1
-.names inst10.out inst12.inst0.in[2]
+.names I inst11__in
 1 1
-.names inst1.O[0] inst12.inst0__in[0]
+.names inst1.O[0] inst13.I0
 1 1
-.names I inst12.inst0__in[1]
+.names inst1.O[0] inst13.inst0.in0
 1 1
-.names inst10.out inst12.inst0__in[2]
+.names inst1.O[0] inst13.inst0__in0
 1 1
-.names inst1.O[0] inst12__I0
+.names inst1.O[0] inst13__I0
 1 1
-.names I inst12__I1
+.names inst2.inst0.inst0.reg0.outReg inst14.I0[0]
 1 1
-.names inst10.out inst12__I2
+.names inst2.inst1.inst0.reg0.outReg inst14.I0[1]
 1 1
-.names I inst13.in
+.names inst2.inst0.inst0.reg0.outReg inst14.inst0.in0[0]
 1 1
-.names I inst13__in
+.names inst2.inst1.inst0.reg0.outReg inst14.inst0.in0[1]
 1 1
-.names inst1.O[0] inst15.I0
+.names inst2.inst0.inst0.reg0.outReg inst14.inst0__in0[0]
 1 1
-.names inst1.O[0] inst15.inst0.in0
+.names inst2.inst1.inst0.reg0.outReg inst14.inst0__in0[1]
 1 1
-.names inst1.O[0] inst15.inst0__in0
+.names inst2.inst0.inst0.reg0.outReg inst14__I0[0]
 1 1
-.names inst1.O[0] inst15__I0
+.names inst2.inst1.inst0.reg0.outReg inst14__I0[1]
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst16.I0[0]
+.names inst2.inst0.inst0.reg0.outReg inst15.I0[0]
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst16.I0[1]
+.names inst2.inst1.inst0.reg0.outReg inst15.I0[1]
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst16.inst0.in0[0]
+.names inst2.inst0.inst0.reg0.outReg inst15.inst0.in0[0]
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst16.inst0.in0[1]
+.names inst2.inst1.inst0.reg0.outReg inst15.inst0.in0[1]
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst16.inst0__in0[0]
+.names inst2.inst0.inst0.reg0.outReg inst15.inst0__in0[0]
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst16.inst0__in0[1]
+.names inst2.inst1.inst0.reg0.outReg inst15.inst0__in0[1]
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst16__I0[0]
+.names inst2.inst0.inst0.reg0.outReg inst15__I0[0]
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst16__I0[1]
+.names inst2.inst1.inst0.reg0.outReg inst15__I0[1]
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst17.I0[0]
+.names inst1.inst1.inst0.reg0.outReg inst17.I0
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst17.I0[1]
+.names I inst17.I1
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst17.inst0.in0[0]
+.names inst1.inst1.inst0.reg0.outReg inst17.inst0.in[0]
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst17.inst0.in0[1]
+.names I inst17.inst0.in[1]
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst17.inst0__in0[0]
+.names inst14.O inst17.inst0.in[2]
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst17.inst0__in0[1]
+.names inst1.inst1.inst0.reg0.outReg inst17.inst0__in[0]
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst17__I0[0]
+.names I inst17.inst0__in[1]
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst17__I0[1]
+.names inst14.O inst17.inst0__in[2]
 1 1
-.names inst1.inst1.inst0.reg0.outReg inst19.I0
+.names inst1.inst1.inst0.reg0.outReg inst17__I0
 1 1
-.names I inst19.I1
+.names I inst17__I1
 1 1
-.names inst1.inst1.inst0.reg0.outReg inst19.inst0.in[0]
+.names inst14.O inst17__I2
 1 1
-.names I inst19.inst0.in[1]
+.names inst2.inst0.inst0.reg0.outReg inst18.I0[0]
 1 1
-.names inst10.in inst19.inst0.in[2]
+.names inst2.inst1.inst0.reg0.outReg inst18.I0[1]
 1 1
-.names inst1.inst1.inst0.reg0.outReg inst19.inst0__in[0]
+.names inst14.O inst18.O
 1 1
-.names I inst19.inst0__in[1]
+.names inst2.inst0.inst0.reg0.outReg inst18.inst0.in0[0]
 1 1
-.names inst10.in inst19.inst0__in[2]
+.names inst2.inst1.inst0.reg0.outReg inst18.inst0.in0[1]
 1 1
-.names inst1.inst1.inst0.reg0.outReg inst19__I0
+.names inst14.O inst18.inst0.out
 1 1
-.names I inst19__I1
+.names inst2.inst0.inst0.reg0.outReg inst18.inst0__in0[0]
 1 1
-.names inst10.in inst19__I2
+.names inst2.inst1.inst0.reg0.outReg inst18.inst0__in0[1]
+1 1
+.names inst14.O inst18.inst0__out
+1 1
+.names inst2.inst0.inst0.reg0.outReg inst18__I0[0]
+1 1
+.names inst2.inst1.inst0.reg0.outReg inst18__I0[1]
+1 1
+.names inst14.O inst18__O
+1 1
+.names inst14.O inst19.in
+1 1
+.names inst10.I2 inst19.out
+1 1
+.names inst14.O inst19__in
+1 1
+.names inst10.I2 inst19__out
 1 1
 .names CLK inst1__CLK
 1 1
@@ -253,85 +269,137 @@
 1 1
 .names inst2.inst1.inst0.reg0.outReg inst20.I0[1]
 1 1
-.names inst10.in inst20.O
-1 1
 .names inst2.inst0.inst0.reg0.outReg inst20.inst0.in0[0]
 1 1
 .names inst2.inst1.inst0.reg0.outReg inst20.inst0.in0[1]
-1 1
-.names inst10.in inst20.inst0.out
 1 1
 .names inst2.inst0.inst0.reg0.outReg inst20.inst0__in0[0]
 1 1
 .names inst2.inst1.inst0.reg0.outReg inst20.inst0__in0[1]
 1 1
-.names inst10.in inst20.inst0__out
-1 1
 .names inst2.inst0.inst0.reg0.outReg inst20__I0[0]
 1 1
 .names inst2.inst1.inst0.reg0.outReg inst20__I0[1]
 1 1
-.names inst10.in inst20__O
+.names inst1.inst1.inst0.reg0.outReg inst21.I0
 1 1
-.names inst10.in inst21.in
+.names I inst21.I1
 1 1
-.names inst10.out inst21.out
+.names inst10.I2 inst21.I2
 1 1
-.names inst10.in inst21__in
+.names inst1.inst1.inst0.reg0.outReg inst21.inst0.in[0]
 1 1
-.names inst10.out inst21__out
+.names I inst21.inst0.in[1]
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst22.I0[0]
+.names inst10.I2 inst21.inst0.in[2]
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst22.I0[1]
+.names inst1.inst1.inst0.reg0.outReg inst21.inst0__in[0]
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst22.inst0.in0[0]
+.names I inst21.inst0__in[1]
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst22.inst0.in0[1]
+.names inst10.I2 inst21.inst0__in[2]
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst22.inst0__in0[0]
+.names inst1.inst1.inst0.reg0.outReg inst21__I0
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst22.inst0__in0[1]
+.names I inst21__I1
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst22__I0[0]
+.names inst10.I2 inst21__I2
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst22__I0[1]
+.names I inst22.in
 1 1
-.names inst1.inst1.inst0.reg0.outReg inst23.I0
+.names I inst22__in
 1 1
-.names I inst23.I1
+.names inst1.inst1.inst0.reg0.outReg inst24.I0
 1 1
-.names inst10.out inst23.I2
+.names inst1.inst1.inst0.reg0.outReg inst24.inst0.in0
 1 1
-.names inst1.inst1.inst0.reg0.outReg inst23.inst0.in[0]
+.names inst1.inst1.inst0.reg0.outReg inst24.inst0__in0
 1 1
-.names I inst23.inst0.in[1]
+.names inst1.inst1.inst0.reg0.outReg inst24__I0
 1 1
-.names inst10.out inst23.inst0.in[2]
+.names inst2.inst0.inst0.reg0.outReg inst25.I1[0]
 1 1
-.names inst1.inst1.inst0.reg0.outReg inst23.inst0__in[0]
+.names inst2.inst1.inst0.reg0.outReg inst25.I1[1]
 1 1
-.names I inst23.inst0__in[1]
+.names inst2.inst0.inst0.reg0.outReg inst25.I4[0]
 1 1
-.names inst10.out inst23.inst0__in[2]
+.names inst2.inst1.inst0.reg0.outReg inst25.I4[1]
 1 1
-.names inst1.inst1.inst0.reg0.outReg inst23__I0
+.names inst2.inst0.inst0.reg0.in inst25.O[0]
 1 1
-.names I inst23__I1
+.names inst2.inst1.inst0.reg0.in inst25.O[1]
 1 1
-.names inst10.out inst23__I2
+.names inst2.inst0.inst0.reg0.in inst25.inst0.O[0]
 1 1
-.names I inst24.in
+.names inst2.inst1.inst0.reg0.in inst25.inst0.O[1]
 1 1
-.names I inst24__in
+.names inst2.inst0.inst0.reg0.in inst25.inst0.inst0.out
 1 1
-.names inst1.inst1.inst0.reg0.outReg inst26.I0
+.names inst2.inst0.inst0.reg0.in inst25.inst0.inst0__out
 1 1
-.names inst1.inst1.inst0.reg0.outReg inst26.inst0.in0
+.names inst2.inst1.inst0.reg0.in inst25.inst0.inst1.out
 1 1
-.names inst1.inst1.inst0.reg0.outReg inst26.inst0__in0
+.names inst2.inst1.inst0.reg0.in inst25.inst0.inst1__out
 1 1
-.names inst1.inst1.inst0.reg0.outReg inst26__I0
+.names inst2.inst0.inst0.reg0.in inst25.inst0__O[0]
+1 1
+.names inst2.inst1.inst0.reg0.in inst25.inst0__O[1]
+1 1
+.names inst2.inst0.inst0.reg0.outReg inst25.inst2.I0[0]
+1 1
+.names inst2.inst1.inst0.reg0.outReg inst25.inst2.I0[1]
+1 1
+.names inst2.inst0.inst0.reg0.outReg inst25.inst2.inst0.in0[0]
+1 1
+.names inst2.inst1.inst0.reg0.outReg inst25.inst2.inst0.in0[1]
+1 1
+.names inst2.inst0.inst0.reg0.outReg inst25.inst2.inst0__in0[0]
+1 1
+.names inst2.inst1.inst0.reg0.outReg inst25.inst2.inst0__in0[1]
+1 1
+.names inst2.inst0.inst0.reg0.outReg inst25.inst2__I0[0]
+1 1
+.names inst2.inst1.inst0.reg0.outReg inst25.inst2__I0[1]
+1 1
+.names inst2.inst0.inst0.reg0.outReg inst25.inst5.I0[0]
+1 1
+.names inst2.inst1.inst0.reg0.outReg inst25.inst5.I0[1]
+1 1
+.names inst2.inst0.inst0.reg0.outReg inst25.inst5.inst0.in0[0]
+1 1
+.names inst2.inst1.inst0.reg0.outReg inst25.inst5.inst0.in0[1]
+1 1
+.names inst2.inst0.inst0.reg0.outReg inst25.inst5.inst0__in0[0]
+1 1
+.names inst2.inst1.inst0.reg0.outReg inst25.inst5.inst0__in0[1]
+1 1
+.names inst2.inst0.inst0.reg0.outReg inst25.inst5__I0[0]
+1 1
+.names inst2.inst1.inst0.reg0.outReg inst25.inst5__I0[1]
+1 1
+.names inst2.inst0.inst0.reg0.outReg inst25__I1[0]
+1 1
+.names inst2.inst1.inst0.reg0.outReg inst25__I1[1]
+1 1
+.names inst2.inst0.inst0.reg0.outReg inst25__I4[0]
+1 1
+.names inst2.inst1.inst0.reg0.outReg inst25__I4[1]
+1 1
+.names inst2.inst0.inst0.reg0.in inst25__O[0]
+1 1
+.names inst2.inst1.inst0.reg0.in inst25__O[1]
+1 1
+.names O inst26.O
+1 1
+.names O inst26.inst0.O
+1 1
+.names O inst26.inst0.inst0.out
+1 1
+.names O inst26.inst0.inst0__out
+1 1
+.names O inst26.inst0__O
+1 1
+.names O inst26__O
 1 1
 .names CLK inst2__CLK
 1 1
@@ -343,176 +411,116 @@
 1 1
 .names inst2.inst1.inst0.reg0.outReg inst2__O[1]
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst3.I1[0]
+.names inst2.inst0.inst0.reg0.outReg inst3.I0[0]
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst3.I1[1]
+.names inst2.inst1.inst0.reg0.outReg inst3.I0[1]
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst3.I4[0]
+.names inst14.O inst3.O
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst3.I4[1]
+.names inst2.inst0.inst0.reg0.outReg inst3.inst0.in0[0]
 1 1
-.names inst2.inst0.inst0.reg0.in inst3.O[0]
+.names inst2.inst1.inst0.reg0.outReg inst3.inst0.in0[1]
 1 1
-.names inst2.inst1.inst0.reg0.in inst3.O[1]
+.names inst14.O inst3.inst0.out
 1 1
-.names inst2.inst0.inst0.reg0.in inst3.inst0.O[0]
+.names inst2.inst0.inst0.reg0.outReg inst3.inst0__in0[0]
 1 1
-.names inst2.inst1.inst0.reg0.in inst3.inst0.O[1]
+.names inst2.inst1.inst0.reg0.outReg inst3.inst0__in0[1]
 1 1
-.names inst2.inst0.inst0.reg0.in inst3.inst0.inst0.out
+.names inst14.O inst3.inst0__out
 1 1
-.names inst2.inst0.inst0.reg0.in inst3.inst0.inst0__out
+.names inst2.inst0.inst0.reg0.outReg inst3__I0[0]
 1 1
-.names inst2.inst1.inst0.reg0.in inst3.inst0.inst1.out
+.names inst2.inst1.inst0.reg0.outReg inst3__I0[1]
 1 1
-.names inst2.inst1.inst0.reg0.in inst3.inst0.inst1__out
+.names inst14.O inst3__O
 1 1
-.names inst2.inst0.inst0.reg0.in inst3.inst0__O[0]
+.names inst2.inst0.inst0.reg0.outReg inst4.I0[0]
 1 1
-.names inst2.inst1.inst0.reg0.in inst3.inst0__O[1]
+.names inst2.inst1.inst0.reg0.outReg inst4.I0[1]
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst3.inst2.I0[0]
+.names inst2.inst0.inst0.reg0.outReg inst4.inst0.in0[0]
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst3.inst2.I0[1]
+.names inst2.inst1.inst0.reg0.outReg inst4.inst0.in0[1]
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst3.inst2.inst0.in0[0]
+.names inst2.inst0.inst0.reg0.outReg inst4.inst0__in0[0]
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst3.inst2.inst0.in0[1]
+.names inst2.inst1.inst0.reg0.outReg inst4.inst0__in0[1]
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst3.inst2.inst0__in0[0]
+.names inst2.inst0.inst0.reg0.outReg inst4__I0[0]
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst3.inst2.inst0__in0[1]
+.names inst2.inst1.inst0.reg0.outReg inst4__I0[1]
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst3.inst2__I0[0]
+.names inst1.O[0] inst6.I0
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst3.inst2__I0[1]
+.names I inst6.I1
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst3.inst5.I0[0]
+.names inst14.O inst6.I2
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst3.inst5.I0[1]
+.names inst1.O[0] inst6.inst0.in[0]
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst3.inst5.inst0.in0[0]
+.names I inst6.inst0.in[1]
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst3.inst5.inst0.in0[1]
+.names inst14.O inst6.inst0.in[2]
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst3.inst5.inst0__in0[0]
+.names inst1.O[0] inst6.inst0__in[0]
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst3.inst5.inst0__in0[1]
+.names I inst6.inst0__in[1]
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst3.inst5__I0[0]
+.names inst14.O inst6.inst0__in[2]
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst3.inst5__I0[1]
+.names inst1.O[0] inst6__I0
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst3__I1[0]
+.names I inst6__I1
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst3__I1[1]
+.names inst14.O inst6__I2
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst3__I4[0]
+.names inst2.inst0.inst0.reg0.outReg inst7.I0[0]
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst3__I4[1]
+.names inst2.inst1.inst0.reg0.outReg inst7.I0[1]
 1 1
-.names inst2.inst0.inst0.reg0.in inst3__O[0]
+.names inst14.O inst7.O
 1 1
-.names inst2.inst1.inst0.reg0.in inst3__O[1]
+.names inst2.inst0.inst0.reg0.outReg inst7.inst0.in0[0]
 1 1
-.names O inst4.O
+.names inst2.inst1.inst0.reg0.outReg inst7.inst0.in0[1]
 1 1
-.names O inst4.inst0.O
+.names inst14.O inst7.inst0.out
 1 1
-.names O inst4.inst0.inst0.out
+.names inst2.inst0.inst0.reg0.outReg inst7.inst0__in0[0]
 1 1
-.names O inst4.inst0.inst0__out
+.names inst2.inst1.inst0.reg0.outReg inst7.inst0__in0[1]
 1 1
-.names O inst4.inst0__O
+.names inst14.O inst7.inst0__out
 1 1
-.names O inst4__O
+.names inst2.inst0.inst0.reg0.outReg inst7__I0[0]
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst5.I0[0]
+.names inst2.inst1.inst0.reg0.outReg inst7__I0[1]
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst5.I0[1]
+.names inst14.O inst7__O
 1 1
-.names inst10.in inst5.O
+.names inst14.O inst8.in
 1 1
-.names inst2.inst0.inst0.reg0.outReg inst5.inst0.in0[0]
+.names inst10.I2 inst8.out
 1 1
-.names inst2.inst1.inst0.reg0.outReg inst5.inst0.in0[1]
+.names inst14.O inst8__in
 1 1
-.names inst10.in inst5.inst0.out
-1 1
-.names inst2.inst0.inst0.reg0.outReg inst5.inst0__in0[0]
-1 1
-.names inst2.inst1.inst0.reg0.outReg inst5.inst0__in0[1]
-1 1
-.names inst10.in inst5.inst0__out
-1 1
-.names inst2.inst0.inst0.reg0.outReg inst5__I0[0]
-1 1
-.names inst2.inst1.inst0.reg0.outReg inst5__I0[1]
-1 1
-.names inst10.in inst5__O
-1 1
-.names inst2.inst0.inst0.reg0.outReg inst6.I0[0]
-1 1
-.names inst2.inst1.inst0.reg0.outReg inst6.I0[1]
-1 1
-.names inst2.inst0.inst0.reg0.outReg inst6.inst0.in0[0]
-1 1
-.names inst2.inst1.inst0.reg0.outReg inst6.inst0.in0[1]
-1 1
-.names inst2.inst0.inst0.reg0.outReg inst6.inst0__in0[0]
-1 1
-.names inst2.inst1.inst0.reg0.outReg inst6.inst0__in0[1]
-1 1
-.names inst2.inst0.inst0.reg0.outReg inst6__I0[0]
-1 1
-.names inst2.inst1.inst0.reg0.outReg inst6__I0[1]
-1 1
-.names inst1.O[0] inst8.I0
-1 1
-.names I inst8.I1
-1 1
-.names inst10.in inst8.I2
-1 1
-.names inst1.O[0] inst8.inst0.in[0]
-1 1
-.names I inst8.inst0.in[1]
-1 1
-.names inst10.in inst8.inst0.in[2]
-1 1
-.names inst1.O[0] inst8.inst0__in[0]
-1 1
-.names I inst8.inst0__in[1]
-1 1
-.names inst10.in inst8.inst0__in[2]
-1 1
-.names inst1.O[0] inst8__I0
-1 1
-.names I inst8__I1
-1 1
-.names inst10.in inst8__I2
+.names inst10.I2 inst8__out
 1 1
 .names inst2.inst0.inst0.reg0.outReg inst9.I0[0]
 1 1
 .names inst2.inst1.inst0.reg0.outReg inst9.I0[1]
 1 1
-.names inst10.in inst9.O
-1 1
 .names inst2.inst0.inst0.reg0.outReg inst9.inst0.in0[0]
 1 1
 .names inst2.inst1.inst0.reg0.outReg inst9.inst0.in0[1]
-1 1
-.names inst10.in inst9.inst0.out
 1 1
 .names inst2.inst0.inst0.reg0.outReg inst9.inst0__in0[0]
 1 1
 .names inst2.inst1.inst0.reg0.outReg inst9.inst0__in0[1]
 1 1
-.names inst10.in inst9.inst0__out
-1 1
 .names inst2.inst0.inst0.reg0.outReg inst9__I0[0]
 1 1
 .names inst2.inst1.inst0.reg0.outReg inst9__I0[1]
-1 1
-.names inst10.in inst9__O
 1 1
 .end

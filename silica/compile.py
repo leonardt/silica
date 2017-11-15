@@ -65,7 +65,7 @@ def get_width(node, width_table):
     elif isinstance(node, ast.Call):
         if isinstance(node.func, ast.Name):
             widths = [get_width(arg, width_table) for arg in node.args]
-            if node.func.id in {"add", "xor", "sub"}:
+            if node.func.id in {"add", "xor", "sub", "and_", "not_"}:
                 if not all(widths[0] == x for x in widths):
                     raise TypeError(f"Calling {node.func.id} with different length types")
                 width = widths[0]
@@ -185,6 +185,13 @@ class PromoteWidths(ast.NodeTransformer):
     def get_type(self, node):
         if isinstance(node, ast.Name):
             return self.type_table[node.id]
+        elif isinstance(node, ast.Subscript):
+            if isinstance(node.value, ast.Name):
+                type_ = self.type_table[node.value.id]
+                if type_ == "uint" and isinstance(node.slice, ast.Index):
+                    return 1
+                else:
+                    raise NotImplementedError()
         raise NotImplementedError(node)
 
     def visit_Assign(self, node):
@@ -349,6 +356,10 @@ class Desugar(ast.NodeTransformer):
             args = ", ".join([astor.to_source(node.left).rstrip()] +
                 [astor.to_source(x).rstrip() for x in node.comparators])
             return ast.parse(f"eq({args})").body[0].value
+        elif all(isinstance(op, ast.NotEq) for op in node.ops):
+            args = ", ".join([astor.to_source(node.left).rstrip()] +
+                [astor.to_source(x).rstrip() for x in node.comparators])
+            return ast.parse(f"not_(eq({args}))").body[0].value
         if len(node.ops) == 1:
             left = astor.to_source(node.left).rstrip()
             right = astor.to_source(node.comparators[0]).rstrip()
@@ -612,6 +623,48 @@ Buffer = DefineCircuit("__silica_Buffer{tree.name}", "I", In(Bits({num_states}))
 wire(Buffer.I, Buffer.O)
 EndDefine()
 __silica_path_state = Buffer()
+
+import types
+def generate_fsm_mux(next, width, reg, path_state, output=False):
+    if hasattr(width, "__len__"):  # Hack to check for tuple since magma overrides it
+        filtered_next = []
+        for curr, state in next:
+            if curr[0] is None:
+                assert all(not x for x in curr)
+            else:
+                filtered_next.append((curr, state))
+        if len(filtered_next) == 2:
+            muxs = [DefineMux(2, width[1])() for _ in range(width[0])]
+        else:
+            muxs = [DefineSilicaMux(len(filtered_next), width[1])() for _ in range(width[0])]
+        for i in range(width[0]):
+            wire(muxs[i].O, reg[i].I)
+        CES = []
+        for i, (input_, state) in enumerate(filtered_next):
+            curr = list(filter(lambda x: x, curr))
+            for j, input_ in enumerate(input_):
+                if isinstance(input_, list):
+                    input_ = bits(input_)
+                wire(getattr(muxs[j], f"I{{i}}"), input_)
+                if len(filtered_next) == 2:
+                    if i == 0:
+                        wire(muxs[j].S, path_state.O[state])
+                else:
+                    wire(muxs[j].S[i], path_state.O[state])
+            CES.append(path_state.O[state])
+        for i in range(width[0]):
+            wire(or_(*CES), reg[i].CE)
+    else:
+        mux = DefineSilicaMux(len(next), width)()
+        if output:
+            wire(mux.O, reg)
+        else:
+            wire(mux.O, reg.I)
+        for i, (input_, state) in enumerate(next):
+            if isinstance(input_, list):
+                input_ = bits(input_)
+            wire(getattr(mux, f"I{{i}}"), input_)
+            wire(mux.S[state], path_state.O[state])
 """
         if num_yields > 0:
             magma_source += f"""\
@@ -691,51 +744,55 @@ wire(__silica_path_state.O, {name}_inputs_{i}.S)
             magma_source += f"{wire({register}.CE, CE)}" if has_ce else ""
             magma_source += f"wireclock({tree.name}, {register})\n"
             if num_states > 1:
-                magma_source += f"{register}_next = DefineSilicaMux({num_states}, {width})()\n"
-                magma_source += f"wire(__silica_path_state.O, {register}_next.S)\n"
-                magma_source += f"wire({register}_next.O, {register}.I)\n"
+                magma_source += f"{register}_next = []\n"
+                # magma_source += f"{register}_next = DefineSilicaMux({num_states}, {width})()\n"
+                # magma_source += f"wire(__silica_path_state.O, {register}_next.S)\n"
+                # magma_source += f"wire({register}_next.O, {register}.I)\n"
         elif isinstance(width, tuple):
             if len(width) > 2:
                 raise NotImplementedError()
-            magma_source += f"{register} = [Register({width[1]}, has_ce={has_ce}) for _ in range({width[0]})]\n"
+            magma_source += f"{register} = [Register({width[1]}, has_ce=True) for _ in range({width[0]})]\n"
             # magma_source += f"{register}_CE = [[CE] for _ in range({width[0]})]\n"
             magma_source += f"{wire({register}.CE, CE)}" if has_ce else ""
             if num_states > 1:
-                magma_source += f"{register}_next = [DefineSilicaMux({num_states}, {width[1]})() for _ in range({width[0]})]\n"
-                magma_source += f"""\
-for __silica_i in range({width[0]}):
-    wire(__silica_path_state.O, {register}_next[__silica_i].S)\n
-"""
-                magma_source += f"""\
-for __silica_i in range({width[0]}):
-    wire({register}_next[__silica_i].O, {register}[__silica_i].I)
-"""
-                if num_states > 1:
-                    for i in range(num_states):
-                        magma_source += f"""\
-{register}_next_{i}_tmp = []
-for __silica_j in range({width[0]}):
-    {register}_next_{i}_tmp.append({register}[__silica_j].O)
-"""
+                magma_source += f"{register}_next = []\n"
+                for i in range(num_states):
+                    magma_source += f"{register}_next_{i}_tmp = [None for _ in range({width[0]})]\n"
+                # magma_source += f"{register}_next = [DefineSilicaMux({num_states}, {width[1]})() for _ in range({width[0]})]\n"
+#                 magma_source += f"""\
+# for __silica_i in range({width[0]}):
+#     wire(__silica_path_state.O, {register}_next[__silica_i].S)\n
+# """
+#                 magma_source += f"""\
+# for __silica_i in range({width[0]}):
+#     wire({register}_next[__silica_i].O, {register}[__silica_i].I)
+# """
+#                 if num_states > 1:
+#                     for i in range(num_states):
+#                         magma_source += f"""\
+# {register}_next_{i}_tmp = []
+# for __silica_j in range({width[0]}):
+#     {register}_next_{i}_tmp.append({register}[__silica_j].O)
+# """
         else:
             magma_source += f"{register} = Register({width}, has_ce={has_ce})\n"
             # magma_source += f"{register}_CE = [CE]\n"
             magma_source += f"{wire({register}.CE, CE)}" if has_ce else ""
             magma_source += f"wireclock({tree.name}, {register})\n"
             if num_states > 1:
-                magma_source += f"{register}_next = DefineSilicaMux({num_states}, {width})()\n"
-                magma_source += f"wire(__silica_path_state.O, {register}_next.S)\n"
-                magma_source += f"wire({register}_next.O, {register}.I)\n"
+                magma_source += f"{register}_next = []\n"
+                # magma_source += f"{register}_next = DefineSilicaMux({num_states}, {width})()\n"
+                # magma_source += f"wire(__silica_path_state.O, {register}_next.S)\n"
+                # magma_source += f"wire({register}_next.O, {register}.I)\n"
 
     for output in outputs:
         width = width_table[output]
         orig = output
-        if output in registers:
-            output += "_output"
         if num_states > 1:
-            magma_source += f"{output} = DefineSilicaMux({num_states}, {width})()\n"
-            magma_source += f"wire(__silica_path_state.O, {output}.S)\n"
-            magma_source += f"wire({output}.O, {tree.name}.{orig})\n"
+            magma_source += f"{output}_output = []\n"
+            # magma_source += f"{output} = DefineSilicaMux({num_states}, {width})()\n"
+            # magma_source += f"wire(__silica_path_state.O, {output}.S)\n"
+            # magma_source += f"wire({output}.O, {tree.name}.{orig})\n"
     for i, state in enumerate(states):
         load_symbol_map = {}
         store_symbol_map = {}
@@ -772,43 +829,50 @@ for __silica_j in range({width[0]}):
                 elif var in outputs:
                     load_symbol_map[var] = ast.parse(f"{var}_{i}_tmp").body[0].value
         for register in registers:
-            if isinstance(width_table[register], tuple):
-                if register in stores:
-                    magma_source += f"""\
-for __silica_i in range({width_table[register][0]}):
-    wire({register}_next_{i}_tmp[__silica_i], {register}_next[__silica_i].I{i})
-"""
-                else:
-                    magma_source += f"""\
-for __silica_i in range({width_table[register][0]}):
-    wire({register}[__silica_i].O, {register}_next[__silica_i].I{i})
-"""
+            if num_states > 1:
+                magma_source += f"""{register}_next.append(({register}_next_{i}_tmp, {i}))\n"""
             else:
-                if width_table[register] is None:
-                    if num_states > 1:
-                        magma_source += f"wire({register}_next_{i}_tmp, {register}_next.I{i})\n"
-                    else:
-                        magma_source += f"wire({register}_next_{i}_tmp, {register}.I)\n"
-                else:
-                    if num_states > 1:
-                        magma_source += f"""\
-wire(bits({register}_next_{i}_tmp), {register}_next.I{i})
-"""
-                    else:
-                        magma_source += f"""\
-wire(bits({register}_next_{i}_tmp), {register}.I)
-"""
+                magma_source += f"""wire({register}_next_{i}_tmp, {register}.I)\n"""
+#             if isinstance(width_table[register], tuple):
+#                 if register in stores:
+#                     magma_source += f"""\
+# for __silica_i in range({width_table[register][0]}):
+#     wire({register}_next_{i}_tmp[__silica_i], {register}_next[__silica_i].I{i})
+# """
+#                 else:
+#                     magma_source += f"""\
+# for __silica_i in range({width_table[register][0]}):
+#     wire({register}[__silica_i].O, {register}_next[__silica_i].I{i})
+# """
+#             else:
+#                 if width_table[register] is None:
+#                     if num_states > 1:
+#                         magma_source += f"wire({register}_next_{i}_tmp, {register}_next.I{i})\n"
+#                     else:
+#                         magma_source += f"wire({register}_next_{i}_tmp, {register}.I)\n"
+#                 else:
+#                     if num_states > 1:
+#                         magma_source += f"""\
+# wire(bits({register}_next_{i}_tmp), {register}_next.I{i})
+# """
+#                     else:
+#                         magma_source += f"""\
+# wire(bits({register}_next_{i}_tmp), {register}.I)
+# """
 
         for output in outputs:
             if output not in registers:
                 if num_states > 1:
-                    magma_source += f"wire({output}_{i}_tmp, {output}.I{i})\n"
+                    # magma_source += f"wire({output}_{i}_tmp, {output}.I{i})\n"
+                    magma_source += f"{output}_output.append(({output}_{i}_tmp, {i}))\n"
                 else:
                     magma_source += f"wire({output}_{i}_tmp, {tree.name}.{output})\n"
             elif output in stores:
-                magma_source += f"wire({output}_next_{i}_tmp, {output}_output.I{i})\n"
-            else:
-                magma_source += f"wire({output}.O, {output}_output.I{i})\n"
+                # magma_source += f"wire({output}_next_{i}_tmp, {output}_output.I{i})\n"
+                magma_source += f"{output}_output.append(({output}_{i}_tmp, {i}))\n"
+            # else:
+            #     # magma_source += f"wire({output}.O, {output}_output.I{i})\n"
+            #     magma_source += f"{output}_output.append(({output}.O, {i}))\n"
 
         # curr = ast.parse(f"__silica_yield_state_next_{i}.O[{state.start_yield_id}]").body[0].value
         conds = []
@@ -831,6 +895,13 @@ wire(bits({register}_next_{i}_tmp), {register}.I)
             cond = conds[0]
         if num_states > 1 :
             magma_source += f"wire(__silica_path_state.I[{i}], {astor.to_source(cond).rstrip()})\n"
+    if num_states > 1:
+        for register in registers:
+            width = width_table[register]
+            magma_source += f"generate_fsm_mux({register}_next, {width}, {register}, __silica_path_state)\n"
+        for output in outputs:
+            width = width_table[output]
+            magma_source += f"generate_fsm_mux({output}_output, {width}, {tree.name}.{output}, __silica_path_state, output=True)\n"
 
 #     for register in registers:
 #         if isinstance(width_table[register], tuple):

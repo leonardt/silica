@@ -17,18 +17,27 @@ module corebit_not (
 
 endmodule //corebit_not
 
-module coreir_reg #(parameter init=1, parameter width=1) (
-  input clk,
-  input [width-1:0] in,
-  output [width-1:0] out
+module and_wrapped (
+  input  I0,
+  input  I1,
+  output  O
 );
-reg [width-1:0] outReg=init;
-always @(posedge clk) begin
-  outReg <= in;
-end
-assign out = outReg;
+  //Wire declarations for instance 'inst0' (Module corebit_and)
+  wire  inst0__in0;
+  wire  inst0__in1;
+  wire  inst0__out;
+  corebit_and inst0(
+    .in0(inst0__in0),
+    .in1(inst0__in1),
+    .out(inst0__out)
+  );
 
-endmodule //coreir_reg
+  //All the connections
+  assign inst0__in0 = I0;
+  assign inst0__in1 = I1;
+  assign O = inst0__out;
+
+endmodule //and_wrapped
 
 module corebit_or (
   input in0,
@@ -57,36 +66,18 @@ module coreir_or #(parameter width=1) (
 
 endmodule //coreir_or
 
-module or10_wrapped (
-  input [9:0] I0,
-  input [9:0] I1,
-  output [9:0] O
+module coreir_reg #(parameter init=1, parameter width=1) (
+  input clk,
+  input [width-1:0] in,
+  output [width-1:0] out
 );
-  //Wire declarations for instance 'inst0' (Module coreir_or)
-  wire [9:0] inst0__in0;
-  wire [9:0] inst0__in1;
-  wire [9:0] inst0__out;
-  coreir_or #(.width(10)) inst0(
-    .in0(inst0__in0),
-    .in1(inst0__in1),
-    .out(inst0__out)
-  );
+reg [width-1:0] outReg=init;
+always @(posedge clk) begin
+  outReg <= in;
+end
+assign out = outReg;
 
-  //All the connections
-  assign inst0__in0[9:0] = I0[9:0];
-  assign inst0__in1[9:0] = I1[9:0];
-  assign O[9:0] = inst0__out[9:0];
-
-endmodule //or10_wrapped
-
-module __silica_BufferPISO (
-  input [1:0] I,
-  output [1:0] O
-);
-  //All the connections
-  assign O[1:0] = I[1:0];
-
-endmodule //__silica_BufferPISO
+endmodule //coreir_reg
 
 module and10_wrapped (
   input [9:0] I0,
@@ -109,162 +100,6 @@ module and10_wrapped (
   assign O[9:0] = inst0__out[9:0];
 
 endmodule //and10_wrapped
-
-module SilicaOneHotMux210 (
-  input [9:0] I0,
-  input [9:0] I1,
-  output [9:0] O,
-  input [1:0] S
-);
-  //Wire declarations for instance 'inst0' (Module or10_wrapped)
-  wire [9:0] inst0__I0;
-  wire [9:0] inst0__I1;
-  wire [9:0] inst0__O;
-  or10_wrapped inst0(
-    .I0(inst0__I0),
-    .I1(inst0__I1),
-    .O(inst0__O)
-  );
-
-  //Wire declarations for instance 'inst1' (Module and10_wrapped)
-  wire [9:0] inst1__I0;
-  wire [9:0] inst1__I1;
-  wire [9:0] inst1__O;
-  and10_wrapped inst1(
-    .I0(inst1__I0),
-    .I1(inst1__I1),
-    .O(inst1__O)
-  );
-
-  //Wire declarations for instance 'inst2' (Module and10_wrapped)
-  wire [9:0] inst2__I0;
-  wire [9:0] inst2__I1;
-  wire [9:0] inst2__O;
-  and10_wrapped inst2(
-    .I0(inst2__I0),
-    .I1(inst2__I1),
-    .O(inst2__O)
-  );
-
-  //All the connections
-  assign inst0__I0[9:0] = inst1__O[9:0];
-  assign inst0__I1[9:0] = inst2__O[9:0];
-  assign O[9:0] = inst0__O[9:0];
-  assign inst1__I0[9:0] = I0[9:0];
-  assign inst2__I0[9:0] = I1[9:0];
-  assign inst1__I1[0] = S[0];
-  assign inst1__I1[1] = S[0];
-  assign inst1__I1[2] = S[0];
-  assign inst1__I1[3] = S[0];
-  assign inst1__I1[4] = S[0];
-  assign inst1__I1[5] = S[0];
-  assign inst1__I1[6] = S[0];
-  assign inst1__I1[7] = S[0];
-  assign inst1__I1[8] = S[0];
-  assign inst1__I1[9] = S[0];
-  assign inst2__I1[0] = S[1];
-  assign inst2__I1[1] = S[1];
-  assign inst2__I1[2] = S[1];
-  assign inst2__I1[3] = S[1];
-  assign inst2__I1[4] = S[1];
-  assign inst2__I1[5] = S[1];
-  assign inst2__I1[6] = S[1];
-  assign inst2__I1[7] = S[1];
-  assign inst2__I1[8] = S[1];
-  assign inst2__I1[9] = S[1];
-
-endmodule //SilicaOneHotMux210
-
-module and_wrapped (
-  input  I0,
-  input  I1,
-  output  O
-);
-  //Wire declarations for instance 'inst0' (Module corebit_and)
-  wire  inst0__in0;
-  wire  inst0__in1;
-  wire  inst0__out;
-  corebit_and inst0(
-    .in0(inst0__in0),
-    .in1(inst0__in1),
-    .out(inst0__out)
-  );
-
-  //All the connections
-  assign inst0__in0 = I0;
-  assign inst0__in1 = I1;
-  assign O = inst0__out;
-
-endmodule //and_wrapped
-
-module or_wrapped (
-  input  I0,
-  input  I1,
-  output  O
-);
-  //Wire declarations for instance 'inst0' (Module corebit_or)
-  wire  inst0__in0;
-  wire  inst0__in1;
-  wire  inst0__out;
-  corebit_or inst0(
-    .in0(inst0__in0),
-    .in1(inst0__in1),
-    .out(inst0__out)
-  );
-
-  //All the connections
-  assign inst0__in0 = I0;
-  assign inst0__in1 = I1;
-  assign O = inst0__out;
-
-endmodule //or_wrapped
-
-module SilicaOneHotMux2None (
-  input  I0,
-  input  I1,
-  output  O,
-  input [1:0] S
-);
-  //Wire declarations for instance 'inst0' (Module or_wrapped)
-  wire  inst0__I0;
-  wire  inst0__I1;
-  wire  inst0__O;
-  or_wrapped inst0(
-    .I0(inst0__I0),
-    .I1(inst0__I1),
-    .O(inst0__O)
-  );
-
-  //Wire declarations for instance 'inst1' (Module and_wrapped)
-  wire  inst1__I0;
-  wire  inst1__I1;
-  wire  inst1__O;
-  and_wrapped inst1(
-    .I0(inst1__I0),
-    .I1(inst1__I1),
-    .O(inst1__O)
-  );
-
-  //Wire declarations for instance 'inst2' (Module and_wrapped)
-  wire  inst2__I0;
-  wire  inst2__I1;
-  wire  inst2__O;
-  and_wrapped inst2(
-    .I0(inst2__I0),
-    .I1(inst2__I1),
-    .O(inst2__O)
-  );
-
-  //All the connections
-  assign inst0__I0 = inst1__O;
-  assign inst0__I1 = inst2__O;
-  assign O = inst0__O;
-  assign inst1__I0 = I0;
-  assign inst1__I1 = S[0];
-  assign inst2__I0 = I1;
-  assign inst2__I1 = S[1];
-
-endmodule //SilicaOneHotMux2None
 
 module reg_U0 #(parameter init=1) (
   input  clk,
@@ -449,6 +284,171 @@ module Register10 (
 
 endmodule //Register10
 
+module __silica_BufferPISO (
+  input [1:0] I,
+  output [1:0] O
+);
+  //All the connections
+  assign O[1:0] = I[1:0];
+
+endmodule //__silica_BufferPISO
+
+module or10_wrapped (
+  input [9:0] I0,
+  input [9:0] I1,
+  output [9:0] O
+);
+  //Wire declarations for instance 'inst0' (Module coreir_or)
+  wire [9:0] inst0__in0;
+  wire [9:0] inst0__in1;
+  wire [9:0] inst0__out;
+  coreir_or #(.width(10)) inst0(
+    .in0(inst0__in0),
+    .in1(inst0__in1),
+    .out(inst0__out)
+  );
+
+  //All the connections
+  assign inst0__in0[9:0] = I0[9:0];
+  assign inst0__in1[9:0] = I1[9:0];
+  assign O[9:0] = inst0__out[9:0];
+
+endmodule //or10_wrapped
+
+module SilicaOneHotMux210 (
+  input [9:0] I0,
+  input [9:0] I1,
+  output [9:0] O,
+  input [1:0] S
+);
+  //Wire declarations for instance 'inst0' (Module or10_wrapped)
+  wire [9:0] inst0__I0;
+  wire [9:0] inst0__I1;
+  wire [9:0] inst0__O;
+  or10_wrapped inst0(
+    .I0(inst0__I0),
+    .I1(inst0__I1),
+    .O(inst0__O)
+  );
+
+  //Wire declarations for instance 'inst1' (Module and10_wrapped)
+  wire [9:0] inst1__I0;
+  wire [9:0] inst1__I1;
+  wire [9:0] inst1__O;
+  and10_wrapped inst1(
+    .I0(inst1__I0),
+    .I1(inst1__I1),
+    .O(inst1__O)
+  );
+
+  //Wire declarations for instance 'inst2' (Module and10_wrapped)
+  wire [9:0] inst2__I0;
+  wire [9:0] inst2__I1;
+  wire [9:0] inst2__O;
+  and10_wrapped inst2(
+    .I0(inst2__I0),
+    .I1(inst2__I1),
+    .O(inst2__O)
+  );
+
+  //All the connections
+  assign inst0__I0[9:0] = inst1__O[9:0];
+  assign inst0__I1[9:0] = inst2__O[9:0];
+  assign O[9:0] = inst0__O[9:0];
+  assign inst1__I0[9:0] = I0[9:0];
+  assign inst2__I0[9:0] = I1[9:0];
+  assign inst1__I1[0] = S[0];
+  assign inst1__I1[1] = S[0];
+  assign inst1__I1[2] = S[0];
+  assign inst1__I1[3] = S[0];
+  assign inst1__I1[4] = S[0];
+  assign inst1__I1[5] = S[0];
+  assign inst1__I1[6] = S[0];
+  assign inst1__I1[7] = S[0];
+  assign inst1__I1[8] = S[0];
+  assign inst1__I1[9] = S[0];
+  assign inst2__I1[0] = S[1];
+  assign inst2__I1[1] = S[1];
+  assign inst2__I1[2] = S[1];
+  assign inst2__I1[3] = S[1];
+  assign inst2__I1[4] = S[1];
+  assign inst2__I1[5] = S[1];
+  assign inst2__I1[6] = S[1];
+  assign inst2__I1[7] = S[1];
+  assign inst2__I1[8] = S[1];
+  assign inst2__I1[9] = S[1];
+
+endmodule //SilicaOneHotMux210
+
+module or_wrapped (
+  input  I0,
+  input  I1,
+  output  O
+);
+  //Wire declarations for instance 'inst0' (Module corebit_or)
+  wire  inst0__in0;
+  wire  inst0__in1;
+  wire  inst0__out;
+  corebit_or inst0(
+    .in0(inst0__in0),
+    .in1(inst0__in1),
+    .out(inst0__out)
+  );
+
+  //All the connections
+  assign inst0__in0 = I0;
+  assign inst0__in1 = I1;
+  assign O = inst0__out;
+
+endmodule //or_wrapped
+
+module SilicaOneHotMux2None (
+  input  I0,
+  input  I1,
+  output  O,
+  input [1:0] S
+);
+  //Wire declarations for instance 'inst0' (Module or_wrapped)
+  wire  inst0__I0;
+  wire  inst0__I1;
+  wire  inst0__O;
+  or_wrapped inst0(
+    .I0(inst0__I0),
+    .I1(inst0__I1),
+    .O(inst0__O)
+  );
+
+  //Wire declarations for instance 'inst1' (Module and_wrapped)
+  wire  inst1__I0;
+  wire  inst1__I1;
+  wire  inst1__O;
+  and_wrapped inst1(
+    .I0(inst1__I0),
+    .I1(inst1__I1),
+    .O(inst1__O)
+  );
+
+  //Wire declarations for instance 'inst2' (Module and_wrapped)
+  wire  inst2__I0;
+  wire  inst2__I1;
+  wire  inst2__O;
+  and_wrapped inst2(
+    .I0(inst2__I0),
+    .I1(inst2__I1),
+    .O(inst2__O)
+  );
+
+  //All the connections
+  assign inst0__I0 = inst1__O;
+  assign inst0__I1 = inst2__O;
+  assign O = inst0__O;
+  assign inst1__I0 = I0;
+  assign inst1__I1 = S[0];
+  assign inst2__I0 = I1;
+  assign inst2__I1 = S[1];
+
+endmodule //SilicaOneHotMux2None
+
 module PISO (
   input  CLK,
   input  LOAD,
@@ -474,59 +474,59 @@ module PISO (
     .O(inst1__O)
   );
 
-  //Wire declarations for instance 'inst2' (Module SilicaOneHotMux210)
-  wire [9:0] inst2__I0;
-  wire [9:0] inst2__I1;
-  wire [9:0] inst2__O;
-  wire [1:0] inst2__S;
-  SilicaOneHotMux210 inst2(
-    .I0(inst2__I0),
-    .I1(inst2__I1),
-    .O(inst2__O),
-    .S(inst2__S)
+  //Wire declarations for instance 'inst2' (Module corebit_not)
+  wire  inst2__in;
+  wire  inst2__out;
+  corebit_not inst2(
+    .in(inst2__in),
+    .out(inst2__out)
   );
 
-  //Wire declarations for instance 'inst3' (Module SilicaOneHotMux2None)
-  wire  inst3__I0;
-  wire  inst3__I1;
-  wire  inst3__O;
+  //Wire declarations for instance 'inst3' (Module SilicaOneHotMux210)
+  wire [9:0] inst3__I0;
+  wire [9:0] inst3__I1;
+  wire [9:0] inst3__O;
   wire [1:0] inst3__S;
-  SilicaOneHotMux2None inst3(
+  SilicaOneHotMux210 inst3(
     .I0(inst3__I0),
     .I1(inst3__I1),
     .O(inst3__O),
     .S(inst3__S)
   );
 
-  //Wire declarations for instance 'inst4' (Module corebit_not)
-  wire  inst4__in;
-  wire  inst4__out;
-  corebit_not inst4(
-    .in(inst4__in),
-    .out(inst4__out)
+  //Wire declarations for instance 'inst4' (Module SilicaOneHotMux2None)
+  wire  inst4__I0;
+  wire  inst4__I1;
+  wire  inst4__O;
+  wire [1:0] inst4__S;
+  SilicaOneHotMux2None inst4(
+    .I0(inst4__I0),
+    .I1(inst4__I1),
+    .O(inst4__O),
+    .S(inst4__S)
   );
 
   //All the connections
-  assign inst2__S[1:0] = inst0__O[1:0];
   assign inst3__S[1:0] = inst0__O[1:0];
+  assign inst4__S[1:0] = inst0__O[1:0];
   assign inst1__CLK = CLK;
-  assign inst1__I[9:0] = inst2__O[9:0];
-  assign inst2__I0[9:0] = PI[9:0];
-  assign inst3__I0 = inst1__O[9];
-  assign inst3__I1 = inst1__O[9];
-  assign O = inst3__O;
-  assign inst4__in = LOAD;
-  assign inst0__I[1] = inst4__out;
+  assign inst1__I[9:0] = inst3__O[9:0];
+  assign inst2__in = LOAD;
+  assign inst0__I[1] = inst2__out;
+  assign inst3__I0[9:0] = PI[9:0];
+  assign inst4__I0 = inst1__O[9];
+  assign inst4__I1 = inst1__O[9];
+  assign O = inst4__O;
   assign inst0__I[0] = LOAD;
-  assign inst2__I1[0] = SI;
-  assign inst2__I1[1] = inst1__O[0];
-  assign inst2__I1[2] = inst1__O[1];
-  assign inst2__I1[3] = inst1__O[2];
-  assign inst2__I1[4] = inst1__O[3];
-  assign inst2__I1[5] = inst1__O[4];
-  assign inst2__I1[6] = inst1__O[5];
-  assign inst2__I1[7] = inst1__O[6];
-  assign inst2__I1[8] = inst1__O[7];
-  assign inst2__I1[9] = inst1__O[8];
+  assign inst3__I1[0] = SI;
+  assign inst3__I1[1] = inst1__O[0];
+  assign inst3__I1[2] = inst1__O[1];
+  assign inst3__I1[3] = inst1__O[2];
+  assign inst3__I1[4] = inst1__O[3];
+  assign inst3__I1[5] = inst1__O[4];
+  assign inst3__I1[6] = inst1__O[5];
+  assign inst3__I1[7] = inst1__O[6];
+  assign inst3__I1[8] = inst1__O[7];
+  assign inst3__I1[9] = inst1__O[8];
 
 endmodule //PISO

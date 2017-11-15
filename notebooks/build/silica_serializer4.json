@@ -21,6 +21,27 @@
           ["self.O","inst0.out.0"]
         ]
       },
+      "DFF_init0_has_ceTrue_has_resetFalse":{
+        "type":["Record",{
+          "I":"BitIn",
+          "O":"Bit",
+          "CLK":["Named","coreir.clkIn"],
+          "CE":"BitIn"
+        }],
+        "instances":{
+          "inst0":{
+            "genref":"mantle.reg",
+            "genargs":{"has_clr":["Bool",false], "has_en":["Bool",true], "has_rst":["Bool",false], "width":["Int",1]},
+            "modargs":{"init":[["BitVector",1],0]}
+          }
+        },
+        "connections":[
+          ["inst0.clk","self.CLK"],
+          ["inst0.en","self.CE"],
+          ["self.I","inst0.in.0"],
+          ["self.O","inst0.out.0"]
+        ]
+      },
       "DFF_init1_has_ceFalse_has_resetFalse":{
         "type":["Record",{
           "I":"BitIn",
@@ -38,6 +59,130 @@
           ["inst0.clk","self.CLK"],
           ["self.I","inst0.in.0"],
           ["self.O","inst0.out.0"]
+        ]
+      },
+      "Mux2x16":{
+        "type":["Record",{
+          "I0":["Array",16,"BitIn"],
+          "I1":["Array",16,"BitIn"],
+          "S":"BitIn",
+          "O":["Array",16,"Bit"]
+        }],
+        "instances":{
+          "inst0":{
+            "modref":"global._Mux2"
+          },
+          "inst1":{
+            "modref":"global._Mux2"
+          },
+          "inst10":{
+            "modref":"global._Mux2"
+          },
+          "inst11":{
+            "modref":"global._Mux2"
+          },
+          "inst12":{
+            "modref":"global._Mux2"
+          },
+          "inst13":{
+            "modref":"global._Mux2"
+          },
+          "inst14":{
+            "modref":"global._Mux2"
+          },
+          "inst15":{
+            "modref":"global._Mux2"
+          },
+          "inst2":{
+            "modref":"global._Mux2"
+          },
+          "inst3":{
+            "modref":"global._Mux2"
+          },
+          "inst4":{
+            "modref":"global._Mux2"
+          },
+          "inst5":{
+            "modref":"global._Mux2"
+          },
+          "inst6":{
+            "modref":"global._Mux2"
+          },
+          "inst7":{
+            "modref":"global._Mux2"
+          },
+          "inst8":{
+            "modref":"global._Mux2"
+          },
+          "inst9":{
+            "modref":"global._Mux2"
+          }
+        },
+        "connections":[
+          ["inst0.O","self.O.0"],
+          ["inst0.S","self.S"],
+          ["inst1.O","self.O.1"],
+          ["inst1.S","self.S"],
+          ["inst10.O","self.O.10"],
+          ["inst10.S","self.S"],
+          ["inst11.O","self.O.11"],
+          ["inst11.S","self.S"],
+          ["inst12.O","self.O.12"],
+          ["inst12.S","self.S"],
+          ["inst13.O","self.O.13"],
+          ["inst13.S","self.S"],
+          ["inst14.O","self.O.14"],
+          ["inst14.S","self.S"],
+          ["inst15.O","self.O.15"],
+          ["inst15.S","self.S"],
+          ["inst2.O","self.O.2"],
+          ["inst2.S","self.S"],
+          ["inst3.O","self.O.3"],
+          ["inst3.S","self.S"],
+          ["inst4.O","self.O.4"],
+          ["inst4.S","self.S"],
+          ["inst5.O","self.O.5"],
+          ["inst5.S","self.S"],
+          ["inst6.O","self.O.6"],
+          ["inst6.S","self.S"],
+          ["inst7.O","self.O.7"],
+          ["inst7.S","self.S"],
+          ["inst8.O","self.O.8"],
+          ["inst8.S","self.S"],
+          ["inst9.O","self.O.9"],
+          ["inst9.S","self.S"],
+          ["inst0.I.0","self.I0.0"],
+          ["inst0.I.1","self.I1.0"],
+          ["inst1.I.0","self.I0.1"],
+          ["inst1.I.1","self.I1.1"],
+          ["inst10.I.0","self.I0.10"],
+          ["inst10.I.1","self.I1.10"],
+          ["inst11.I.0","self.I0.11"],
+          ["inst11.I.1","self.I1.11"],
+          ["inst12.I.0","self.I0.12"],
+          ["inst12.I.1","self.I1.12"],
+          ["inst13.I.0","self.I0.13"],
+          ["inst13.I.1","self.I1.13"],
+          ["inst14.I.0","self.I0.14"],
+          ["inst14.I.1","self.I1.14"],
+          ["inst15.I.0","self.I0.15"],
+          ["inst15.I.1","self.I1.15"],
+          ["inst2.I.0","self.I0.2"],
+          ["inst2.I.1","self.I1.2"],
+          ["inst3.I.0","self.I0.3"],
+          ["inst3.I.1","self.I1.3"],
+          ["inst4.I.0","self.I0.4"],
+          ["inst4.I.1","self.I1.4"],
+          ["inst5.I.0","self.I0.5"],
+          ["inst5.I.1","self.I1.5"],
+          ["inst6.I.0","self.I0.6"],
+          ["inst6.I.1","self.I1.6"],
+          ["inst7.I.0","self.I0.7"],
+          ["inst7.I.1","self.I1.7"],
+          ["inst8.I.0","self.I0.8"],
+          ["inst8.I.1","self.I1.8"],
+          ["inst9.I.0","self.I0.9"],
+          ["inst9.I.1","self.I1.9"]
         ]
       },
       "Or5x16":{
@@ -214,108 +359,125 @@
           ["inst9.in.4","self.I4.9"]
         ]
       },
-      "Register16":{
+      "Register16CE":{
         "type":["Record",{
           "I":["Array",16,"BitIn"],
           "O":["Array",16,"Bit"],
-          "CLK":["Named","coreir.clkIn"]
+          "CLK":["Named","coreir.clkIn"],
+          "CE":"BitIn"
         }],
         "instances":{
           "inst0":{
-            "modref":"global.DFF_init0_has_ceFalse_has_resetFalse"
+            "modref":"global.DFF_init0_has_ceTrue_has_resetFalse"
           },
           "inst1":{
-            "modref":"global.DFF_init0_has_ceFalse_has_resetFalse"
+            "modref":"global.DFF_init0_has_ceTrue_has_resetFalse"
           },
           "inst10":{
-            "modref":"global.DFF_init0_has_ceFalse_has_resetFalse"
+            "modref":"global.DFF_init0_has_ceTrue_has_resetFalse"
           },
           "inst11":{
-            "modref":"global.DFF_init0_has_ceFalse_has_resetFalse"
+            "modref":"global.DFF_init0_has_ceTrue_has_resetFalse"
           },
           "inst12":{
-            "modref":"global.DFF_init0_has_ceFalse_has_resetFalse"
+            "modref":"global.DFF_init0_has_ceTrue_has_resetFalse"
           },
           "inst13":{
-            "modref":"global.DFF_init0_has_ceFalse_has_resetFalse"
+            "modref":"global.DFF_init0_has_ceTrue_has_resetFalse"
           },
           "inst14":{
-            "modref":"global.DFF_init0_has_ceFalse_has_resetFalse"
+            "modref":"global.DFF_init0_has_ceTrue_has_resetFalse"
           },
           "inst15":{
-            "modref":"global.DFF_init0_has_ceFalse_has_resetFalse"
+            "modref":"global.DFF_init0_has_ceTrue_has_resetFalse"
           },
           "inst2":{
-            "modref":"global.DFF_init0_has_ceFalse_has_resetFalse"
+            "modref":"global.DFF_init0_has_ceTrue_has_resetFalse"
           },
           "inst3":{
-            "modref":"global.DFF_init0_has_ceFalse_has_resetFalse"
+            "modref":"global.DFF_init0_has_ceTrue_has_resetFalse"
           },
           "inst4":{
-            "modref":"global.DFF_init0_has_ceFalse_has_resetFalse"
+            "modref":"global.DFF_init0_has_ceTrue_has_resetFalse"
           },
           "inst5":{
-            "modref":"global.DFF_init0_has_ceFalse_has_resetFalse"
+            "modref":"global.DFF_init0_has_ceTrue_has_resetFalse"
           },
           "inst6":{
-            "modref":"global.DFF_init0_has_ceFalse_has_resetFalse"
+            "modref":"global.DFF_init0_has_ceTrue_has_resetFalse"
           },
           "inst7":{
-            "modref":"global.DFF_init0_has_ceFalse_has_resetFalse"
+            "modref":"global.DFF_init0_has_ceTrue_has_resetFalse"
           },
           "inst8":{
-            "modref":"global.DFF_init0_has_ceFalse_has_resetFalse"
+            "modref":"global.DFF_init0_has_ceTrue_has_resetFalse"
           },
           "inst9":{
-            "modref":"global.DFF_init0_has_ceFalse_has_resetFalse"
+            "modref":"global.DFF_init0_has_ceTrue_has_resetFalse"
           }
         },
         "connections":[
+          ["inst0.CE","self.CE"],
           ["inst0.CLK","self.CLK"],
           ["inst0.I","self.I.0"],
           ["inst0.O","self.O.0"],
+          ["inst1.CE","self.CE"],
           ["inst1.CLK","self.CLK"],
           ["inst1.I","self.I.1"],
           ["inst1.O","self.O.1"],
+          ["inst10.CE","self.CE"],
           ["inst10.CLK","self.CLK"],
           ["inst10.I","self.I.10"],
           ["inst10.O","self.O.10"],
+          ["inst11.CE","self.CE"],
           ["inst11.CLK","self.CLK"],
           ["inst11.I","self.I.11"],
           ["inst11.O","self.O.11"],
+          ["inst12.CE","self.CE"],
           ["inst12.CLK","self.CLK"],
           ["inst12.I","self.I.12"],
           ["inst12.O","self.O.12"],
+          ["inst13.CE","self.CE"],
           ["inst13.CLK","self.CLK"],
           ["inst13.I","self.I.13"],
           ["inst13.O","self.O.13"],
+          ["inst14.CE","self.CE"],
           ["inst14.CLK","self.CLK"],
           ["inst14.I","self.I.14"],
           ["inst14.O","self.O.14"],
+          ["inst15.CE","self.CE"],
           ["inst15.CLK","self.CLK"],
           ["inst15.I","self.I.15"],
           ["inst15.O","self.O.15"],
+          ["inst2.CE","self.CE"],
           ["inst2.CLK","self.CLK"],
           ["inst2.I","self.I.2"],
           ["inst2.O","self.O.2"],
+          ["inst3.CE","self.CE"],
           ["inst3.CLK","self.CLK"],
           ["inst3.I","self.I.3"],
           ["inst3.O","self.O.3"],
+          ["inst4.CE","self.CE"],
           ["inst4.CLK","self.CLK"],
           ["inst4.I","self.I.4"],
           ["inst4.O","self.O.4"],
+          ["inst5.CE","self.CE"],
           ["inst5.CLK","self.CLK"],
           ["inst5.I","self.I.5"],
           ["inst5.O","self.O.5"],
+          ["inst6.CE","self.CE"],
           ["inst6.CLK","self.CLK"],
           ["inst6.I","self.I.6"],
           ["inst6.O","self.O.6"],
+          ["inst7.CE","self.CE"],
           ["inst7.CLK","self.CLK"],
           ["inst7.I","self.I.7"],
           ["inst7.O","self.O.7"],
+          ["inst8.CE","self.CE"],
           ["inst8.CLK","self.CLK"],
           ["inst8.I","self.I.8"],
           ["inst8.O","self.O.8"],
+          ["inst9.CE","self.CE"],
           ["inst9.CLK","self.CLK"],
           ["inst9.I","self.I.9"],
           ["inst9.O","self.O.9"]
@@ -379,69 +541,78 @@
           "inst1":{
             "modref":"global.Register5_0001"
           },
+          "inst10":{
+            "modref":"global.or_wrapped"
+          },
+          "inst11":{
+            "modref":"global.or_wrapped"
+          },
+          "inst12":{
+            "modref":"global.SilicaOneHotMux516"
+          },
           "inst2":{
             "modref":"global.or_wrapped"
           },
           "inst3":{
-            "modref":"global.Register16"
+            "modref":"global.Register16CE"
           },
           "inst4":{
-            "modref":"global.Register16"
+            "modref":"global.Register16CE"
           },
           "inst5":{
-            "modref":"global.Register16"
+            "modref":"global.Register16CE"
           },
           "inst6":{
-            "modref":"global.SilicaOneHotMux516"
+            "modref":"global.Mux2x16"
           },
           "inst7":{
-            "modref":"global.SilicaOneHotMux516"
+            "modref":"global.Mux2x16"
           },
           "inst8":{
-            "modref":"global.SilicaOneHotMux516"
+            "modref":"global.Mux2x16"
           },
           "inst9":{
-            "modref":"global.SilicaOneHotMux516"
+            "modref":"global.or_wrapped"
           }
         },
         "connections":[
           ["bit_const_GND.out","inst1.I.0"],
           ["inst0.I","inst1.O"],
-          ["inst0.O","inst6.S"],
-          ["inst0.O","inst7.S"],
-          ["inst0.O","inst8.S"],
-          ["inst0.O","inst9.S"],
+          ["inst0.O","inst12.S"],
           ["inst1.CLK","self.CLK"],
+          ["inst10.I0","inst0.O.0"],
+          ["inst10.I1","inst0.O.4"],
+          ["inst10.O","inst4.CE"],
+          ["inst11.I0","inst0.O.0"],
+          ["inst11.I1","inst0.O.4"],
+          ["inst11.O","inst5.CE"],
+          ["inst12.I0","self.I.0"],
+          ["inst12.I1","inst3.O"],
+          ["inst12.I2","inst4.O"],
+          ["inst12.I3","inst5.O"],
+          ["inst12.I4","self.I.0"],
+          ["inst12.O","self.O"],
           ["inst2.I0","inst1.O.0"],
           ["inst2.I1","inst1.O.4"],
           ["inst2.O","inst1.I.1"],
+          ["inst3.CE","inst9.O"],
           ["inst3.CLK","self.CLK"],
           ["inst3.I","inst6.O"],
-          ["inst3.O","inst6.I1"],
-          ["inst3.O","inst6.I2"],
-          ["inst3.O","inst6.I3"],
-          ["inst3.O","inst9.I1"],
           ["inst4.CLK","self.CLK"],
           ["inst4.I","inst7.O"],
-          ["inst4.O","inst7.I1"],
-          ["inst4.O","inst7.I2"],
-          ["inst4.O","inst7.I3"],
-          ["inst4.O","inst9.I2"],
           ["inst5.CLK","self.CLK"],
           ["inst5.I","inst8.O"],
-          ["inst5.O","inst8.I1"],
-          ["inst5.O","inst8.I2"],
-          ["inst5.O","inst8.I3"],
-          ["inst5.O","inst9.I3"],
           ["inst6.I0","self.I.1"],
-          ["inst6.I4","self.I.1"],
+          ["inst6.I1","self.I.1"],
+          ["inst6.S","inst0.O.0"],
           ["inst7.I0","self.I.2"],
-          ["inst7.I4","self.I.2"],
+          ["inst7.I1","self.I.2"],
+          ["inst7.S","inst0.O.0"],
           ["inst8.I0","self.I.3"],
-          ["inst8.I4","self.I.3"],
-          ["inst9.I0","self.I.0"],
-          ["inst9.I4","self.I.0"],
-          ["inst9.O","self.O"],
+          ["inst8.I1","self.I.3"],
+          ["inst8.S","inst0.O.0"],
+          ["inst9.I0","inst0.O.0"],
+          ["inst9.I1","inst0.O.4"],
           ["inst1.I.2","inst1.O.1"],
           ["inst1.I.3","inst1.O.2"],
           ["inst1.I.4","inst1.O.3"]
@@ -569,6 +740,24 @@
           ["inst5.I1.7","self.S.4"],
           ["inst5.I1.8","self.S.4"],
           ["inst5.I1.9","self.S.4"]
+        ]
+      },
+      "_Mux2":{
+        "type":["Record",{
+          "I":["Array",2,"BitIn"],
+          "S":"BitIn",
+          "O":"Bit"
+        }],
+        "instances":{
+          "inst0":{
+            "modref":"corebit.mux"
+          }
+        },
+        "connections":[
+          ["inst0.in0","self.I.0"],
+          ["inst0.in1","self.I.1"],
+          ["inst0.out","self.O"],
+          ["inst0.sel","self.S"]
         ]
       },
       "__silica_BufferSerializer4":{

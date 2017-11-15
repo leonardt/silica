@@ -59,6 +59,27 @@
           ["self.O","inst0.out.0"]
         ]
       },
+      "DFF_init0_has_ceTrue_has_resetFalse":{
+        "type":["Record",{
+          "I":"BitIn",
+          "O":"Bit",
+          "CLK":["Named","coreir.clkIn"],
+          "CE":"BitIn"
+        }],
+        "instances":{
+          "inst0":{
+            "genref":"mantle.reg",
+            "genargs":{"has_clr":["Bool",false], "has_en":["Bool",true], "has_rst":["Bool",false], "width":["Int",1]},
+            "modargs":{"init":[["BitVector",1],0]}
+          }
+        },
+        "connections":[
+          ["inst0.clk","self.CLK"],
+          ["inst0.en","self.CE"],
+          ["self.I","inst0.in.0"],
+          ["self.O","inst0.out.0"]
+        ]
+      },
       "DFF_init1_has_ceFalse_has_resetFalse":{
         "type":["Record",{
           "I":"BitIn",
@@ -220,9 +241,9 @@
       },
       "Fifo":{
         "type":["Record",{
-          "rdata":["Array",4,"Bit"],
-          "full":"Bit",
           "empty":"Bit",
+          "full":"Bit",
+          "rdata":["Array",4,"Bit"],
           "wdata":["Array",4,"BitIn"],
           "wen":"BitIn",
           "ren":"BitIn",
@@ -244,163 +265,127 @@
             "modref":"global.Register2_0001"
           },
           "inst10":{
-            "modref":"global.SilicaOneHotMux84"
+            "modref":"global.Mux4x4"
           },
           "inst100":{
-            "modref":"global.SilicaOneHotMux24"
+            "modref":"corebit.not"
           },
           "inst101":{
-            "modref":"corebit.not"
+            "modref":"global.And3xNone"
           },
           "inst102":{
-            "modref":"global.SilicaOneHotMux24"
+            "modref":"global.SilicaOneHotMux8None"
           },
           "inst103":{
-            "modref":"corebit.not"
-          },
-          "inst104":{
-            "modref":"global.SilicaOneHotMux24"
-          },
-          "inst105":{
-            "modref":"corebit.not"
-          },
-          "inst106":{
-            "modref":"global.Add2"
-          },
-          "inst107":{
-            "modref":"global.EQ2"
-          },
-          "inst108":{
-            "modref":"corebit.not"
-          },
-          "inst109":{
-            "modref":"global.and_wrapped"
-          },
-          "inst11":{
-            "modref":"global.SilicaOneHotMux84"
-          },
-          "inst110":{
-            "modref":"corebit.not"
-          },
-          "inst111":{
-            "modref":"global.And3xNone"
-          },
-          "inst112":{
-            "modref":"global.Mux4x4"
-          },
-          "inst113":{
-            "modref":"corebit.not"
-          },
-          "inst114":{
-            "modref":"global.and_wrapped"
-          },
-          "inst115":{
-            "modref":"corebit.not"
-          },
-          "inst116":{
-            "modref":"corebit.not"
-          },
-          "inst117":{
-            "modref":"global.and_wrapped"
-          },
-          "inst118":{
-            "modref":"global.Add2"
-          },
-          "inst119":{
-            "modref":"global.EQ2"
-          },
-          "inst12":{
-            "modref":"global.SilicaOneHotMux84"
-          },
-          "inst120":{
-            "modref":"global.And3xNone"
-          },
-          "inst121":{
-            "modref":"global.Mux4x4"
-          },
-          "inst122":{
-            "modref":"corebit.not"
-          },
-          "inst123":{
-            "modref":"global.and_wrapped"
-          },
-          "inst124":{
-            "modref":"corebit.not"
-          },
-          "inst125":{
-            "modref":"corebit.not"
-          },
-          "inst126":{
-            "modref":"global.and_wrapped"
-          },
-          "inst127":{
-            "modref":"corebit.not"
-          },
-          "inst128":{
-            "modref":"global.And3xNone"
-          },
-          "inst13":{
-            "modref":"global.SilicaOneHotMux84"
-          },
-          "inst15":{
-            "modref":"global.SilicaOneHotMux8None"
-          },
-          "inst16":{
-            "modref":"global.Register2"
-          },
-          "inst17":{
             "modref":"global.SilicaOneHotMux82"
           },
-          "inst18":{
-            "modref":"global.SilicaOneHotMux84"
+          "inst104":{
+            "modref":"global.SilicaOneHotMux44"
           },
-          "inst19":{
-            "modref":"global.SilicaOneHotMux8None"
+          "inst105":{
+            "modref":"global.SilicaOneHotMux44"
           },
-          "inst2":{
-            "modref":"global.Register2"
+          "inst106":{
+            "modref":"global.SilicaOneHotMux44"
           },
-          "inst20":{
-            "modref":"global.SilicaOneHotMux8None"
+          "inst107":{
+            "modref":"global.SilicaOneHotMux44"
           },
-          "inst21":{
-            "modref":"global.Mux4x4"
+          "inst108":{
+            "modref":"global.Or4xNone"
           },
-          "inst22":{
+          "inst109":{
+            "modref":"global.Or4xNone"
+          },
+          "inst11":{
             "modref":"corebit.not"
           },
-          "inst23":{
+          "inst110":{
+            "modref":"global.Or4xNone"
+          },
+          "inst111":{
+            "modref":"global.Or4xNone"
+          },
+          "inst112":{
+            "modref":"global.SilicaOneHotMux82"
+          },
+          "inst113":{
+            "modref":"global.SilicaOneHotMux8None"
+          },
+          "inst114":{
+            "modref":"global.SilicaOneHotMux8None"
+          },
+          "inst115":{
+            "modref":"global.SilicaOneHotMux8None"
+          },
+          "inst116":{
+            "modref":"global.SilicaOneHotMux84"
+          },
+          "inst12":{
             "modref":"global.and_wrapped"
           },
-          "inst24":{
+          "inst13":{
             "modref":"global.Decoder2"
           },
+          "inst14":{
+            "modref":"global.Mux2x4"
+          },
+          "inst15":{
+            "modref":"global.Mux2x4"
+          },
+          "inst16":{
+            "modref":"global.Mux2x4"
+          },
+          "inst17":{
+            "modref":"global.Mux2x4"
+          },
+          "inst18":{
+            "modref":"global.Add2"
+          },
+          "inst19":{
+            "modref":"global.EQ2"
+          },
+          "inst20":{
+            "modref":"corebit.not"
+          },
+          "inst21":{
+            "modref":"global.and_wrapped"
+          },
+          "inst22":{
+            "modref":"global.Add2"
+          },
+          "inst23":{
+            "modref":"global.EQ2"
+          },
+          "inst24":{
+            "modref":"global.And3xNone"
+          },
           "inst25":{
-            "modref":"global.SilicaOneHotMux24"
+            "modref":"global.Mux4x4"
           },
           "inst26":{
             "modref":"corebit.not"
           },
           "inst27":{
-            "modref":"global.SilicaOneHotMux24"
+            "modref":"global.and_wrapped"
           },
           "inst28":{
-            "modref":"corebit.not"
+            "modref":"global.Decoder2"
           },
           "inst29":{
-            "modref":"global.SilicaOneHotMux24"
+            "modref":"global.Mux2x4"
           },
           "inst3":{
-            "modref":"global.SilicaOneHotMux82"
+            "modref":"global.Register2"
           },
           "inst30":{
-            "modref":"corebit.not"
+            "modref":"global.Mux2x4"
           },
           "inst31":{
-            "modref":"global.SilicaOneHotMux24"
+            "modref":"global.Mux2x4"
           },
           "inst32":{
-            "modref":"corebit.not"
+            "modref":"global.Mux2x4"
           },
           "inst33":{
             "modref":"global.Add2"
@@ -415,91 +400,94 @@
             "modref":"global.and_wrapped"
           },
           "inst37":{
-            "modref":"global.Add2"
+            "modref":"corebit.not"
           },
           "inst38":{
-            "modref":"global.EQ2"
-          },
-          "inst39":{
             "modref":"global.And3xNone"
           },
-          "inst40":{
+          "inst39":{
             "modref":"global.Mux4x4"
           },
-          "inst41":{
+          "inst4":{
+            "modref":"global.Register4CE"
+          },
+          "inst40":{
             "modref":"corebit.not"
           },
-          "inst42":{
+          "inst41":{
             "modref":"global.and_wrapped"
           },
+          "inst42":{
+            "modref":"corebit.not"
+          },
           "inst43":{
-            "modref":"global.Decoder2"
+            "modref":"corebit.not"
           },
           "inst44":{
-            "modref":"global.SilicaOneHotMux24"
+            "modref":"global.and_wrapped"
           },
           "inst45":{
-            "modref":"corebit.not"
+            "modref":"global.Add2"
           },
           "inst46":{
-            "modref":"global.SilicaOneHotMux24"
+            "modref":"global.EQ2"
           },
           "inst47":{
-            "modref":"corebit.not"
+            "modref":"global.And3xNone"
           },
           "inst48":{
-            "modref":"global.SilicaOneHotMux24"
+            "modref":"global.Mux4x4"
           },
           "inst49":{
             "modref":"corebit.not"
           },
           "inst5":{
-            "modref":"global.SilicaOneHotMux8None"
+            "modref":"global.Register4CE"
           },
           "inst50":{
-            "modref":"global.SilicaOneHotMux24"
+            "modref":"global.and_wrapped"
           },
           "inst51":{
             "modref":"corebit.not"
           },
           "inst52":{
-            "modref":"global.Add2"
+            "modref":"corebit.not"
           },
           "inst53":{
-            "modref":"global.EQ2"
+            "modref":"global.and_wrapped"
           },
           "inst54":{
             "modref":"corebit.not"
           },
           "inst55":{
-            "modref":"global.and_wrapped"
-          },
-          "inst56":{
-            "modref":"corebit.not"
-          },
-          "inst57":{
             "modref":"global.And3xNone"
           },
-          "inst58":{
+          "inst56":{
             "modref":"global.Mux4x4"
           },
-          "inst59":{
+          "inst57":{
             "modref":"corebit.not"
+          },
+          "inst58":{
+            "modref":"global.and_wrapped"
+          },
+          "inst59":{
+            "modref":"global.Decoder2"
           },
           "inst6":{
-            "modref":"global.Register4"
+            "modref":"global.Register4CE"
           },
           "inst60":{
-            "modref":"global.and_wrapped"
+            "modref":"global.Mux2x4"
           },
           "inst61":{
-            "modref":"corebit.not"
+            "modref":"global.Mux2x4"
           },
           "inst62":{
-            "modref":"corebit.not"
+            "modref":"global.Mux2x4"
           },
           "inst63":{
-            "modref":"global.and_wrapped"
+            "modref":"global.Mux2x4"
           },
           "inst64":{
             "modref":"global.Add2"
@@ -508,85 +496,82 @@
             "modref":"global.EQ2"
           },
           "inst66":{
-            "modref":"global.And3xNone"
+            "modref":"corebit.not"
           },
           "inst67":{
-            "modref":"global.Mux4x4"
+            "modref":"global.and_wrapped"
           },
           "inst68":{
-            "modref":"corebit.not"
+            "modref":"global.Add2"
           },
           "inst69":{
-            "modref":"global.and_wrapped"
+            "modref":"global.EQ2"
           },
           "inst7":{
-            "modref":"global.Register4"
+            "modref":"global.Register4CE"
           },
           "inst70":{
-            "modref":"corebit.not"
-          },
-          "inst71":{
-            "modref":"corebit.not"
-          },
-          "inst72":{
-            "modref":"global.and_wrapped"
-          },
-          "inst73":{
-            "modref":"corebit.not"
-          },
-          "inst74":{
             "modref":"global.And3xNone"
           },
-          "inst75":{
+          "inst71":{
             "modref":"global.Mux4x4"
           },
-          "inst76":{
+          "inst72":{
             "modref":"corebit.not"
           },
-          "inst77":{
+          "inst73":{
             "modref":"global.and_wrapped"
           },
-          "inst78":{
+          "inst74":{
             "modref":"global.Decoder2"
           },
+          "inst75":{
+            "modref":"global.Mux2x4"
+          },
+          "inst76":{
+            "modref":"global.Mux2x4"
+          },
+          "inst77":{
+            "modref":"global.Mux2x4"
+          },
+          "inst78":{
+            "modref":"global.Mux2x4"
+          },
           "inst79":{
-            "modref":"global.SilicaOneHotMux24"
+            "modref":"global.Add2"
           },
           "inst8":{
-            "modref":"global.Register4"
+            "modref":"global.Register2"
           },
           "inst80":{
-            "modref":"corebit.not"
+            "modref":"global.EQ2"
           },
           "inst81":{
-            "modref":"global.SilicaOneHotMux24"
+            "modref":"corebit.not"
           },
           "inst82":{
-            "modref":"corebit.not"
+            "modref":"global.and_wrapped"
           },
           "inst83":{
-            "modref":"global.SilicaOneHotMux24"
-          },
-          "inst84":{
             "modref":"corebit.not"
           },
+          "inst84":{
+            "modref":"global.And3xNone"
+          },
           "inst85":{
-            "modref":"global.SilicaOneHotMux24"
+            "modref":"global.Mux4x4"
           },
           "inst86":{
             "modref":"corebit.not"
           },
           "inst87":{
-            "modref":"global.Add2"
+            "modref":"global.and_wrapped"
           },
           "inst88":{
-            "modref":"global.EQ2"
+            "modref":"corebit.not"
           },
           "inst89":{
             "modref":"corebit.not"
-          },
-          "inst9":{
-            "modref":"global.Register4"
           },
           "inst90":{
             "modref":"global.and_wrapped"
@@ -610,13 +595,13 @@
             "modref":"global.and_wrapped"
           },
           "inst97":{
-            "modref":"global.Decoder2"
+            "modref":"corebit.not"
           },
           "inst98":{
-            "modref":"global.SilicaOneHotMux24"
+            "modref":"corebit.not"
           },
           "inst99":{
-            "modref":"corebit.not"
+            "modref":"global.and_wrapped"
           },
           "next_empty":{
             "modref":"global.DFF_init1_has_ceFalse_has_resetFalse"
@@ -626,379 +611,403 @@
           }
         },
         "connections":[
-          ["bit_const_GND.out","inst15.I0"],
-          ["bit_const_GND.out","inst15.I2"],
-          ["bit_const_GND.out","inst15.I4"],
-          ["bit_const_GND.out","inst15.I6"],
-          ["bit_const_GND.out","inst5.I1"],
-          ["bit_const_GND.out","inst5.I5"],
+          ["bit_const_GND.out","inst102.I0"],
+          ["bit_const_GND.out","inst102.I2"],
+          ["bit_const_GND.out","inst102.I4"],
+          ["bit_const_GND.out","inst102.I6"],
+          ["bit_const_GND.out","inst113.I1"],
+          ["bit_const_GND.out","inst113.I5"],
           ["bit_const_GND.out","inst1.I.0"],
-          ["bit_const_GND.out","inst106.I1.1"],
-          ["bit_const_GND.out","inst118.I1.1"],
+          ["bit_const_GND.out","inst18.I1.1"],
+          ["bit_const_GND.out","inst22.I1.1"],
           ["bit_const_GND.out","inst33.I1.1"],
-          ["bit_const_GND.out","inst37.I1.1"],
-          ["bit_const_GND.out","inst52.I1.1"],
+          ["bit_const_GND.out","inst45.I1.1"],
           ["bit_const_GND.out","inst64.I1.1"],
-          ["bit_const_GND.out","inst87.I1.1"],
+          ["bit_const_GND.out","inst68.I1.1"],
+          ["bit_const_GND.out","inst79.I1.1"],
           ["bit_const_GND.out","inst91.I1.1"],
           ["bit_const_VCC.out","inst1.I.1"],
-          ["bit_const_VCC.out","inst106.I1.0"],
-          ["bit_const_VCC.out","inst118.I1.0"],
+          ["bit_const_VCC.out","inst18.I1.0"],
+          ["bit_const_VCC.out","inst22.I1.0"],
           ["bit_const_VCC.out","inst33.I1.0"],
-          ["bit_const_VCC.out","inst37.I1.0"],
-          ["bit_const_VCC.out","inst52.I1.0"],
+          ["bit_const_VCC.out","inst45.I1.0"],
           ["bit_const_VCC.out","inst64.I1.0"],
-          ["bit_const_VCC.out","inst87.I1.0"],
+          ["bit_const_VCC.out","inst68.I1.0"],
+          ["bit_const_VCC.out","inst79.I1.0"],
           ["bit_const_VCC.out","inst91.I1.0"],
-          ["inst0.O","inst10.S"],
-          ["inst0.O","inst11.S"],
-          ["inst0.O","inst12.S"],
-          ["inst0.O","inst13.S"],
-          ["inst0.O","inst15.S"],
-          ["inst0.O","inst17.S"],
-          ["inst0.O","inst18.S"],
-          ["inst0.O","inst19.S"],
-          ["inst0.O","inst20.S"],
-          ["inst0.O","inst3.S"],
-          ["inst0.O","inst5.S"],
+          ["inst0.O","inst102.S"],
+          ["inst0.O","inst103.S"],
+          ["inst0.O","inst112.S"],
+          ["inst0.O","inst113.S"],
+          ["inst0.O","inst114.S"],
+          ["inst0.O","inst115.S"],
+          ["inst0.O","inst116.S"],
           ["inst1.CLK","self.CLK"],
-          ["inst10.I0","inst25.O"],
-          ["inst10.I1","inst44.O"],
+          ["inst10.I0","inst4.O"],
+          ["inst10.I1","inst5.O"],
           ["inst10.I2","inst6.O"],
-          ["inst10.I3","inst6.O"],
-          ["inst10.I4","inst79.O"],
-          ["inst10.I5","inst98.O"],
-          ["inst10.I6","inst6.O"],
-          ["inst10.I7","inst6.O"],
-          ["inst10.O","inst6.I"],
-          ["inst100.I0","inst7.O"],
-          ["inst100.I1","self.wdata"],
-          ["inst100.O","inst11.I5"],
-          ["inst101.in","inst97.O.1"],
-          ["inst101.out","inst100.S.0"],
-          ["inst102.I0","inst8.O"],
-          ["inst102.I1","self.wdata"],
-          ["inst102.O","inst12.I5"],
-          ["inst103.in","inst97.O.2"],
-          ["inst103.out","inst102.S.0"],
-          ["inst104.I0","inst9.O"],
-          ["inst104.I1","self.wdata"],
-          ["inst104.O","inst13.I5"],
-          ["inst105.in","inst97.O.3"],
-          ["inst105.out","inst104.S.0"],
+          ["inst10.I3","inst7.O"],
+          ["inst10.O","inst116.I0"],
+          ["inst10.S","inst3.O"],
+          ["inst100.in","inst99.O"],
+          ["inst100.out","inst101.I2"],
+          ["inst101.I0","inst1.O.1"],
+          ["inst101.I1","inst97.out"],
+          ["inst101.O","inst0.I.7"],
+          ["inst102.I1","inst34.O"],
+          ["inst102.I3","next_full.O"],
+          ["inst102.I5","inst80.O"],
+          ["inst102.I7","next_full.O"],
+          ["inst102.O","next_full.I"],
+          ["inst103.I0","inst22.O"],
+          ["inst103.I1","inst3.O"],
+          ["inst103.I2","inst45.O"],
+          ["inst103.I3","inst3.O"],
+          ["inst103.I4","inst68.O"],
+          ["inst103.I5","inst3.O"],
+          ["inst103.I6","inst91.O"],
+          ["inst103.I7","inst3.O"],
+          ["inst103.O","inst3.I"],
+          ["inst104.I0","inst14.O"],
+          ["inst104.I1","inst29.O"],
+          ["inst104.I2","inst60.O"],
+          ["inst104.I3","inst75.O"],
+          ["inst104.O","inst4.I"],
+          ["inst105.I0","inst15.O"],
+          ["inst105.I1","inst30.O"],
+          ["inst105.I2","inst61.O"],
+          ["inst105.I3","inst76.O"],
+          ["inst105.O","inst5.I"],
           ["inst106.I0","inst16.O"],
-          ["inst106.O","inst107.I1"],
-          ["inst106.O","inst17.I5"],
-          ["inst107.I0","inst2.O"],
-          ["inst107.O","inst15.I5"],
-          ["inst108.in","next_empty.O"],
-          ["inst108.out","inst109.I1"],
-          ["inst109.I0","self.ren"],
-          ["inst109.O","inst110.in"],
-          ["inst11.I0","inst27.O"],
-          ["inst11.I1","inst46.O"],
-          ["inst11.I2","inst7.O"],
-          ["inst11.I3","inst7.O"],
-          ["inst11.I4","inst81.O"],
-          ["inst11.I6","inst7.O"],
-          ["inst11.I7","inst7.O"],
-          ["inst11.O","inst7.I"],
-          ["inst110.out","inst111.I2"],
-          ["inst111.I0","inst1.O.1"],
-          ["inst111.I1","inst96.O"],
-          ["inst111.O","inst0.I.5"],
-          ["inst112.I0","inst6.O"],
-          ["inst112.I1","inst7.O"],
+          ["inst106.I1","inst31.O"],
+          ["inst106.I2","inst62.O"],
+          ["inst106.I3","inst77.O"],
+          ["inst106.O","inst6.I"],
+          ["inst107.I0","inst17.O"],
+          ["inst107.I1","inst32.O"],
+          ["inst107.I2","inst63.O"],
+          ["inst107.I3","inst78.O"],
+          ["inst107.O","inst7.I"],
+          ["inst108.I0","inst0.O.0"],
+          ["inst108.I1","inst0.O.1"],
+          ["inst108.I2","inst0.O.4"],
+          ["inst108.I3","inst0.O.5"],
+          ["inst108.O","inst4.CE"],
+          ["inst109.I0","inst0.O.0"],
+          ["inst109.I1","inst0.O.1"],
+          ["inst109.I2","inst0.O.4"],
+          ["inst109.I3","inst0.O.5"],
+          ["inst109.O","inst5.CE"],
+          ["inst11.in","next_full.O"],
+          ["inst11.out","inst12.I1"],
+          ["inst110.I0","inst0.O.0"],
+          ["inst110.I1","inst0.O.1"],
+          ["inst110.I2","inst0.O.4"],
+          ["inst110.I3","inst0.O.5"],
+          ["inst110.O","inst6.CE"],
+          ["inst111.I0","inst0.O.0"],
+          ["inst111.I1","inst0.O.1"],
+          ["inst111.I2","inst0.O.4"],
+          ["inst111.I3","inst0.O.5"],
+          ["inst111.O","inst7.CE"],
+          ["inst112.I0","inst18.O"],
+          ["inst112.I1","inst33.O"],
           ["inst112.I2","inst8.O"],
-          ["inst112.I3","inst9.O"],
-          ["inst112.O","inst18.I6"],
-          ["inst112.S","inst2.O"],
-          ["inst113.in","next_full.O"],
-          ["inst113.out","inst114.I1"],
-          ["inst114.I0","self.wen"],
-          ["inst114.O","inst115.in"],
-          ["inst115.out","inst120.I1"],
-          ["inst116.in","next_empty.O"],
-          ["inst116.out","inst117.I1"],
-          ["inst117.I0","self.ren"],
-          ["inst117.O","inst120.I2"],
-          ["inst118.I0","inst2.O"],
-          ["inst118.O","inst119.I0"],
-          ["inst118.O","inst3.I6"],
-          ["inst119.I1","inst16.O"],
-          ["inst119.O","inst5.I6"],
-          ["inst12.I0","inst29.O"],
-          ["inst12.I1","inst48.O"],
-          ["inst12.I2","inst8.O"],
-          ["inst12.I3","inst8.O"],
-          ["inst12.I4","inst83.O"],
-          ["inst12.I6","inst8.O"],
-          ["inst12.I7","inst8.O"],
-          ["inst12.O","inst8.I"],
-          ["inst120.I0","inst1.O.1"],
-          ["inst120.O","inst0.I.6"],
-          ["inst121.I0","inst6.O"],
-          ["inst121.I1","inst7.O"],
-          ["inst121.I2","inst8.O"],
-          ["inst121.I3","inst9.O"],
-          ["inst121.O","inst18.I7"],
-          ["inst121.S","inst2.O"],
-          ["inst122.in","next_full.O"],
-          ["inst122.out","inst123.I1"],
-          ["inst123.I0","self.wen"],
-          ["inst123.O","inst124.in"],
-          ["inst124.out","inst128.I1"],
-          ["inst125.in","next_empty.O"],
-          ["inst125.out","inst126.I1"],
-          ["inst126.I0","self.ren"],
-          ["inst126.O","inst127.in"],
-          ["inst127.out","inst128.I2"],
-          ["inst128.I0","inst1.O.1"],
-          ["inst128.O","inst0.I.7"],
-          ["inst13.I0","inst31.O"],
-          ["inst13.I1","inst50.O"],
-          ["inst13.I2","inst9.O"],
-          ["inst13.I3","inst9.O"],
-          ["inst13.I4","inst85.O"],
-          ["inst13.I6","inst9.O"],
-          ["inst13.I7","inst9.O"],
-          ["inst13.O","inst9.I"],
-          ["inst15.I1","inst53.O"],
-          ["inst15.I3","next_full.O"],
-          ["inst15.I7","next_full.O"],
-          ["inst15.O","next_full.I"],
-          ["inst16.CLK","self.CLK"],
-          ["inst16.I","inst17.O"],
-          ["inst16.O","inst17.I2"],
-          ["inst16.O","inst17.I3"],
-          ["inst16.O","inst17.I6"],
-          ["inst16.O","inst17.I7"],
-          ["inst16.O","inst24.I"],
-          ["inst16.O","inst33.I0"],
-          ["inst16.O","inst43.I"],
-          ["inst16.O","inst52.I0"],
-          ["inst16.O","inst65.I1"],
-          ["inst16.O","inst78.I"],
-          ["inst16.O","inst87.I0"],
-          ["inst16.O","inst97.I"],
-          ["inst17.I0","inst33.O"],
-          ["inst17.I1","inst52.O"],
-          ["inst17.I4","inst87.O"],
-          ["inst18.I0","inst21.O"],
-          ["inst18.I1","inst40.O"],
-          ["inst18.I2","inst58.O"],
-          ["inst18.I3","inst67.O"],
-          ["inst18.I4","inst75.O"],
-          ["inst18.I5","inst94.O"],
-          ["inst18.O","self.rdata"],
-          ["inst19.I0","next_full.O"],
-          ["inst19.I1","next_full.O"],
-          ["inst19.I2","next_full.O"],
-          ["inst19.I3","next_full.O"],
-          ["inst19.I4","next_full.O"],
-          ["inst19.I5","next_full.O"],
-          ["inst19.I6","next_full.O"],
-          ["inst19.I7","next_full.O"],
-          ["inst19.O","self.full"],
-          ["inst2.CLK","self.CLK"],
-          ["inst2.I","inst3.O"],
-          ["inst2.O","inst21.S"],
-          ["inst2.O","inst3.I1"],
-          ["inst2.O","inst3.I3"],
-          ["inst2.O","inst3.I5"],
-          ["inst2.O","inst3.I7"],
-          ["inst2.O","inst34.I0"],
-          ["inst2.O","inst37.I0"],
-          ["inst2.O","inst40.S"],
-          ["inst2.O","inst53.I0"],
-          ["inst2.O","inst58.S"],
-          ["inst2.O","inst64.I0"],
-          ["inst2.O","inst67.S"],
-          ["inst2.O","inst75.S"],
-          ["inst2.O","inst88.I0"],
-          ["inst2.O","inst91.I0"],
-          ["inst2.O","inst94.S"],
-          ["inst20.I0","next_empty.O"],
-          ["inst20.I1","next_empty.O"],
-          ["inst20.I2","next_empty.O"],
-          ["inst20.I3","next_empty.O"],
-          ["inst20.I4","next_empty.O"],
-          ["inst20.I5","next_empty.O"],
-          ["inst20.I6","next_empty.O"],
-          ["inst20.I7","next_empty.O"],
-          ["inst20.O","self.empty"],
-          ["inst21.I0","inst6.O"],
-          ["inst21.I1","inst7.O"],
-          ["inst21.I2","inst8.O"],
-          ["inst21.I3","inst9.O"],
-          ["inst22.in","next_full.O"],
-          ["inst22.out","inst23.I1"],
-          ["inst23.I0","self.wen"],
-          ["inst23.O","inst39.I1"],
-          ["inst25.I0","inst6.O"],
-          ["inst25.I1","self.wdata"],
-          ["inst26.in","inst24.O.0"],
-          ["inst26.out","inst25.S.0"],
-          ["inst27.I0","inst7.O"],
-          ["inst27.I1","self.wdata"],
-          ["inst28.in","inst24.O.1"],
-          ["inst28.out","inst27.S.0"],
-          ["inst29.I0","inst8.O"],
+          ["inst112.I3","inst8.O"],
+          ["inst112.I4","inst64.O"],
+          ["inst112.I5","inst79.O"],
+          ["inst112.I6","inst8.O"],
+          ["inst112.I7","inst8.O"],
+          ["inst112.O","inst8.I"],
+          ["inst113.I0","inst23.O"],
+          ["inst113.I2","inst46.O"],
+          ["inst113.I3","next_empty.O"],
+          ["inst113.I4","inst69.O"],
+          ["inst113.I6","inst92.O"],
+          ["inst113.I7","next_empty.O"],
+          ["inst113.O","next_empty.I"],
+          ["inst114.I0","next_empty.O"],
+          ["inst114.I1","next_empty.O"],
+          ["inst114.I2","next_empty.O"],
+          ["inst114.I3","next_empty.O"],
+          ["inst114.I4","next_empty.O"],
+          ["inst114.I5","next_empty.O"],
+          ["inst114.I6","next_empty.O"],
+          ["inst114.I7","next_empty.O"],
+          ["inst114.O","self.empty"],
+          ["inst115.I0","next_full.O"],
+          ["inst115.I1","next_full.O"],
+          ["inst115.I2","next_full.O"],
+          ["inst115.I3","next_full.O"],
+          ["inst115.I4","next_full.O"],
+          ["inst115.I5","next_full.O"],
+          ["inst115.I6","next_full.O"],
+          ["inst115.I7","next_full.O"],
+          ["inst115.O","self.full"],
+          ["inst116.I1","inst25.O"],
+          ["inst116.I2","inst39.O"],
+          ["inst116.I3","inst48.O"],
+          ["inst116.I4","inst56.O"],
+          ["inst116.I5","inst71.O"],
+          ["inst116.I6","inst85.O"],
+          ["inst116.I7","inst94.O"],
+          ["inst116.O","self.rdata"],
+          ["inst12.I0","self.wen"],
+          ["inst12.O","inst24.I1"],
+          ["inst13.I","inst8.O"],
+          ["inst14.I0","inst4.O"],
+          ["inst14.I1","self.wdata"],
+          ["inst14.S","inst13.O.0"],
+          ["inst15.I0","inst5.O"],
+          ["inst15.I1","self.wdata"],
+          ["inst15.S","inst13.O.1"],
+          ["inst16.I0","inst6.O"],
+          ["inst16.I1","self.wdata"],
+          ["inst16.S","inst13.O.2"],
+          ["inst17.I0","inst7.O"],
+          ["inst17.I1","self.wdata"],
+          ["inst17.S","inst13.O.3"],
+          ["inst18.I0","inst8.O"],
+          ["inst18.O","inst19.I1"],
+          ["inst18.O","inst23.I1"],
+          ["inst19.I0","inst3.O"],
+          ["inst20.in","next_empty.O"],
+          ["inst20.out","inst21.I1"],
+          ["inst21.I0","self.ren"],
+          ["inst21.O","inst24.I2"],
+          ["inst22.I0","inst3.O"],
+          ["inst22.O","inst23.I0"],
+          ["inst24.I0","inst1.O.0"],
+          ["inst24.O","inst0.I.0"],
+          ["inst25.I0","inst4.O"],
+          ["inst25.I1","inst5.O"],
+          ["inst25.I2","inst6.O"],
+          ["inst25.I3","inst7.O"],
+          ["inst25.S","inst3.O"],
+          ["inst26.in","next_full.O"],
+          ["inst26.out","inst27.I1"],
+          ["inst27.I0","self.wen"],
+          ["inst27.O","inst38.I1"],
+          ["inst28.I","inst8.O"],
+          ["inst29.I0","inst4.O"],
           ["inst29.I1","self.wdata"],
-          ["inst3.I0","inst37.O"],
-          ["inst3.I2","inst64.O"],
-          ["inst3.I4","inst91.O"],
-          ["inst30.in","inst24.O.2"],
-          ["inst30.out","inst29.S.0"],
-          ["inst31.I0","inst9.O"],
+          ["inst29.S","inst28.O.0"],
+          ["inst3.CLK","self.CLK"],
+          ["inst3.O","inst34.I0"],
+          ["inst3.O","inst39.S"],
+          ["inst3.O","inst45.I0"],
+          ["inst3.O","inst48.S"],
+          ["inst3.O","inst56.S"],
+          ["inst3.O","inst65.I0"],
+          ["inst3.O","inst68.I0"],
+          ["inst3.O","inst71.S"],
+          ["inst3.O","inst80.I0"],
+          ["inst3.O","inst85.S"],
+          ["inst3.O","inst91.I0"],
+          ["inst3.O","inst94.S"],
+          ["inst30.I0","inst5.O"],
+          ["inst30.I1","self.wdata"],
+          ["inst30.S","inst28.O.1"],
+          ["inst31.I0","inst6.O"],
           ["inst31.I1","self.wdata"],
-          ["inst32.in","inst24.O.3"],
-          ["inst32.out","inst31.S.0"],
+          ["inst31.S","inst28.O.2"],
+          ["inst32.I0","inst7.O"],
+          ["inst32.I1","self.wdata"],
+          ["inst32.S","inst28.O.3"],
+          ["inst33.I0","inst8.O"],
           ["inst33.O","inst34.I1"],
-          ["inst33.O","inst38.I1"],
           ["inst35.in","next_empty.O"],
           ["inst35.out","inst36.I1"],
           ["inst36.I0","self.ren"],
-          ["inst36.O","inst39.I2"],
-          ["inst37.O","inst38.I0"],
-          ["inst38.O","inst5.I0"],
-          ["inst39.I0","inst1.O.0"],
-          ["inst39.O","inst0.I.0"],
-          ["inst40.I0","inst6.O"],
-          ["inst40.I1","inst7.O"],
-          ["inst40.I2","inst8.O"],
-          ["inst40.I3","inst9.O"],
-          ["inst41.in","next_full.O"],
-          ["inst41.out","inst42.I1"],
-          ["inst42.I0","self.wen"],
-          ["inst42.O","inst57.I1"],
-          ["inst44.I0","inst6.O"],
-          ["inst44.I1","self.wdata"],
-          ["inst45.in","inst43.O.0"],
-          ["inst45.out","inst44.S.0"],
-          ["inst46.I0","inst7.O"],
-          ["inst46.I1","self.wdata"],
-          ["inst47.in","inst43.O.1"],
-          ["inst47.out","inst46.S.0"],
-          ["inst48.I0","inst8.O"],
-          ["inst48.I1","self.wdata"],
-          ["inst49.in","inst43.O.2"],
-          ["inst49.out","inst48.S.0"],
-          ["inst5.I2","inst65.O"],
-          ["inst5.I3","next_empty.O"],
-          ["inst5.I4","inst92.O"],
-          ["inst5.I7","next_empty.O"],
-          ["inst5.O","next_empty.I"],
-          ["inst50.I0","inst9.O"],
-          ["inst50.I1","self.wdata"],
-          ["inst51.in","inst43.O.3"],
-          ["inst51.out","inst50.S.0"],
-          ["inst52.O","inst53.I1"],
-          ["inst54.in","next_empty.O"],
-          ["inst54.out","inst55.I1"],
-          ["inst55.I0","self.ren"],
-          ["inst55.O","inst56.in"],
-          ["inst56.out","inst57.I2"],
-          ["inst57.I0","inst1.O.0"],
-          ["inst57.O","inst0.I.1"],
-          ["inst58.I0","inst6.O"],
-          ["inst58.I1","inst7.O"],
-          ["inst58.I2","inst8.O"],
-          ["inst58.I3","inst9.O"],
-          ["inst59.in","next_full.O"],
-          ["inst59.out","inst60.I1"],
+          ["inst36.O","inst37.in"],
+          ["inst37.out","inst38.I2"],
+          ["inst38.I0","inst1.O.0"],
+          ["inst38.O","inst0.I.1"],
+          ["inst39.I0","inst4.O"],
+          ["inst39.I1","inst5.O"],
+          ["inst39.I2","inst6.O"],
+          ["inst39.I3","inst7.O"],
+          ["inst4.CLK","self.CLK"],
+          ["inst4.O","inst48.I0"],
+          ["inst4.O","inst56.I0"],
+          ["inst4.O","inst60.I0"],
+          ["inst4.O","inst71.I0"],
+          ["inst4.O","inst75.I0"],
+          ["inst4.O","inst85.I0"],
+          ["inst4.O","inst94.I0"],
+          ["inst40.in","next_full.O"],
+          ["inst40.out","inst41.I1"],
+          ["inst41.I0","self.wen"],
+          ["inst41.O","inst42.in"],
+          ["inst42.out","inst47.I1"],
+          ["inst43.in","next_empty.O"],
+          ["inst43.out","inst44.I1"],
+          ["inst44.I0","self.ren"],
+          ["inst44.O","inst47.I2"],
+          ["inst45.O","inst46.I0"],
+          ["inst46.I1","inst8.O"],
+          ["inst47.I0","inst1.O.0"],
+          ["inst47.O","inst0.I.2"],
+          ["inst48.I1","inst5.O"],
+          ["inst48.I2","inst6.O"],
+          ["inst48.I3","inst7.O"],
+          ["inst49.in","next_full.O"],
+          ["inst49.out","inst50.I1"],
+          ["inst5.CLK","self.CLK"],
+          ["inst5.O","inst56.I1"],
+          ["inst5.O","inst61.I0"],
+          ["inst5.O","inst71.I1"],
+          ["inst5.O","inst76.I0"],
+          ["inst5.O","inst85.I1"],
+          ["inst5.O","inst94.I1"],
+          ["inst50.I0","self.wen"],
+          ["inst50.O","inst51.in"],
+          ["inst51.out","inst55.I1"],
+          ["inst52.in","next_empty.O"],
+          ["inst52.out","inst53.I1"],
+          ["inst53.I0","self.ren"],
+          ["inst53.O","inst54.in"],
+          ["inst54.out","inst55.I2"],
+          ["inst55.I0","inst1.O.0"],
+          ["inst55.O","inst0.I.3"],
+          ["inst56.I2","inst6.O"],
+          ["inst56.I3","inst7.O"],
+          ["inst57.in","next_full.O"],
+          ["inst57.out","inst58.I1"],
+          ["inst58.I0","self.wen"],
+          ["inst58.O","inst70.I1"],
+          ["inst59.I","inst8.O"],
           ["inst6.CLK","self.CLK"],
-          ["inst6.O","inst67.I0"],
-          ["inst6.O","inst75.I0"],
-          ["inst6.O","inst79.I0"],
-          ["inst6.O","inst94.I0"],
-          ["inst6.O","inst98.I0"],
-          ["inst60.I0","self.wen"],
-          ["inst60.O","inst61.in"],
-          ["inst61.out","inst66.I1"],
-          ["inst62.in","next_empty.O"],
-          ["inst62.out","inst63.I1"],
-          ["inst63.I0","self.ren"],
-          ["inst63.O","inst66.I2"],
-          ["inst64.O","inst65.I0"],
-          ["inst66.I0","inst1.O.0"],
-          ["inst66.O","inst0.I.2"],
-          ["inst67.I1","inst7.O"],
-          ["inst67.I2","inst8.O"],
-          ["inst67.I3","inst9.O"],
-          ["inst68.in","next_full.O"],
-          ["inst68.out","inst69.I1"],
-          ["inst69.I0","self.wen"],
-          ["inst69.O","inst70.in"],
+          ["inst6.O","inst62.I0"],
+          ["inst6.O","inst71.I2"],
+          ["inst6.O","inst77.I0"],
+          ["inst6.O","inst85.I2"],
+          ["inst6.O","inst94.I2"],
+          ["inst60.I1","self.wdata"],
+          ["inst60.S","inst59.O.0"],
+          ["inst61.I1","self.wdata"],
+          ["inst61.S","inst59.O.1"],
+          ["inst62.I1","self.wdata"],
+          ["inst62.S","inst59.O.2"],
+          ["inst63.I0","inst7.O"],
+          ["inst63.I1","self.wdata"],
+          ["inst63.S","inst59.O.3"],
+          ["inst64.I0","inst8.O"],
+          ["inst64.O","inst65.I1"],
+          ["inst64.O","inst69.I1"],
+          ["inst66.in","next_empty.O"],
+          ["inst66.out","inst67.I1"],
+          ["inst67.I0","self.ren"],
+          ["inst67.O","inst70.I2"],
+          ["inst68.O","inst69.I0"],
           ["inst7.CLK","self.CLK"],
-          ["inst7.O","inst75.I1"],
-          ["inst7.O","inst81.I0"],
-          ["inst7.O","inst94.I1"],
-          ["inst70.out","inst74.I1"],
-          ["inst71.in","next_empty.O"],
-          ["inst71.out","inst72.I1"],
-          ["inst72.I0","self.ren"],
-          ["inst72.O","inst73.in"],
-          ["inst73.out","inst74.I2"],
-          ["inst74.I0","inst1.O.0"],
-          ["inst74.O","inst0.I.3"],
-          ["inst75.I2","inst8.O"],
-          ["inst75.I3","inst9.O"],
-          ["inst76.in","next_full.O"],
-          ["inst76.out","inst77.I1"],
-          ["inst77.I0","self.wen"],
-          ["inst77.O","inst93.I1"],
-          ["inst79.I1","self.wdata"],
+          ["inst7.O","inst71.I3"],
+          ["inst7.O","inst78.I0"],
+          ["inst7.O","inst85.I3"],
+          ["inst7.O","inst94.I3"],
+          ["inst70.I0","inst1.O.1"],
+          ["inst70.O","inst0.I.4"],
+          ["inst72.in","next_full.O"],
+          ["inst72.out","inst73.I1"],
+          ["inst73.I0","self.wen"],
+          ["inst73.O","inst84.I1"],
+          ["inst74.I","inst8.O"],
+          ["inst75.I1","self.wdata"],
+          ["inst75.S","inst74.O.0"],
+          ["inst76.I1","self.wdata"],
+          ["inst76.S","inst74.O.1"],
+          ["inst77.I1","self.wdata"],
+          ["inst77.S","inst74.O.2"],
+          ["inst78.I1","self.wdata"],
+          ["inst78.S","inst74.O.3"],
+          ["inst79.I0","inst8.O"],
+          ["inst79.O","inst80.I1"],
           ["inst8.CLK","self.CLK"],
-          ["inst8.O","inst83.I0"],
-          ["inst8.O","inst94.I2"],
-          ["inst80.in","inst78.O.0"],
-          ["inst80.out","inst79.S.0"],
-          ["inst81.I1","self.wdata"],
-          ["inst82.in","inst78.O.1"],
-          ["inst82.out","inst81.S.0"],
-          ["inst83.I1","self.wdata"],
-          ["inst84.in","inst78.O.2"],
-          ["inst84.out","inst83.S.0"],
-          ["inst85.I0","inst9.O"],
-          ["inst85.I1","self.wdata"],
-          ["inst86.in","inst78.O.3"],
-          ["inst86.out","inst85.S.0"],
-          ["inst87.O","inst88.I1"],
-          ["inst87.O","inst92.I1"],
+          ["inst8.O","inst92.I1"],
+          ["inst81.in","next_empty.O"],
+          ["inst81.out","inst82.I1"],
+          ["inst82.I0","self.ren"],
+          ["inst82.O","inst83.in"],
+          ["inst83.out","inst84.I2"],
+          ["inst84.I0","inst1.O.1"],
+          ["inst84.O","inst0.I.5"],
+          ["inst86.in","next_full.O"],
+          ["inst86.out","inst87.I1"],
+          ["inst87.I0","self.wen"],
+          ["inst87.O","inst88.in"],
+          ["inst88.out","inst93.I1"],
           ["inst89.in","next_empty.O"],
           ["inst89.out","inst90.I1"],
-          ["inst9.CLK","self.CLK"],
-          ["inst9.O","inst94.I3"],
           ["inst90.I0","self.ren"],
           ["inst90.O","inst93.I2"],
           ["inst91.O","inst92.I0"],
           ["inst93.I0","inst1.O.1"],
-          ["inst93.O","inst0.I.4"],
+          ["inst93.O","inst0.I.6"],
           ["inst95.in","next_full.O"],
           ["inst95.out","inst96.I1"],
           ["inst96.I0","self.wen"],
-          ["inst98.I1","self.wdata"],
-          ["inst99.in","inst97.O.0"],
-          ["inst99.out","inst98.S.0"],
+          ["inst96.O","inst97.in"],
+          ["inst98.in","next_empty.O"],
+          ["inst98.out","inst99.I1"],
+          ["inst99.I0","self.ren"],
           ["next_empty.CLK","self.CLK"],
           ["next_full.CLK","self.CLK"],
-          ["inst100.S.1","inst97.O.1"],
-          ["inst102.S.1","inst97.O.2"],
-          ["inst104.S.1","inst97.O.3"],
-          ["inst24.O.0","inst25.S.1"],
-          ["inst24.O.1","inst27.S.1"],
-          ["inst24.O.2","inst29.S.1"],
-          ["inst24.O.3","inst31.S.1"],
-          ["inst43.O.0","inst44.S.1"],
-          ["inst43.O.1","inst46.S.1"],
-          ["inst43.O.2","inst48.S.1"],
-          ["inst43.O.3","inst50.S.1"],
-          ["inst78.O.0","inst79.S.1"],
-          ["inst78.O.1","inst81.S.1"],
-          ["inst78.O.2","inst83.S.1"],
-          ["inst78.O.3","inst85.S.1"],
-          ["inst97.O.0","inst98.S.1"]
+          ["inst0.O.0","inst104.S.0"],
+          ["inst0.O.0","inst105.S.0"],
+          ["inst0.O.0","inst106.S.0"],
+          ["inst0.O.0","inst107.S.0"],
+          ["inst0.O.1","inst104.S.1"],
+          ["inst0.O.1","inst105.S.1"],
+          ["inst0.O.1","inst106.S.1"],
+          ["inst0.O.1","inst107.S.1"],
+          ["inst0.O.4","inst104.S.2"],
+          ["inst0.O.4","inst105.S.2"],
+          ["inst0.O.4","inst106.S.2"],
+          ["inst0.O.4","inst107.S.2"],
+          ["inst0.O.5","inst104.S.3"],
+          ["inst0.O.5","inst105.S.3"],
+          ["inst0.O.5","inst106.S.3"],
+          ["inst0.O.5","inst107.S.3"]
+        ]
+      },
+      "Mux2x4":{
+        "type":["Record",{
+          "I0":["Array",4,"BitIn"],
+          "I1":["Array",4,"BitIn"],
+          "S":"BitIn",
+          "O":["Array",4,"Bit"]
+        }],
+        "instances":{
+          "inst0":{
+            "modref":"global._Mux2"
+          },
+          "inst1":{
+            "modref":"global._Mux2"
+          },
+          "inst2":{
+            "modref":"global._Mux2"
+          },
+          "inst3":{
+            "modref":"global._Mux2"
+          }
+        },
+        "connections":[
+          ["inst0.O","self.O.0"],
+          ["inst0.S","self.S"],
+          ["inst1.O","self.O.1"],
+          ["inst1.S","self.S"],
+          ["inst2.O","self.O.2"],
+          ["inst2.S","self.S"],
+          ["inst3.O","self.O.3"],
+          ["inst3.S","self.S"],
+          ["inst0.I.0","self.I0.0"],
+          ["inst0.I.1","self.I1.0"],
+          ["inst1.I.0","self.I0.1"],
+          ["inst1.I.1","self.I1.1"],
+          ["inst2.I.0","self.I0.2"],
+          ["inst2.I.1","self.I1.2"],
+          ["inst3.I.0","self.I0.3"],
+          ["inst3.I.1","self.I1.3"]
         ]
       },
       "Mux4x4":{
@@ -1049,6 +1058,77 @@
           ["inst3.I.1","self.I1.3"],
           ["inst3.I.2","self.I2.3"],
           ["inst3.I.3","self.I3.3"]
+        ]
+      },
+      "Or4x4":{
+        "type":["Record",{
+          "I0":["Array",4,"BitIn"],
+          "I1":["Array",4,"BitIn"],
+          "I2":["Array",4,"BitIn"],
+          "I3":["Array",4,"BitIn"],
+          "O":["Array",4,"Bit"]
+        }],
+        "instances":{
+          "inst0":{
+            "genref":"coreir.orr",
+            "genargs":{"width":["Int",4]}
+          },
+          "inst1":{
+            "genref":"coreir.orr",
+            "genargs":{"width":["Int",4]}
+          },
+          "inst2":{
+            "genref":"coreir.orr",
+            "genargs":{"width":["Int",4]}
+          },
+          "inst3":{
+            "genref":"coreir.orr",
+            "genargs":{"width":["Int",4]}
+          }
+        },
+        "connections":[
+          ["inst0.out","self.O.0"],
+          ["inst1.out","self.O.1"],
+          ["inst2.out","self.O.2"],
+          ["inst3.out","self.O.3"],
+          ["inst0.in.0","self.I0.0"],
+          ["inst0.in.1","self.I1.0"],
+          ["inst0.in.2","self.I2.0"],
+          ["inst0.in.3","self.I3.0"],
+          ["inst1.in.0","self.I0.1"],
+          ["inst1.in.1","self.I1.1"],
+          ["inst1.in.2","self.I2.1"],
+          ["inst1.in.3","self.I3.1"],
+          ["inst2.in.0","self.I0.2"],
+          ["inst2.in.1","self.I1.2"],
+          ["inst2.in.2","self.I2.2"],
+          ["inst2.in.3","self.I3.2"],
+          ["inst3.in.0","self.I0.3"],
+          ["inst3.in.1","self.I1.3"],
+          ["inst3.in.2","self.I2.3"],
+          ["inst3.in.3","self.I3.3"]
+        ]
+      },
+      "Or4xNone":{
+        "type":["Record",{
+          "I0":"BitIn",
+          "I1":"BitIn",
+          "I2":"BitIn",
+          "I3":"BitIn",
+          "O":"Bit"
+        }],
+        "instances":{
+          "inst0":{
+            "genref":"coreir.orr",
+            "genargs":{"width":["Int",4]}
+          }
+        },
+        "connections":[
+          ["inst0.out","self.O"],
+          ["self.I0","inst0.in.0"],
+          ["self.I1","inst0.in.1"],
+          ["self.I2","inst0.in.2"],
+          ["self.I3","inst0.in.3"]
         ]
       },
       "Or8x2":{
@@ -1239,65 +1319,82 @@
           ["inst1.O","self.O.1"]
         ]
       },
-      "Register4":{
+      "Register4CE":{
         "type":["Record",{
           "I":["Array",4,"BitIn"],
           "O":["Array",4,"Bit"],
-          "CLK":["Named","coreir.clkIn"]
+          "CLK":["Named","coreir.clkIn"],
+          "CE":"BitIn"
         }],
         "instances":{
           "inst0":{
-            "modref":"global.DFF_init0_has_ceFalse_has_resetFalse"
+            "modref":"global.DFF_init0_has_ceTrue_has_resetFalse"
           },
           "inst1":{
-            "modref":"global.DFF_init0_has_ceFalse_has_resetFalse"
+            "modref":"global.DFF_init0_has_ceTrue_has_resetFalse"
           },
           "inst2":{
-            "modref":"global.DFF_init0_has_ceFalse_has_resetFalse"
+            "modref":"global.DFF_init0_has_ceTrue_has_resetFalse"
           },
           "inst3":{
-            "modref":"global.DFF_init0_has_ceFalse_has_resetFalse"
+            "modref":"global.DFF_init0_has_ceTrue_has_resetFalse"
           }
         },
         "connections":[
+          ["inst0.CE","self.CE"],
           ["inst0.CLK","self.CLK"],
           ["inst0.I","self.I.0"],
           ["inst0.O","self.O.0"],
+          ["inst1.CE","self.CE"],
           ["inst1.CLK","self.CLK"],
           ["inst1.I","self.I.1"],
           ["inst1.O","self.O.1"],
+          ["inst2.CE","self.CE"],
           ["inst2.CLK","self.CLK"],
           ["inst2.I","self.I.2"],
           ["inst2.O","self.O.2"],
+          ["inst3.CE","self.CE"],
           ["inst3.CLK","self.CLK"],
           ["inst3.I","self.I.3"],
           ["inst3.O","self.O.3"]
         ]
       },
-      "SilicaOneHotMux24":{
+      "SilicaOneHotMux44":{
         "type":["Record",{
           "I0":["Array",4,"BitIn"],
           "I1":["Array",4,"BitIn"],
-          "S":["Array",2,"BitIn"],
+          "I2":["Array",4,"BitIn"],
+          "I3":["Array",4,"BitIn"],
+          "S":["Array",4,"BitIn"],
           "O":["Array",4,"Bit"]
         }],
         "instances":{
           "inst0":{
-            "modref":"global.or4_wrapped"
+            "modref":"global.Or4x4"
           },
           "inst1":{
             "modref":"global.and4_wrapped"
           },
           "inst2":{
+            "modref":"global.and4_wrapped"
+          },
+          "inst3":{
+            "modref":"global.and4_wrapped"
+          },
+          "inst4":{
             "modref":"global.and4_wrapped"
           }
         },
         "connections":[
           ["inst0.I0","inst1.O"],
           ["inst0.I1","inst2.O"],
+          ["inst0.I2","inst3.O"],
+          ["inst0.I3","inst4.O"],
           ["inst0.O","self.O"],
           ["inst1.I0","self.I0"],
           ["inst2.I0","self.I1"],
+          ["inst3.I0","self.I2"],
+          ["inst4.I0","self.I3"],
           ["inst1.I1.0","self.S.0"],
           ["inst1.I1.1","self.S.0"],
           ["inst1.I1.2","self.S.0"],
@@ -1305,7 +1402,15 @@
           ["inst2.I1.0","self.S.1"],
           ["inst2.I1.1","self.S.1"],
           ["inst2.I1.2","self.S.1"],
-          ["inst2.I1.3","self.S.1"]
+          ["inst2.I1.3","self.S.1"],
+          ["inst3.I1.0","self.S.2"],
+          ["inst3.I1.1","self.S.2"],
+          ["inst3.I1.2","self.S.2"],
+          ["inst3.I1.3","self.S.2"],
+          ["inst4.I1.0","self.S.3"],
+          ["inst4.I1.1","self.S.3"],
+          ["inst4.I1.2","self.S.3"],
+          ["inst4.I1.3","self.S.3"]
         ]
       },
       "SilicaOneHotMux82":{
@@ -1652,24 +1757,6 @@
         "instances":{
           "inst0":{
             "modref":"corebit.and"
-          }
-        },
-        "connections":[
-          ["inst0.in0","self.I0"],
-          ["inst0.in1","self.I1"],
-          ["inst0.out","self.O"]
-        ]
-      },
-      "or4_wrapped":{
-        "type":["Record",{
-          "I0":["Array",4,"BitIn"],
-          "I1":["Array",4,"BitIn"],
-          "O":["Array",4,"Bit"]
-        }],
-        "instances":{
-          "inst0":{
-            "genref":"coreir.or",
-            "genargs":{"width":["Int",4]}
           }
         },
         "connections":[

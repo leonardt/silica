@@ -4,6 +4,7 @@ from .compile import compile
 import magma
 from magma import Bit, zext, concat, Array, Bits
 from magma.bit_vector import BitVector
+import operator
 
 
 class BitVector(BitVector):
@@ -66,3 +67,6 @@ def eval(x):
 
 def coroutine_create(x):
     return x()
+
+def and_(a, b):
+    return operator.and_(a, b)

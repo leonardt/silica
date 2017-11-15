@@ -36,6 +36,6 @@ def test_ser3():
         assert ser.O == I[i]
         next(ser)
 
-    compile(ser, "serializer4_magma.py")
-    import serializer4_magma
-    check(serializer4_magma.Serializer4, Serializer4(), 9, inputs_generator(inputs))
+    serializer4 = compile(ser, "serializer4_magma.py")
+    print(repr(serializer4))
+    check(serializer4, Serializer4(), 9, inputs_generator(inputs))
