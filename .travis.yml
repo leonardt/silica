@@ -25,6 +25,7 @@ script:
   - pip install -e .
     # - export MANTLE=lattice
     # - pytest --cov=silica
+  - mkdir build
   - export MANTLE=coreir
   - pytest --cov=silica
 
