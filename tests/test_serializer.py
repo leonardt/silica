@@ -1,5 +1,6 @@
 from silica import coroutine, uint, Bit, BitVector, compile, Array, Bits, bits
 from magma.testing.coroutine import check
+from silica.testing import check_verilog 
 
 
 @coroutine(inputs={"I" : Array(4, Bits(16))})
@@ -39,3 +40,5 @@ def test_ser3():
     serializer4 = compile(ser, "serializer4_magma.py")
     print(repr(serializer4))
     check(serializer4, Serializer4(), 9, inputs_generator(inputs))
+    check_verilog("serializer", serializer4, Serializer4(), 9, inputs_generator(inputs))
+

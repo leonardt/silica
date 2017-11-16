@@ -1,5 +1,6 @@
 import silica
 from silica import bits, Bit, uint, zext
+from silica.testing import check_verilog
 from magma.testing.coroutine import check
 
 @silica.coroutine(inputs={"I" : Bit})
@@ -31,3 +32,4 @@ def test_detect111():
 
     magma_detect = silica.compile(detect, file_name="magma_detect.py")
     check(magma_detect, detect111(), len(inputs), inputs_generator(inputs))
+    check_verilog("detect111", magma_detect, detect111(), len(inputs), inputs_generator(inputs))
