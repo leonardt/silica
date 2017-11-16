@@ -46,6 +46,14 @@ def specialize_arguments(tree, coroutine):
     return specialize_constants(tree, arg_map)
 
 
+class MemoryType:
+    def __init__(self, height, width):
+        self.height = height
+        self.width = width
+
+    def __eq__(self, other):
+        return isinstance(other, MemoryType) and self.height == other.height and self.width == other.width
+
 def get_width(node, width_table):
     if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and \
        node.func.id in {"bits", "uint", "BitVector"}:
@@ -54,6 +62,9 @@ def get_width(node, width_table):
     if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and \
        node.func.id in {"bit"}:
         return None
+    elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and \
+       node.func.id in {"memory"}:
+           return MemoryType(node.args[0].n, node.args[1].n)
     elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and \
        node.func.id in {"zext"}:
         assert isinstance(node.args[1], ast.Num), "We should know all widths at compile time"
@@ -104,6 +115,8 @@ def get_width(node, width_table):
             width = get_width(node.value, width_table)
             if isinstance(width, tuple):
                 return width[1]
+            elif isinstance(width, MemoryType):
+                return width.width
             return None
     raise NotImplementedError(ast.dump(node))
 
@@ -454,6 +467,8 @@ class ArrayReplacer(ast.NodeTransformer):
         if len(node.targets) == 1 and isinstance(node.targets[0], ast.Subscript) and \
                                       isinstance(node.targets[0].value, ast.Name) and \
                                       node.targets[0].value.id == self.array:
+            if isinstance(node.targets[0].slice.value, ast.Num):
+                return node
             self.waddr = astor.to_source(node.targets[0].slice.value).rstrip()
             self.wdata = astor.to_source(node.value).rstrip()
             return ast.parse("None")
@@ -465,6 +480,8 @@ class ArrayReplacer(ast.NodeTransformer):
         elif isinstance(node.value, ast.Subscript) and \
              isinstance(node.value.value, ast.Name) and \
              node.value.value.id == self.array:
+            if isinstance(node.value.slice.value, ast.Num):
+                return ast.parse(f"{astor.to_source(node).rstrip()}.O")
             self.raddr = astor.to_source(node.value.slice).rstrip()
             node.value = ast.parse(f"{self.array}.rdata").body[0].value
             return node
@@ -479,6 +496,31 @@ class ArrayReplacer(ast.NodeTransformer):
 def replace_arrays(tree, array, state):
     return ArrayReplacer(array, state).run(tree)
 
+
+def replace_memory(tree, memory, state):
+    class MemoryReplacer(ast.NodeTransformer):
+        def __init__(self):
+            self.raddr = self.waddr = self.wdata = None
+
+        def visit_Assign(self, node):
+            if len(node.targets) == 1 and isinstance(node.targets[0], ast.Subscript) and \
+                                          isinstance(node.targets[0].value, ast.Name) and \
+                                          node.targets[0].value.id == memory:
+                self.waddr = astor.to_source(node.targets[0].slice.value).rstrip()
+                self.wdata = astor.to_source(node.value).rstrip()
+                return ast.parse("None")
+            elif isinstance(node.value, ast.Subscript) and \
+                 isinstance(node.value.value, ast.Name) and \
+                 node.value.value.id == memory:
+                self.raddr = astor.to_source(node.value.slice).rstrip()
+                node.value = ast.parse(f"{memory}.rdata").body[0].value
+                return node
+            return super().generic_visit(node)
+
+        def run(self, tree):
+            tree = self.visit(tree)
+            return tree, self.raddr, self.waddr, self.wdata
+    return MemoryReplacer().run(tree)
 
 class CollectStoredArrays(ast.NodeVisitor):
     def __init__(self):
@@ -650,9 +692,11 @@ def generate_fsm_mux(next, width, reg, path_state, output=False):
                 filtered_next.append((curr, state))
         if len(filtered_next) == 2:
             muxs = [DefineMux(2, width[1])() for _ in range(width[0])]
+            for mux, r in zip(muxs,reg):
+                wire(mux.O, r.I)
         else:
             mux = DefineSilicaMux(len(filtered_next), width[1])()
-        wire(mux.O, reg.wdata)
+            wire(mux.O, reg.I)
         CES = []
         for i, (input_, state) in enumerate(filtered_next):
             curr = list(filter(lambda x: x, curr))
@@ -667,7 +711,10 @@ def generate_fsm_mux(next, width, reg, path_state, output=False):
                     wire(muxs[j].S[i], path_state.O[state])
             CES.append(path_state.O[state])
         if len(CES) == 1:
-            wire(CES[0], reg.wen)
+            wire(CES[0], reg.CE)
+        else:
+            for i in range(len(reg)):
+                wire(or_(*CES), reg[i].CE)
     else:
         mux = DefineSilicaMux(len(next), width)()
         if output:
@@ -762,11 +809,13 @@ wire(__silica_path_state.O, {name}_inputs_{i}.S)
                 # magma_source += f"{register}_next = DefineSilicaMux({num_states}, {width})()\n"
                 # magma_source += f"wire(__silica_path_state.O, {register}_next.S)\n"
                 # magma_source += f"wire({register}_next.O, {register}.I)\n"
+        elif isinstance(width, MemoryType):
+            magma_source += f"{register} = DefineCoreirMem({width.height}, {width.width})()\n"
         elif isinstance(width, tuple):
             if len(width) > 2:
                 raise NotImplementedError()
-            # magma_source += f"{register} = [Register({width[1]}, has_ce=True) for _ in range({width[0]})]\n"
-            magma_source += f"{register} = DefineCoreirMem({width[0]}, {width[1]})()\n"
+            magma_source += f"{register} = [Register({width[1]}, has_ce=True) for _ in range({width[0]})]\n"
+            # magma_source += f"{register} = DefineCoreirMem({width[0]}, {width[1]})()\n"
             # magma_source += f"{register}_CE = [[CE] for _ in range({width[0]})]\n"
             magma_source += f"{wire({register}.CE, CE)}" if has_ce else ""
             if num_states > 1:
@@ -816,10 +865,13 @@ wire(__silica_path_state.O, {name}_inputs_{i}.S)
         load_symbol_map = {}
         store_symbol_map = {}
         arrays = set()
+        memories = set()
         for register in registers:
             if isinstance(width_table[register], tuple):
                 arrays.add(register)
-                # store_symbol_map[register] = ast.parse(f"{register}_next_{i}_tmp").body[0].value
+                store_symbol_map[register] = ast.parse(f"{register}_next_{i}_tmp").body[0].value
+            elif isinstance(width_table[register], MemoryType):
+                memories.add(register)
             else:
                 load_symbol_map[register] = ast.parse(f"{register}.O").body[0].value
                 store_symbol_map[register] = ast.parse(f"{register}_next_{i}_tmp").body[0].value
@@ -838,18 +890,20 @@ wire(__silica_path_state.O, {name}_inputs_{i}.S)
                 statement, stored, raddr, waddr, wdata = replace_arrays(statement, array, i)
                 if stored:
                     stores.add(array)
+            for memory in memories:
+                statement, raddr, waddr, wdata = replace_memory(statement, memory, i)
                 if raddr:
-                    assert array not in raddrs or raddrs[array] == raddr
-                    raddrs[array] = raddr
+                    assert memory not in raddrs or raddrs[memory] == raddr
+                    raddrs[memory] = raddr
                 if waddr:
-                    assert array not in waddrs or waddrs[array] == waddr, (waddr, array, waddrs[array])
-                    waddrs[array] = waddr
-                    if array not in wens:
-                        wens[array] = set()
-                    wens[array].add(i)
+                    assert memory not in waddrs or waddrs[memory] == waddr, (waddr, memory, waddrs[memory])
+                    waddrs[memory] = waddr
+                    if memory not in wens:
+                        wens[memory] = set()
+                    wens[memory].add(i)
                 if wdata:
-                    assert array not in wdatas or wdatas[array] == wdata
-                    wdatas[array] = wdata
+                    assert memory not in wdatas or wdatas[memory] == wdata
+                    wdatas[memory] = wdata
             statement = replace_assign_to_bits(statement, load_symbol_map, store_symbol_map)
             statement = replace_symbols(statement, load_symbol_map, ast.Load)
             statement = replace_symbols(statement, store_symbol_map, ast.Store)
@@ -860,6 +914,8 @@ wire(__silica_path_state.O, {name}_inputs_{i}.S)
                 elif var in outputs:
                     load_symbol_map[var] = ast.parse(f"{var}_{i}_tmp").body[0].value
         for register in registers:
+            if isinstance(width_table[register], MemoryType):
+                continue
             if num_states > 1:
                 magma_source += f"""{register}_next.append(({register}_next_{i}_tmp, {i}))\n"""
             else:
@@ -938,7 +994,7 @@ wire(__silica_path_state.O, {name}_inputs_{i}.S)
     if num_states > 1:
         for register in registers:
             width = width_table[register]
-            if not isinstance(width, tuple):
+            if not isinstance(width, MemoryType):
                 magma_source += f"generate_fsm_mux({register}_next, {width}, {register}, __silica_path_state)\n"
         for output in outputs:
             width = width_table[output]

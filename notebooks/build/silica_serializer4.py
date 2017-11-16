@@ -53,10 +53,11 @@ def generate_fsm_mux(next, width, reg, path_state, output=False):
                 filtered_next.append((curr, state))
         if len(filtered_next) == 2:
             muxs = [DefineMux(2, width[1])() for _ in range(width[0])]
+            for mux, r in zip(muxs,reg):
+                wire(mux.O, r.I)
         else:
-            muxs = [DefineSilicaMux(len(filtered_next), width[1])() for _ in range(width[0])]
-        for i in range(width[0]):
-            wire(muxs[i].O, reg[i].I)
+            mux = DefineSilicaMux(len(filtered_next), width[1])()
+            wire(mux.O, reg.I)
         CES = []
         for i, (input_, state) in enumerate(filtered_next):
             curr = list(filter(lambda x: x, curr))
@@ -70,8 +71,11 @@ def generate_fsm_mux(next, width, reg, path_state, output=False):
                 else:
                     wire(muxs[j].S[i], path_state.O[state])
             CES.append(path_state.O[state])
-        for i in range(width[0]):
-            wire(or_(*CES), reg[i].CE)
+        if len(CES) == 1:
+            wire(CES[0], reg.CE)
+        else:
+            for i in range(len(reg)):
+                wire(or_(*CES), reg[i].CE)
     else:
         mux = DefineSilicaMux(len(next), width)()
         if output:

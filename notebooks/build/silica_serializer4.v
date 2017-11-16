@@ -7,15 +7,6 @@ module corebit_const #(parameter value=1) (
 
 endmodule //corebit_const
 
-module __silica_BufferSerializer4 (
-  input [4:0] I,
-  output [4:0] O
-);
-  //All the connections
-  assign O[4:0] = I[4:0];
-
-endmodule //__silica_BufferSerializer4
-
 module corebit_mux (
   input in0,
   input in1,
@@ -26,18 +17,38 @@ module corebit_mux (
 
 endmodule //corebit_mux
 
-module coreir_reg #(parameter init=1, parameter width=1) (
-  input clk,
-  input [width-1:0] in,
-  output [width-1:0] out
+module _Mux2 (
+  input [1:0] I,
+  output  O,
+  input  S
 );
-reg [width-1:0] outReg=init;
-always @(posedge clk) begin
-  outReg <= in;
-end
-assign out = outReg;
+  //Wire declarations for instance 'inst0' (Module corebit_mux)
+  wire  inst0__in0;
+  wire  inst0__in1;
+  wire  inst0__out;
+  wire  inst0__sel;
+  corebit_mux inst0(
+    .in0(inst0__in0),
+    .in1(inst0__in1),
+    .out(inst0__out),
+    .sel(inst0__sel)
+  );
 
-endmodule //coreir_reg
+  //All the connections
+  assign inst0__in0 = I[0];
+  assign inst0__in1 = I[1];
+  assign O = inst0__out;
+  assign inst0__sel = S;
+
+endmodule //_Mux2
+
+module coreir_orr #(parameter width=1) (
+  input [width-1:0] in,
+  output out
+);
+  assign out = |in;
+
+endmodule //coreir_orr
 
 module corebit_or (
   input in0,
@@ -67,35 +78,327 @@ module coreir_mux #(parameter width=1) (
 
 endmodule //coreir_mux
 
-module or_wrapped (
-  input  I0,
-  input  I1,
+module coreir_reg #(parameter init=1, parameter width=1) (
+  input clk,
+  input [width-1:0] in,
+  output [width-1:0] out
+);
+reg [width-1:0] outReg=init;
+always @(posedge clk) begin
+  outReg <= in;
+end
+assign out = outReg;
+
+endmodule //coreir_reg
+
+module reg_U0 #(parameter init=1) (
+  input  clk,
+  input [0:0] in,
+  output [0:0] out
+);
+  //Wire declarations for instance 'reg0' (Module coreir_reg)
+  wire  reg0__clk;
+  wire [0:0] reg0__in;
+  wire [0:0] reg0__out;
+  coreir_reg #(.init(init),.width(1)) reg0(
+    .clk(reg0__clk),
+    .in(reg0__in),
+    .out(reg0__out)
+  );
+
+  //All the connections
+  assign reg0__clk = clk;
+  assign reg0__in[0:0] = in[0:0];
+  assign out[0:0] = reg0__out[0:0];
+
+endmodule //reg_U0
+
+module DFF_init1_has_ceFalse_has_resetFalse (
+  input  CLK,
+  input  I,
   output  O
 );
-  //Wire declarations for instance 'inst0' (Module corebit_or)
-  wire  inst0__in0;
-  wire  inst0__in1;
-  wire  inst0__out;
-  corebit_or inst0(
-    .in0(inst0__in0),
-    .in1(inst0__in1),
+  //Wire declarations for instance 'inst0' (Module reg_U0)
+  wire  inst0__clk;
+  wire [0:0] inst0__in;
+  wire [0:0] inst0__out;
+  reg_U0 #(.init(1'd1)) inst0(
+    .clk(inst0__clk),
+    .in(inst0__in),
     .out(inst0__out)
   );
 
   //All the connections
-  assign inst0__in0 = I0;
-  assign inst0__in1 = I1;
-  assign O = inst0__out;
+  assign inst0__clk = CLK;
+  assign inst0__in[0] = I;
+  assign O = inst0__out[0];
 
-endmodule //or_wrapped
+endmodule //DFF_init1_has_ceFalse_has_resetFalse
 
-module coreir_orr #(parameter width=1) (
-  input [width-1:0] in,
-  output out
+module DFF_init0_has_ceFalse_has_resetFalse (
+  input  CLK,
+  input  I,
+  output  O
 );
-  assign out = |in;
+  //Wire declarations for instance 'inst0' (Module reg_U0)
+  wire  inst0__clk;
+  wire [0:0] inst0__in;
+  wire [0:0] inst0__out;
+  reg_U0 #(.init(1'd0)) inst0(
+    .clk(inst0__clk),
+    .in(inst0__in),
+    .out(inst0__out)
+  );
 
-endmodule //coreir_orr
+  //All the connections
+  assign inst0__clk = CLK;
+  assign inst0__in[0] = I;
+  assign O = inst0__out[0];
+
+endmodule //DFF_init0_has_ceFalse_has_resetFalse
+
+module __silica_BufferSerializer4 (
+  input [4:0] I,
+  output [4:0] O
+);
+  //All the connections
+  assign O[4:0] = I[4:0];
+
+endmodule //__silica_BufferSerializer4
+
+module Mux2x16 (
+  input [15:0] I0,
+  input [15:0] I1,
+  output [15:0] O,
+  input  S
+);
+  //Wire declarations for instance 'inst0' (Module _Mux2)
+  wire [1:0] inst0__I;
+  wire  inst0__O;
+  wire  inst0__S;
+  _Mux2 inst0(
+    .I(inst0__I),
+    .O(inst0__O),
+    .S(inst0__S)
+  );
+
+  //Wire declarations for instance 'inst1' (Module _Mux2)
+  wire [1:0] inst1__I;
+  wire  inst1__O;
+  wire  inst1__S;
+  _Mux2 inst1(
+    .I(inst1__I),
+    .O(inst1__O),
+    .S(inst1__S)
+  );
+
+  //Wire declarations for instance 'inst10' (Module _Mux2)
+  wire [1:0] inst10__I;
+  wire  inst10__O;
+  wire  inst10__S;
+  _Mux2 inst10(
+    .I(inst10__I),
+    .O(inst10__O),
+    .S(inst10__S)
+  );
+
+  //Wire declarations for instance 'inst11' (Module _Mux2)
+  wire [1:0] inst11__I;
+  wire  inst11__O;
+  wire  inst11__S;
+  _Mux2 inst11(
+    .I(inst11__I),
+    .O(inst11__O),
+    .S(inst11__S)
+  );
+
+  //Wire declarations for instance 'inst12' (Module _Mux2)
+  wire [1:0] inst12__I;
+  wire  inst12__O;
+  wire  inst12__S;
+  _Mux2 inst12(
+    .I(inst12__I),
+    .O(inst12__O),
+    .S(inst12__S)
+  );
+
+  //Wire declarations for instance 'inst13' (Module _Mux2)
+  wire [1:0] inst13__I;
+  wire  inst13__O;
+  wire  inst13__S;
+  _Mux2 inst13(
+    .I(inst13__I),
+    .O(inst13__O),
+    .S(inst13__S)
+  );
+
+  //Wire declarations for instance 'inst14' (Module _Mux2)
+  wire [1:0] inst14__I;
+  wire  inst14__O;
+  wire  inst14__S;
+  _Mux2 inst14(
+    .I(inst14__I),
+    .O(inst14__O),
+    .S(inst14__S)
+  );
+
+  //Wire declarations for instance 'inst15' (Module _Mux2)
+  wire [1:0] inst15__I;
+  wire  inst15__O;
+  wire  inst15__S;
+  _Mux2 inst15(
+    .I(inst15__I),
+    .O(inst15__O),
+    .S(inst15__S)
+  );
+
+  //Wire declarations for instance 'inst2' (Module _Mux2)
+  wire [1:0] inst2__I;
+  wire  inst2__O;
+  wire  inst2__S;
+  _Mux2 inst2(
+    .I(inst2__I),
+    .O(inst2__O),
+    .S(inst2__S)
+  );
+
+  //Wire declarations for instance 'inst3' (Module _Mux2)
+  wire [1:0] inst3__I;
+  wire  inst3__O;
+  wire  inst3__S;
+  _Mux2 inst3(
+    .I(inst3__I),
+    .O(inst3__O),
+    .S(inst3__S)
+  );
+
+  //Wire declarations for instance 'inst4' (Module _Mux2)
+  wire [1:0] inst4__I;
+  wire  inst4__O;
+  wire  inst4__S;
+  _Mux2 inst4(
+    .I(inst4__I),
+    .O(inst4__O),
+    .S(inst4__S)
+  );
+
+  //Wire declarations for instance 'inst5' (Module _Mux2)
+  wire [1:0] inst5__I;
+  wire  inst5__O;
+  wire  inst5__S;
+  _Mux2 inst5(
+    .I(inst5__I),
+    .O(inst5__O),
+    .S(inst5__S)
+  );
+
+  //Wire declarations for instance 'inst6' (Module _Mux2)
+  wire [1:0] inst6__I;
+  wire  inst6__O;
+  wire  inst6__S;
+  _Mux2 inst6(
+    .I(inst6__I),
+    .O(inst6__O),
+    .S(inst6__S)
+  );
+
+  //Wire declarations for instance 'inst7' (Module _Mux2)
+  wire [1:0] inst7__I;
+  wire  inst7__O;
+  wire  inst7__S;
+  _Mux2 inst7(
+    .I(inst7__I),
+    .O(inst7__O),
+    .S(inst7__S)
+  );
+
+  //Wire declarations for instance 'inst8' (Module _Mux2)
+  wire [1:0] inst8__I;
+  wire  inst8__O;
+  wire  inst8__S;
+  _Mux2 inst8(
+    .I(inst8__I),
+    .O(inst8__O),
+    .S(inst8__S)
+  );
+
+  //Wire declarations for instance 'inst9' (Module _Mux2)
+  wire [1:0] inst9__I;
+  wire  inst9__O;
+  wire  inst9__S;
+  _Mux2 inst9(
+    .I(inst9__I),
+    .O(inst9__O),
+    .S(inst9__S)
+  );
+
+  //All the connections
+  assign O[0] = inst0__O;
+  assign inst0__S = S;
+  assign O[1] = inst1__O;
+  assign inst1__S = S;
+  assign O[10] = inst10__O;
+  assign inst10__S = S;
+  assign O[11] = inst11__O;
+  assign inst11__S = S;
+  assign O[12] = inst12__O;
+  assign inst12__S = S;
+  assign O[13] = inst13__O;
+  assign inst13__S = S;
+  assign O[14] = inst14__O;
+  assign inst14__S = S;
+  assign O[15] = inst15__O;
+  assign inst15__S = S;
+  assign O[2] = inst2__O;
+  assign inst2__S = S;
+  assign O[3] = inst3__O;
+  assign inst3__S = S;
+  assign O[4] = inst4__O;
+  assign inst4__S = S;
+  assign O[5] = inst5__O;
+  assign inst5__S = S;
+  assign O[6] = inst6__O;
+  assign inst6__S = S;
+  assign O[7] = inst7__O;
+  assign inst7__S = S;
+  assign O[8] = inst8__O;
+  assign inst8__S = S;
+  assign O[9] = inst9__O;
+  assign inst9__S = S;
+  assign inst0__I[0] = I0[0];
+  assign inst0__I[1] = I1[0];
+  assign inst1__I[0] = I0[1];
+  assign inst1__I[1] = I1[1];
+  assign inst10__I[0] = I0[10];
+  assign inst10__I[1] = I1[10];
+  assign inst11__I[0] = I0[11];
+  assign inst11__I[1] = I1[11];
+  assign inst12__I[0] = I0[12];
+  assign inst12__I[1] = I1[12];
+  assign inst13__I[0] = I0[13];
+  assign inst13__I[1] = I1[13];
+  assign inst14__I[0] = I0[14];
+  assign inst14__I[1] = I1[14];
+  assign inst15__I[0] = I0[15];
+  assign inst15__I[1] = I1[15];
+  assign inst2__I[0] = I0[2];
+  assign inst2__I[1] = I1[2];
+  assign inst3__I[0] = I0[3];
+  assign inst3__I[1] = I1[3];
+  assign inst4__I[0] = I0[4];
+  assign inst4__I[1] = I1[4];
+  assign inst5__I[0] = I0[5];
+  assign inst5__I[1] = I1[5];
+  assign inst6__I[0] = I0[6];
+  assign inst6__I[1] = I1[6];
+  assign inst7__I[0] = I0[7];
+  assign inst7__I[1] = I1[7];
+  assign inst8__I[0] = I0[8];
+  assign inst8__I[1] = I1[8];
+  assign inst9__I[0] = I0[9];
+  assign inst9__I[1] = I1[9];
+
+endmodule //Mux2x16
 
 module Or5x16 (
   input [15:0] I0,
@@ -333,264 +636,79 @@ module Or5x16 (
 
 endmodule //Or5x16
 
-module _Mux2 (
-  input [1:0] I,
-  output  O,
-  input  S
+module Register5_0001 (
+  input  CLK,
+  input [4:0] I,
+  output [4:0] O
 );
-  //Wire declarations for instance 'inst0' (Module corebit_mux)
-  wire  inst0__in0;
-  wire  inst0__in1;
-  wire  inst0__out;
-  wire  inst0__sel;
-  corebit_mux inst0(
-    .in0(inst0__in0),
-    .in1(inst0__in1),
-    .out(inst0__out),
-    .sel(inst0__sel)
-  );
-
-  //All the connections
-  assign inst0__in0 = I[0];
-  assign inst0__in1 = I[1];
-  assign O = inst0__out;
-  assign inst0__sel = S;
-
-endmodule //_Mux2
-
-module Mux2x16 (
-  input [15:0] I0,
-  input [15:0] I1,
-  output [15:0] O,
-  input  S
-);
-  //Wire declarations for instance 'inst0' (Module _Mux2)
-  wire [1:0] inst0__I;
+  //Wire declarations for instance 'inst0' (Module DFF_init1_has_ceFalse_has_resetFalse)
+  wire  inst0__CLK;
+  wire  inst0__I;
   wire  inst0__O;
-  wire  inst0__S;
-  _Mux2 inst0(
+  DFF_init1_has_ceFalse_has_resetFalse inst0(
+    .CLK(inst0__CLK),
     .I(inst0__I),
-    .O(inst0__O),
-    .S(inst0__S)
+    .O(inst0__O)
   );
 
-  //Wire declarations for instance 'inst1' (Module _Mux2)
-  wire [1:0] inst1__I;
+  //Wire declarations for instance 'inst1' (Module DFF_init0_has_ceFalse_has_resetFalse)
+  wire  inst1__CLK;
+  wire  inst1__I;
   wire  inst1__O;
-  wire  inst1__S;
-  _Mux2 inst1(
+  DFF_init0_has_ceFalse_has_resetFalse inst1(
+    .CLK(inst1__CLK),
     .I(inst1__I),
-    .O(inst1__O),
-    .S(inst1__S)
+    .O(inst1__O)
   );
 
-  //Wire declarations for instance 'inst10' (Module _Mux2)
-  wire [1:0] inst10__I;
-  wire  inst10__O;
-  wire  inst10__S;
-  _Mux2 inst10(
-    .I(inst10__I),
-    .O(inst10__O),
-    .S(inst10__S)
-  );
-
-  //Wire declarations for instance 'inst11' (Module _Mux2)
-  wire [1:0] inst11__I;
-  wire  inst11__O;
-  wire  inst11__S;
-  _Mux2 inst11(
-    .I(inst11__I),
-    .O(inst11__O),
-    .S(inst11__S)
-  );
-
-  //Wire declarations for instance 'inst12' (Module _Mux2)
-  wire [1:0] inst12__I;
-  wire  inst12__O;
-  wire  inst12__S;
-  _Mux2 inst12(
-    .I(inst12__I),
-    .O(inst12__O),
-    .S(inst12__S)
-  );
-
-  //Wire declarations for instance 'inst13' (Module _Mux2)
-  wire [1:0] inst13__I;
-  wire  inst13__O;
-  wire  inst13__S;
-  _Mux2 inst13(
-    .I(inst13__I),
-    .O(inst13__O),
-    .S(inst13__S)
-  );
-
-  //Wire declarations for instance 'inst14' (Module _Mux2)
-  wire [1:0] inst14__I;
-  wire  inst14__O;
-  wire  inst14__S;
-  _Mux2 inst14(
-    .I(inst14__I),
-    .O(inst14__O),
-    .S(inst14__S)
-  );
-
-  //Wire declarations for instance 'inst15' (Module _Mux2)
-  wire [1:0] inst15__I;
-  wire  inst15__O;
-  wire  inst15__S;
-  _Mux2 inst15(
-    .I(inst15__I),
-    .O(inst15__O),
-    .S(inst15__S)
-  );
-
-  //Wire declarations for instance 'inst2' (Module _Mux2)
-  wire [1:0] inst2__I;
+  //Wire declarations for instance 'inst2' (Module DFF_init0_has_ceFalse_has_resetFalse)
+  wire  inst2__CLK;
+  wire  inst2__I;
   wire  inst2__O;
-  wire  inst2__S;
-  _Mux2 inst2(
+  DFF_init0_has_ceFalse_has_resetFalse inst2(
+    .CLK(inst2__CLK),
     .I(inst2__I),
-    .O(inst2__O),
-    .S(inst2__S)
+    .O(inst2__O)
   );
 
-  //Wire declarations for instance 'inst3' (Module _Mux2)
-  wire [1:0] inst3__I;
+  //Wire declarations for instance 'inst3' (Module DFF_init0_has_ceFalse_has_resetFalse)
+  wire  inst3__CLK;
+  wire  inst3__I;
   wire  inst3__O;
-  wire  inst3__S;
-  _Mux2 inst3(
+  DFF_init0_has_ceFalse_has_resetFalse inst3(
+    .CLK(inst3__CLK),
     .I(inst3__I),
-    .O(inst3__O),
-    .S(inst3__S)
+    .O(inst3__O)
   );
 
-  //Wire declarations for instance 'inst4' (Module _Mux2)
-  wire [1:0] inst4__I;
+  //Wire declarations for instance 'inst4' (Module DFF_init0_has_ceFalse_has_resetFalse)
+  wire  inst4__CLK;
+  wire  inst4__I;
   wire  inst4__O;
-  wire  inst4__S;
-  _Mux2 inst4(
+  DFF_init0_has_ceFalse_has_resetFalse inst4(
+    .CLK(inst4__CLK),
     .I(inst4__I),
-    .O(inst4__O),
-    .S(inst4__S)
-  );
-
-  //Wire declarations for instance 'inst5' (Module _Mux2)
-  wire [1:0] inst5__I;
-  wire  inst5__O;
-  wire  inst5__S;
-  _Mux2 inst5(
-    .I(inst5__I),
-    .O(inst5__O),
-    .S(inst5__S)
-  );
-
-  //Wire declarations for instance 'inst6' (Module _Mux2)
-  wire [1:0] inst6__I;
-  wire  inst6__O;
-  wire  inst6__S;
-  _Mux2 inst6(
-    .I(inst6__I),
-    .O(inst6__O),
-    .S(inst6__S)
-  );
-
-  //Wire declarations for instance 'inst7' (Module _Mux2)
-  wire [1:0] inst7__I;
-  wire  inst7__O;
-  wire  inst7__S;
-  _Mux2 inst7(
-    .I(inst7__I),
-    .O(inst7__O),
-    .S(inst7__S)
-  );
-
-  //Wire declarations for instance 'inst8' (Module _Mux2)
-  wire [1:0] inst8__I;
-  wire  inst8__O;
-  wire  inst8__S;
-  _Mux2 inst8(
-    .I(inst8__I),
-    .O(inst8__O),
-    .S(inst8__S)
-  );
-
-  //Wire declarations for instance 'inst9' (Module _Mux2)
-  wire [1:0] inst9__I;
-  wire  inst9__O;
-  wire  inst9__S;
-  _Mux2 inst9(
-    .I(inst9__I),
-    .O(inst9__O),
-    .S(inst9__S)
+    .O(inst4__O)
   );
 
   //All the connections
+  assign inst0__CLK = CLK;
+  assign inst0__I = I[0];
   assign O[0] = inst0__O;
-  assign inst0__S = S;
+  assign inst1__CLK = CLK;
+  assign inst1__I = I[1];
   assign O[1] = inst1__O;
-  assign inst1__S = S;
-  assign O[10] = inst10__O;
-  assign inst10__S = S;
-  assign O[11] = inst11__O;
-  assign inst11__S = S;
-  assign O[12] = inst12__O;
-  assign inst12__S = S;
-  assign O[13] = inst13__O;
-  assign inst13__S = S;
-  assign O[14] = inst14__O;
-  assign inst14__S = S;
-  assign O[15] = inst15__O;
-  assign inst15__S = S;
+  assign inst2__CLK = CLK;
+  assign inst2__I = I[2];
   assign O[2] = inst2__O;
-  assign inst2__S = S;
+  assign inst3__CLK = CLK;
+  assign inst3__I = I[3];
   assign O[3] = inst3__O;
-  assign inst3__S = S;
+  assign inst4__CLK = CLK;
+  assign inst4__I = I[4];
   assign O[4] = inst4__O;
-  assign inst4__S = S;
-  assign O[5] = inst5__O;
-  assign inst5__S = S;
-  assign O[6] = inst6__O;
-  assign inst6__S = S;
-  assign O[7] = inst7__O;
-  assign inst7__S = S;
-  assign O[8] = inst8__O;
-  assign inst8__S = S;
-  assign O[9] = inst9__O;
-  assign inst9__S = S;
-  assign inst0__I[0] = I0[0];
-  assign inst0__I[1] = I1[0];
-  assign inst1__I[0] = I0[1];
-  assign inst1__I[1] = I1[1];
-  assign inst10__I[0] = I0[10];
-  assign inst10__I[1] = I1[10];
-  assign inst11__I[0] = I0[11];
-  assign inst11__I[1] = I1[11];
-  assign inst12__I[0] = I0[12];
-  assign inst12__I[1] = I1[12];
-  assign inst13__I[0] = I0[13];
-  assign inst13__I[1] = I1[13];
-  assign inst14__I[0] = I0[14];
-  assign inst14__I[1] = I1[14];
-  assign inst15__I[0] = I0[15];
-  assign inst15__I[1] = I1[15];
-  assign inst2__I[0] = I0[2];
-  assign inst2__I[1] = I1[2];
-  assign inst3__I[0] = I0[3];
-  assign inst3__I[1] = I1[3];
-  assign inst4__I[0] = I0[4];
-  assign inst4__I[1] = I1[4];
-  assign inst5__I[0] = I0[5];
-  assign inst5__I[1] = I1[5];
-  assign inst6__I[0] = I0[6];
-  assign inst6__I[1] = I1[6];
-  assign inst7__I[0] = I0[7];
-  assign inst7__I[1] = I1[7];
-  assign inst8__I[0] = I0[8];
-  assign inst8__I[1] = I1[8];
-  assign inst9__I[0] = I0[9];
-  assign inst9__I[1] = I1[9];
 
-endmodule //Mux2x16
+endmodule //Register5_0001
 
 module and16_wrapped (
   input [15:0] I0,
@@ -784,145 +902,27 @@ module SilicaOneHotMux516 (
 
 endmodule //SilicaOneHotMux516
 
-module reg_U0 #(parameter init=1) (
-  input  clk,
-  input [0:0] in,
-  output [0:0] out
-);
-  //Wire declarations for instance 'reg0' (Module coreir_reg)
-  wire  reg0__clk;
-  wire [0:0] reg0__in;
-  wire [0:0] reg0__out;
-  coreir_reg #(.init(init),.width(1)) reg0(
-    .clk(reg0__clk),
-    .in(reg0__in),
-    .out(reg0__out)
-  );
-
-  //All the connections
-  assign reg0__clk = clk;
-  assign reg0__in[0:0] = in[0:0];
-  assign out[0:0] = reg0__out[0:0];
-
-endmodule //reg_U0
-
-module DFF_init1_has_ceFalse_has_resetFalse (
-  input  CLK,
-  input  I,
+module or_wrapped (
+  input  I0,
+  input  I1,
   output  O
 );
-  //Wire declarations for instance 'inst0' (Module reg_U0)
-  wire  inst0__clk;
-  wire [0:0] inst0__in;
-  wire [0:0] inst0__out;
-  reg_U0 #(.init(1'd1)) inst0(
-    .clk(inst0__clk),
-    .in(inst0__in),
+  //Wire declarations for instance 'inst0' (Module corebit_or)
+  wire  inst0__in0;
+  wire  inst0__in1;
+  wire  inst0__out;
+  corebit_or inst0(
+    .in0(inst0__in0),
+    .in1(inst0__in1),
     .out(inst0__out)
   );
 
   //All the connections
-  assign inst0__clk = CLK;
-  assign inst0__in[0] = I;
-  assign O = inst0__out[0];
+  assign inst0__in0 = I0;
+  assign inst0__in1 = I1;
+  assign O = inst0__out;
 
-endmodule //DFF_init1_has_ceFalse_has_resetFalse
-
-module DFF_init0_has_ceFalse_has_resetFalse (
-  input  CLK,
-  input  I,
-  output  O
-);
-  //Wire declarations for instance 'inst0' (Module reg_U0)
-  wire  inst0__clk;
-  wire [0:0] inst0__in;
-  wire [0:0] inst0__out;
-  reg_U0 #(.init(1'd0)) inst0(
-    .clk(inst0__clk),
-    .in(inst0__in),
-    .out(inst0__out)
-  );
-
-  //All the connections
-  assign inst0__clk = CLK;
-  assign inst0__in[0] = I;
-  assign O = inst0__out[0];
-
-endmodule //DFF_init0_has_ceFalse_has_resetFalse
-
-module Register5_0001 (
-  input  CLK,
-  input [4:0] I,
-  output [4:0] O
-);
-  //Wire declarations for instance 'inst0' (Module DFF_init1_has_ceFalse_has_resetFalse)
-  wire  inst0__CLK;
-  wire  inst0__I;
-  wire  inst0__O;
-  DFF_init1_has_ceFalse_has_resetFalse inst0(
-    .CLK(inst0__CLK),
-    .I(inst0__I),
-    .O(inst0__O)
-  );
-
-  //Wire declarations for instance 'inst1' (Module DFF_init0_has_ceFalse_has_resetFalse)
-  wire  inst1__CLK;
-  wire  inst1__I;
-  wire  inst1__O;
-  DFF_init0_has_ceFalse_has_resetFalse inst1(
-    .CLK(inst1__CLK),
-    .I(inst1__I),
-    .O(inst1__O)
-  );
-
-  //Wire declarations for instance 'inst2' (Module DFF_init0_has_ceFalse_has_resetFalse)
-  wire  inst2__CLK;
-  wire  inst2__I;
-  wire  inst2__O;
-  DFF_init0_has_ceFalse_has_resetFalse inst2(
-    .CLK(inst2__CLK),
-    .I(inst2__I),
-    .O(inst2__O)
-  );
-
-  //Wire declarations for instance 'inst3' (Module DFF_init0_has_ceFalse_has_resetFalse)
-  wire  inst3__CLK;
-  wire  inst3__I;
-  wire  inst3__O;
-  DFF_init0_has_ceFalse_has_resetFalse inst3(
-    .CLK(inst3__CLK),
-    .I(inst3__I),
-    .O(inst3__O)
-  );
-
-  //Wire declarations for instance 'inst4' (Module DFF_init0_has_ceFalse_has_resetFalse)
-  wire  inst4__CLK;
-  wire  inst4__I;
-  wire  inst4__O;
-  DFF_init0_has_ceFalse_has_resetFalse inst4(
-    .CLK(inst4__CLK),
-    .I(inst4__I),
-    .O(inst4__O)
-  );
-
-  //All the connections
-  assign inst0__CLK = CLK;
-  assign inst0__I = I[0];
-  assign O[0] = inst0__O;
-  assign inst1__CLK = CLK;
-  assign inst1__I = I[1];
-  assign O[1] = inst1__O;
-  assign inst2__CLK = CLK;
-  assign inst2__I = I[2];
-  assign O[2] = inst2__O;
-  assign inst3__CLK = CLK;
-  assign inst3__I = I[3];
-  assign O[3] = inst3__O;
-  assign inst4__CLK = CLK;
-  assign inst4__I = I[4];
-  assign O[4] = inst4__O;
-
-endmodule //Register5_0001
+endmodule //or_wrapped
 
 module reg_U1 #(parameter init=1) (
   input  clk,

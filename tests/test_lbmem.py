@@ -1,5 +1,5 @@
 import silica as si
-from silica import uint, eval, list
+from silica import uint, eval, memory
 import math
 
 
@@ -48,7 +48,7 @@ def DrainingState(lbmem_width, depth, lbmem, raddr, waddr):
 
 @si.coroutine
 def LbMem(depth=64, lbmem_width=8):
-    lbmem = list(uint(0, lbmem_width) for i in range(depth))
+    lbmem = memory(depth, lbmem_width)
     raddr = uint(0, eval(math.ceil(math.log2(depth))))
     waddr = uint(0, eval(math.ceil(math.log2(depth))))
     while True:

@@ -12,7 +12,7 @@ class BitVector(BitVector):
         return f"bits({self._value}, {self.num_bits})"
 
 
-class list(list):
+class Memory(list):
     def __getitem__(self, key):
         if isinstance(key, magma.bit_vector.BitVector):
             key = key.as_int()
@@ -22,6 +22,9 @@ class list(list):
         if isinstance(key, magma.bit_vector.BitVector):
             key = key.as_int()
         return super().__setitem__(key, value)
+
+def memory(height, width):
+    return Memory(bits(0, width) for _ in range(height))
 
 def bits(value, width):
     # TODO: Only support bitwise ops
