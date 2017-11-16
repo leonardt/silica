@@ -2,6 +2,8 @@ import silica
 from silica import bits, Bit, uint, zext
 from silica.testing import check_verilog
 from magma.testing.coroutine import check
+import pytest
+import shutil
 
 @silica.coroutine(inputs={"I" : Bit})
 def detect111():
@@ -23,13 +25,17 @@ def inputs_generator(inputs):
             I = i
             yield I
 
+detect = detect111()
+magma_detect = silica.compile(detect, file_name="magma_detect.py")
+
+inputs =  list(map(bool, [1,1,0,1,1,1,0,1,0,1,1,1,1,1,1]))
 def test_detect111():
-    detect = detect111()
-    inputs =  list(map(bool, [1,1,0,1,1,1,0,1,0,1,1,1,1,1,1]))
     outputs = list(map(bool, [0,0,0,0,0,1,0,0,0,0,0,1,1,1,1]))
     for i, o in zip(inputs, outputs):
         assert o == detect.send(i)
 
-    magma_detect = silica.compile(detect, file_name="magma_detect.py")
     check(magma_detect, detect111(), len(inputs), inputs_generator(inputs))
+
+@pytest.mark.skipif(shutil.which("verilator") is None, reason="verilator not installed")
+def test_verilog():
     check_verilog("detect111", magma_detect, detect111(), len(inputs), inputs_generator(inputs))

@@ -1,6 +1,8 @@
 from silica import coroutine, uint, Bit, BitVector, compile, Array, Bits, bits
 from magma.testing.coroutine import check
-from silica.testing import check_verilog 
+from silica.testing import check_verilog
+import pytest
+import shutil
 
 
 @coroutine(inputs={"I" : Array(4, Bits(16))})
@@ -28,17 +30,20 @@ def inputs_generator(inputs):
                 I = [BitVector((_ * len(i)) + j, 16) for j in range(len(i))]
                 yield I
 
+ser = Serializer4()
+serializer4 = compile(ser, "serializer4_magma.py")
+inputs = [[4,5,6,7],[10,16,8,3]]
+
 def test_ser3():
-    ser = Serializer4()
-    inputs = [[4,5,6,7],[10,16,8,3]]
     for I in inputs:
       ser.send(I)
       for i in range(3):
         assert ser.O == I[i]
         next(ser)
 
-    serializer4 = compile(ser, "serializer4_magma.py")
     print(repr(serializer4))
     check(serializer4, Serializer4(), 9, inputs_generator(inputs))
-    check_verilog("serializer", serializer4, Serializer4(), 9, inputs_generator(inputs))
 
+@pytest.mark.skipif(shutil.which("verilator") is None, reason="verilator not installed")
+def test_verilog():
+    check_verilog("serializer", serializer4, Serializer4(), 9, inputs_generator(inputs))

@@ -6,8 +6,7 @@ import shutil
 
 def check_verilog(name, circ, circ_sim, num_cycles, inputs_generator=None):
     if shutil.which("verilator") is None:
-        print("verilator not installed, skipping verilog test")
-        return
+        raise Exception("verilator not installed, skipping verilog test")
     test_vectors = magma.testing.coroutine.testvectors(circ, circ_sim, num_cycles,
             inputs_generator if inputs_generator else None)
 
