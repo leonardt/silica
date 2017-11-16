@@ -2,8 +2,12 @@ import magma
 from magma.testing.verilator import compile as compileverilator
 from magma.testing.verilator import run_verilator_test
 from magma.bit_vector import BitVector
+import shutil
 
 def check_verilog(name, circ, circ_sim, num_cycles, inputs_generator=None):
+    if shutil.which("verilator") is None:
+        print("verilator not installed, skipping verilog test")
+        return
     test_vectors = magma.testing.coroutine.testvectors(circ, circ_sim, num_cycles,
             inputs_generator if inputs_generator else None)
 

@@ -9,3 +9,8 @@ pip install -e .
 ```
 
 See `tests/` for known working examples (if the latest Travis build has passed)
+
+To test verilog
+```
+brew install verilator
+```
