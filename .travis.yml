@@ -2,6 +2,11 @@ language: python
 python:
     - "3.6"
 
+addons:
+  apt:
+    packages:
+      - verilator
+
 before_install:
     # BEGIN: coreir installation
   - wget https://github.com/rdaly525/coreir/releases/download/v0.0.3/coreir.tar.gz

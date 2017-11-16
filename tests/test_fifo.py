@@ -1,6 +1,7 @@
 import silica as si
 from silica import bits, uint, memory
 from magma.testing.coroutine import check
+from silica.testing import check_verilog
 
 
 @si.coroutine(inputs={"wdata": si.Bits(4), "wen": si.Bit, "ren": si.Bit})
@@ -71,6 +72,7 @@ def test_fifo():
 
     fifo_magma = si.compile(fifo, file_name="fifo_magma.py")
     check(fifo_magma, Fifo(), len(expected_trace), inputs_generator(4))
+    check_verilog("fifo", fifo_magma, Fifo(), len(expected_trace), inputs_generator(4))
 
 if __name__ == "__main__":
     test_fifo()

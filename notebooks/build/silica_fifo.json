@@ -99,8 +99,8 @@
       "Fifo":{
         "type":["Record",{
           "rdata":["Array",4,"Bit"],
-          "empty":"Bit",
           "full":"Bit",
+          "empty":"Bit",
           "wdata":["Array",4,"BitIn"],
           "wen":"BitIn",
           "ren":"BitIn",
@@ -151,6 +151,9 @@
           "inst19":{
             "modref":"global.EQ2"
           },
+          "inst2":{
+            "modref":"global.Register2"
+          },
           "inst20":{
             "modref":"corebit.not"
           },
@@ -181,10 +184,6 @@
           "inst29":{
             "modref":"global.Add2"
           },
-          "inst3":{
-            "genref":"coreir.mem",
-            "genargs":{"depth":["Int",4], "width":["Int",4]}
-          },
           "inst30":{
             "modref":"global.EQ2"
           },
@@ -214,6 +213,9 @@
           },
           "inst39":{
             "modref":"corebit.not"
+          },
+          "inst4":{
+            "modref":"global.Register2"
           },
           "inst40":{
             "modref":"global.and_wrapped"
@@ -246,7 +248,8 @@
             "modref":"global.and_wrapped"
           },
           "inst5":{
-            "modref":"global.Register2"
+            "genref":"coreir.mem",
+            "genargs":{"depth":["Int",4], "width":["Int",4]}
           },
           "inst50":{
             "modref":"global.Add2"
@@ -277,9 +280,6 @@
           },
           "inst59":{
             "modref":"corebit.not"
-          },
-          "inst6":{
-            "modref":"global.Register2"
           },
           "inst60":{
             "modref":"global.and_wrapped"
@@ -321,7 +321,7 @@
             "modref":"global.Or4xNone"
           },
           "inst72":{
-            "modref":"global.SilicaOneHotMux8None"
+            "modref":"global.SilicaOneHotMux82"
           },
           "inst73":{
             "modref":"global.SilicaOneHotMux8None"
@@ -330,7 +330,7 @@
             "modref":"global.SilicaOneHotMux82"
           },
           "inst75":{
-            "modref":"global.SilicaOneHotMux82"
+            "modref":"global.SilicaOneHotMux8None"
           },
           "inst76":{
             "modref":"global.SilicaOneHotMux84"
@@ -355,12 +355,12 @@
           }
         },
         "connections":[
-          ["bit_const_GND.out","inst72.I0"],
-          ["bit_const_GND.out","inst72.I2"],
-          ["bit_const_GND.out","inst72.I4"],
-          ["bit_const_GND.out","inst72.I6"],
           ["bit_const_GND.out","inst73.I1"],
           ["bit_const_GND.out","inst73.I5"],
+          ["bit_const_GND.out","inst75.I0"],
+          ["bit_const_GND.out","inst75.I2"],
+          ["bit_const_GND.out","inst75.I4"],
+          ["bit_const_GND.out","inst75.I6"],
           ["bit_const_GND.out","inst1.I.0"],
           ["bit_const_GND.out","inst13.I1.1"],
           ["bit_const_GND.out","inst18.I1.1"],
@@ -387,15 +387,15 @@
           ["inst0.O","inst77.S"],
           ["inst0.O","inst78.S"],
           ["inst1.CLK","self.CLK"],
-          ["inst10.I0","inst6.O"],
+          ["inst10.I0","inst4.O"],
           ["inst10.I1","inst9.O"],
           ["inst11.in","next_empty.O"],
           ["inst11.out","inst12.I1"],
           ["inst12.I0","self.ren"],
           ["inst12.O","inst15.I2"],
-          ["inst13.I0","inst6.O"],
+          ["inst13.I0","inst4.O"],
           ["inst13.O","inst14.I0"],
-          ["inst13.O","inst75.I0"],
+          ["inst13.O","inst74.I0"],
           ["inst14.I1","inst9.O"],
           ["inst14.O","inst73.I0"],
           ["inst15.I0","inst1.O.0"],
@@ -405,11 +405,23 @@
           ["inst16.out","inst17.I1"],
           ["inst17.I0","self.wen"],
           ["inst17.O","inst23.I1"],
-          ["inst18.I0","inst5.O"],
+          ["inst18.I0","inst2.O"],
           ["inst18.O","inst19.I1"],
-          ["inst18.O","inst74.I1"],
-          ["inst19.I0","inst6.O"],
-          ["inst19.O","inst72.I1"],
+          ["inst18.O","inst72.I1"],
+          ["inst19.I0","inst4.O"],
+          ["inst19.O","inst75.I1"],
+          ["inst2.CLK","self.CLK"],
+          ["inst2.I","inst72.O"],
+          ["inst2.O","inst30.I1"],
+          ["inst2.O","inst41.I0"],
+          ["inst2.O","inst5.waddr"],
+          ["inst2.O","inst50.I0"],
+          ["inst2.O","inst62.I1"],
+          ["inst2.O","inst72.I2"],
+          ["inst2.O","inst72.I3"],
+          ["inst2.O","inst72.I6"],
+          ["inst2.O","inst72.I7"],
+          ["inst2.O","inst9.I0"],
           ["inst20.in","next_empty.O"],
           ["inst20.out","inst21.I1"],
           ["inst21.I0","self.ren"],
@@ -426,23 +438,9 @@
           ["inst27.out","inst28.I1"],
           ["inst28.I0","self.ren"],
           ["inst28.O","inst31.I2"],
-          ["inst29.I0","inst6.O"],
+          ["inst29.I0","inst4.O"],
           ["inst29.O","inst30.I0"],
-          ["inst29.O","inst75.I2"],
-          ["inst3.clk","self.CLK"],
-          ["inst3.raddr","inst6.O"],
-          ["inst3.rdata","inst76.I0"],
-          ["inst3.rdata","inst76.I1"],
-          ["inst3.rdata","inst76.I2"],
-          ["inst3.rdata","inst76.I3"],
-          ["inst3.rdata","inst76.I4"],
-          ["inst3.rdata","inst76.I5"],
-          ["inst3.rdata","inst76.I6"],
-          ["inst3.rdata","inst76.I7"],
-          ["inst3.waddr","inst5.O"],
-          ["inst3.wdata","self.wdata"],
-          ["inst3.wen","inst71.O"],
-          ["inst30.I1","inst5.O"],
+          ["inst29.O","inst74.I2"],
           ["inst30.O","inst73.I2"],
           ["inst31.I0","inst1.O.0"],
           ["inst31.O","inst0.I.2"],
@@ -460,20 +458,28 @@
           ["inst38.O","inst0.I.3"],
           ["inst39.in","next_full.O"],
           ["inst39.out","inst40.I1"],
+          ["inst4.CLK","self.CLK"],
+          ["inst4.I","inst74.O"],
+          ["inst4.O","inst42.I0"],
+          ["inst4.O","inst45.I0"],
+          ["inst4.O","inst5.raddr"],
+          ["inst4.O","inst51.I0"],
+          ["inst4.O","inst61.I0"],
+          ["inst4.O","inst74.I1"],
+          ["inst4.O","inst74.I3"],
+          ["inst4.O","inst74.I5"],
+          ["inst4.O","inst74.I7"],
           ["inst40.I0","self.wen"],
           ["inst40.O","inst47.I1"],
-          ["inst41.I0","inst5.O"],
           ["inst41.O","inst42.I1"],
           ["inst41.O","inst46.I1"],
-          ["inst41.O","inst74.I4"],
-          ["inst42.I0","inst6.O"],
+          ["inst41.O","inst72.I4"],
           ["inst43.in","next_empty.O"],
           ["inst43.out","inst44.I1"],
           ["inst44.I0","self.ren"],
           ["inst44.O","inst47.I2"],
-          ["inst45.I0","inst6.O"],
           ["inst45.O","inst46.I0"],
-          ["inst45.O","inst75.I4"],
+          ["inst45.O","inst74.I4"],
           ["inst46.O","inst73.I4"],
           ["inst47.I0","inst1.O.1"],
           ["inst47.O","inst0.I.4"],
@@ -481,19 +487,20 @@
           ["inst48.out","inst49.I1"],
           ["inst49.I0","self.wen"],
           ["inst49.O","inst55.I1"],
-          ["inst5.CLK","self.CLK"],
-          ["inst5.I","inst74.O"],
-          ["inst5.O","inst50.I0"],
-          ["inst5.O","inst62.I1"],
-          ["inst5.O","inst74.I2"],
-          ["inst5.O","inst74.I3"],
-          ["inst5.O","inst74.I6"],
-          ["inst5.O","inst74.I7"],
-          ["inst5.O","inst9.I0"],
+          ["inst5.clk","self.CLK"],
+          ["inst5.rdata","inst76.I0"],
+          ["inst5.rdata","inst76.I1"],
+          ["inst5.rdata","inst76.I2"],
+          ["inst5.rdata","inst76.I3"],
+          ["inst5.rdata","inst76.I4"],
+          ["inst5.rdata","inst76.I5"],
+          ["inst5.rdata","inst76.I6"],
+          ["inst5.rdata","inst76.I7"],
+          ["inst5.wdata","self.wdata"],
+          ["inst5.wen","inst71.O"],
           ["inst50.O","inst51.I1"],
-          ["inst50.O","inst74.I5"],
-          ["inst51.I0","inst6.O"],
-          ["inst51.O","inst72.I5"],
+          ["inst50.O","inst72.I5"],
+          ["inst51.O","inst75.I5"],
           ["inst52.in","next_empty.O"],
           ["inst52.out","inst53.I1"],
           ["inst53.I0","self.ren"],
@@ -508,17 +515,10 @@
           ["inst58.out","inst63.I1"],
           ["inst59.in","next_empty.O"],
           ["inst59.out","inst60.I1"],
-          ["inst6.CLK","self.CLK"],
-          ["inst6.I","inst75.O"],
-          ["inst6.O","inst61.I0"],
-          ["inst6.O","inst75.I1"],
-          ["inst6.O","inst75.I3"],
-          ["inst6.O","inst75.I5"],
-          ["inst6.O","inst75.I7"],
           ["inst60.I0","self.ren"],
           ["inst60.O","inst63.I2"],
           ["inst61.O","inst62.I0"],
-          ["inst61.O","inst75.I6"],
+          ["inst61.O","inst74.I6"],
           ["inst62.O","inst73.I6"],
           ["inst63.I0","inst1.O.1"],
           ["inst63.O","inst0.I.6"],
@@ -540,32 +540,32 @@
           ["inst71.I1","inst0.O.1"],
           ["inst71.I2","inst0.O.4"],
           ["inst71.I3","inst0.O.5"],
-          ["inst72.I3","next_full.O"],
-          ["inst72.I7","next_full.O"],
-          ["inst72.O","next_full.I"],
+          ["inst72.I0","inst9.O"],
           ["inst73.I3","next_empty.O"],
           ["inst73.I7","next_empty.O"],
           ["inst73.O","next_empty.I"],
-          ["inst74.I0","inst9.O"],
+          ["inst75.I3","next_full.O"],
+          ["inst75.I7","next_full.O"],
+          ["inst75.O","next_full.I"],
           ["inst76.O","self.rdata"],
-          ["inst77.I0","next_empty.O"],
-          ["inst77.I1","next_empty.O"],
-          ["inst77.I2","next_empty.O"],
-          ["inst77.I3","next_empty.O"],
-          ["inst77.I4","next_empty.O"],
-          ["inst77.I5","next_empty.O"],
-          ["inst77.I6","next_empty.O"],
-          ["inst77.I7","next_empty.O"],
-          ["inst77.O","self.empty"],
-          ["inst78.I0","next_full.O"],
-          ["inst78.I1","next_full.O"],
-          ["inst78.I2","next_full.O"],
-          ["inst78.I3","next_full.O"],
-          ["inst78.I4","next_full.O"],
-          ["inst78.I5","next_full.O"],
-          ["inst78.I6","next_full.O"],
-          ["inst78.I7","next_full.O"],
-          ["inst78.O","self.full"],
+          ["inst77.I0","next_full.O"],
+          ["inst77.I1","next_full.O"],
+          ["inst77.I2","next_full.O"],
+          ["inst77.I3","next_full.O"],
+          ["inst77.I4","next_full.O"],
+          ["inst77.I5","next_full.O"],
+          ["inst77.I6","next_full.O"],
+          ["inst77.I7","next_full.O"],
+          ["inst77.O","self.full"],
+          ["inst78.I0","next_empty.O"],
+          ["inst78.I1","next_empty.O"],
+          ["inst78.I2","next_empty.O"],
+          ["inst78.I3","next_empty.O"],
+          ["inst78.I4","next_empty.O"],
+          ["inst78.I5","next_empty.O"],
+          ["inst78.I6","next_empty.O"],
+          ["inst78.I7","next_empty.O"],
+          ["inst78.O","self.empty"],
           ["inst8.I0","self.wen"],
           ["next_empty.CLK","self.CLK"],
           ["next_full.CLK","self.CLK"]
