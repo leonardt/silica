@@ -33,6 +33,7 @@ int main(int argc, char **argv, char **env) {{
 ''')
         cycle = 0
         for inputs, outputs in zip(test_vectors[0], test_vectors[1]):
+            verilator_harness.write("    top->CLK = 0;\n")
             for port_name, value in inputs.items():
                 if isinstance(value, list):
                     string = ""
@@ -44,16 +45,14 @@ int main(int argc, char **argv, char **env) {{
                 else:
                     value = int(value)
                 verilator_harness.write("    top->{} = {};\n".format(port_name, value))
+            verilator_harness.write("    top->eval();\n")
             for port_name, value in outputs.items():
                 if isinstance(value, BitVector):
                     value = value.as_binary_string()
                 else:
                     value = int(value)
-                verilator_harness.write("    top->eval();\n")
                 verilator_harness.write("    check(\"{port_name}\", top->{port_name}, {expected}, {cycle});\n".format(port_name=port_name, expected=value, cycle=cycle))
 
-            verilator_harness.write("    top->CLK = 0;\n")
-            verilator_harness.write("    top->eval();\n")
             verilator_harness.write("    top->CLK = 1;\n")
             verilator_harness.write("    top->eval();\n")
             cycle += 1

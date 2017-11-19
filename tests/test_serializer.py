@@ -37,9 +37,13 @@ inputs = [[4,5,6,7],[10,16,8,3]]
 def test_ser3():
     for I in inputs:
       ser.send(I)
+      print(ser.O)
+      assert ser.O == I[0]
       for i in range(3):
-        assert ser.O == I[i]
         next(ser)
+        print(ser.O)
+        assert ser.O == I[i+1]
+    # assert False
 
     print(repr(serializer4))
     check(serializer4, Serializer4(), 9, inputs_generator(inputs))

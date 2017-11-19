@@ -26,7 +26,12 @@ class Coroutine:
         try:
             return self.co.gi_frame.f_locals[key]
         except KeyError as e:
-            return self.co.gi_yieldfrom.gi_frame.f_locals[key]
+            if self.co.gi_yieldfrom is not None:
+                try:
+                    return self.co.gi_yieldfrom.gi_frame.f_locals[key]
+                except KeyError as e:
+                    pass
+        raise KeyError(f"Could not find key {key}")
 
     def send(self, *args):
         return self.co.send(*args)
