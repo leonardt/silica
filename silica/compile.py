@@ -909,6 +909,8 @@ wire(__silica_path_state.O, {name}_inputs_{i}.S)
             statement = replace_symbols(statement, store_symbol_map, ast.Store)
             magma_source += astor.to_source(statement)
             for var in stores:
+                if var in width_table and isinstance(width_table[var], MemoryType):
+                    continue
                 if var in registers:
                     load_symbol_map[var] = ast.parse(f"{var}_next_{i}_tmp").body[0].value
                 elif var in outputs:
@@ -956,7 +958,7 @@ wire(__silica_path_state.O, {name}_inputs_{i}.S)
                     magma_source += f"wire({output}_{i}_tmp, {tree.name}.{output})\n"
             elif output in stores:
                 # magma_source += f"wire({output}_next_{i}_tmp, {output}_output.I{i})\n"
-                magma_source += f"{output}_output.append(({output}_{i}_tmp, {i}))\n"
+                magma_source += f"{output}_output.append(({output}_next_{i}_tmp, {i}))\n"
             # else:
             #     # magma_source += f"wire({output}.O, {output}_output.I{i})\n"
             #     magma_source += f"{output}_output.append(({output}.O, {i}))\n"
@@ -1072,9 +1074,16 @@ def DefineSilicaMux(height, width):
         exec(magma_source, func_globals, func_locals)
         return eval(coroutine._name, func_globals, func_locals)
     else:
+        if silica.config.compile_dir == 'callee_file_dir':
+            (_, callee_file_name, _, _, _, _) = inspect.getouterframes(inspect.currentframe())[1]
+            file_path = os.path.dirname(callee_file_name)
+            file_name = os.path.join(file_path, file_name)
+
         with open(file_name, "w") as output_file:
             output_file.write(magma_source)
-        directory = os.path.dirname(os.path.abspath(file_name))
-        sys.path.append(directory)
         base = os.path.basename(file_name)
-        return getattr(__import__(os.path.splitext(base)[0]), coroutine._name)
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(os.path.splitext(base)[0], file_name)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return getattr(module, coroutine._name)

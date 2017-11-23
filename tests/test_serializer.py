@@ -30,11 +30,14 @@ def inputs_generator(inputs):
                 I = [BitVector((_ * len(i)) + j, 16) for j in range(len(i))]
                 yield I
 
-ser = Serializer4()
-serializer4 = compile(ser, "serializer4_magma.py")
 inputs = [[4,5,6,7],[10,16,8,3]]
+@pytest.fixture
+def serializer():
+    ser = Serializer4()
+    return compile(ser, "build/serializer4_magma.py")
 
-def test_ser3():
+def test_ser3(serializer):
+    ser = Serializer4()
     for I in inputs:
       ser.send(I)
       print(ser.O)
@@ -45,9 +48,9 @@ def test_ser3():
         assert ser.O == I[i+1]
     # assert False
 
-    print(repr(serializer4))
-    check(serializer4, Serializer4(), 9, inputs_generator(inputs))
+    print(repr(serializer))
+    check(serializer, Serializer4(), 9, inputs_generator(inputs))
 
 @pytest.mark.skipif(shutil.which("verilator") is None, reason="verilator not installed")
-def test_verilog():
-    check_verilog("serializer", serializer4, Serializer4(), 9, inputs_generator(inputs))
+def test_verilog(serializer):
+    check_verilog("serializer", serializer, Serializer4(), 9, inputs_generator(inputs))

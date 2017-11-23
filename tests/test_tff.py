@@ -34,6 +34,6 @@ def test_TFF():
         tff.send(False)
         assert tff.O == True
 
-    magma_tff = silica.compile(tff, "silica_tff.py")
+    magma_tff = silica.compile(tff, "build/silica_tff.py")
     print(repr(magma_tff))
     check(magma_tff, TFF(), 8, inputs_generator())

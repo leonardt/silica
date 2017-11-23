@@ -86,5 +86,5 @@ def test_lbmem():
         assert expected_valid == lbmem.valid
         if expected_valid:
             assert lbmem.rdata == expected_written.pop(0)
-    # lbmem_magma = si.compile(lbmem, file_name="lbmem_magma.py")
+    # lbmem_magma = si.compile(lbmem, file_name="build/lbmem_magma.py")
     # check(lbmem_magma, LbMem(), len(inputs), inputs_generator(list(zip(wdata,wen))))

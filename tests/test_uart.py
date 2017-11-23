@@ -74,6 +74,6 @@ def test_UART():
         assert seq2int(message[1:-1]) == messages[i]
         # print(f"{seq2int(message[1:-1]):X}")
 
-    magma_uart = silica.compile(uart_tx, "uart_magma.py")
+    magma_uart = silica.compile(uart_tx, "build/uart_magma.py")
     print(repr(magma_uart))
     check(magma_uart, UART_TX(), len(messages) * 10, inputs_generator(messages))

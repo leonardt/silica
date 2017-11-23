@@ -16,10 +16,10 @@ def Fifo():
     empty = status
     full = False
     while True:
+        wdata, wen, ren = yield rdata, empty, full
         full = (waddr == raddr) and (not status)
         empty = status
         rdata = buffer[raddr]
-        wdata, wen, ren = yield rdata, empty, full
         if wen and not full:
             buffer[waddr] = wdata
             waddr = waddr + 1
@@ -43,7 +43,7 @@ def Fifo():
     #         raddr = raddr + 1
 
 expected_trace = [
-    # {'wdata': 1, 'wen': 0, 'ren': 1, 'rdata': 0, 'full': False, 'empty': True, 'buffer': [0, 0, 0, 0], 'raddr': 0, 'waddr': 0},
+    {'wdata': 1, 'wen': 0, 'ren': 1, 'rdata': 0, 'full': False, 'empty': True, 'buffer': [0, 0, 0, 0], 'raddr': 0, 'waddr': 0},
     {'wdata': 2, 'wen': 1, 'ren': 0, 'rdata': 0, 'full': False, 'empty': True, 'buffer': [2, 0, 0, 0], 'raddr': 0, 'waddr': 1},
     {'wdata': 3, 'wen': 1, 'ren': 1, 'rdata': 2, 'full': False, 'empty': False, 'buffer': [2, 3, 0, 0], 'raddr': 1, 'waddr': 2},
     {'wdata': 4, 'wen': 1, 'ren': 0, 'rdata': 3, 'full': False, 'empty': False, 'buffer': [2, 3, 4, 0], 'raddr': 1, 'waddr': 3},
@@ -79,20 +79,20 @@ def test_fifo():
         args = ()
         for input_ in inputs:
             args += (trace[input_], )
+        fifo.send(args)
         for output in outputs:
             assert getattr(fifo, output) == trace[output], (i, output, getattr(fifo, output), trace[output])
-        fifo.send(args)
         for state in states:
             assert getattr(fifo, state) == trace[state], (i, state, getattr(fifo, state), trace[state])
 
-    # fifo_magma = si.compile(fifo, file_name="fifo_magma.py")
-    # check(fifo_magma, Fifo(), len(expected_trace), inputs_generator(4))
+    fifo_magma = si.compile(fifo, file_name="build/fifo_magma.py")
+    check(fifo_magma, Fifo(), len(expected_trace), inputs_generator(4))
 
-# @pytest.mark.skipif(shutil.which("verilator") is None, reason="verilator not installed")
-# def test_verilog():
-#     fifo = Fifo()
-#     fifo_magma = si.compile(fifo, file_name="fifo_magma.py")
-#     check_verilog("fifo", fifo_magma, Fifo(), len(expected_trace), inputs_generator(4))
+@pytest.mark.skipif(shutil.which("verilator") is None, reason="verilator not installed")
+def test_verilog():
+    fifo = Fifo()
+    fifo_magma = si.compile(fifo, file_name="build/fifo_magma.py")
+    check_verilog("fifo", fifo_magma, Fifo(), len(expected_trace), inputs_generator(4))
 
 if __name__ == "__main__":
     test_fifo()

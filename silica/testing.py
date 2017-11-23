@@ -1,8 +1,11 @@
+from silica import config
 import magma
 from magma.testing.verilator import compile as compileverilator
 from magma.testing.verilator import run_verilator_test
 from magma.bit_vector import BitVector
 import shutil
+import inspect
+import os
 
 def check_verilog(name, circ, circ_sim, num_cycles, inputs_generator=None):
     if shutil.which("verilator") is None:
@@ -10,7 +13,14 @@ def check_verilog(name, circ, circ_sim, num_cycles, inputs_generator=None):
     test_vectors = magma.testing.coroutine.testvectors(circ, circ_sim, num_cycles,
             inputs_generator if inputs_generator else None)
 
-    with open(f"build/sim_{name}_verilator.cpp", "w") as verilator_harness:
+    if config.compile_dir == 'callee_file_dir':
+        (_, filename, _, _, _, _) = inspect.getouterframes(inspect.currentframe())[1]
+        file_path = os.path.dirname(filename)
+        build_dir = os.path.join(file_path, 'build')
+    else:
+        build_dir = "build"
+
+    with open(f"{build_dir}/sim_{name}_verilator.cpp", "w") as verilator_harness:
         verilator_harness.write(f'''\
 #include "V{name}.h"
 #include "verilated.h"
@@ -62,5 +72,6 @@ int main(int argc, char **argv, char **env) {{
         name,
         f"sim_{name}_verilator",
         name,
-        "-I../verilog"
+        "-I../../verilog",
+        build_dir=build_dir
     )

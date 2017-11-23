@@ -55,6 +55,6 @@ def test_PISO():
             # print(f"PI={inputs.PI}, SI={inputs.SI}, LOAD={inputs.LOAD}, O={piso.O}, values={piso.values}")
             next(inputs)
         assert actual_outputs == expected_outputs
-    magma_piso = silica.compile(piso, "piso_magma.py")
+    magma_piso = silica.compile(piso, "build/piso_magma.py")
     print(repr(magma_piso))
     check(magma_piso, DefinePISO(10)(), 20, inputs_generator(message))

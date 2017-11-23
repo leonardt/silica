@@ -25,11 +25,13 @@ def inputs_generator(inputs):
             I = i
             yield I
 
-detect = detect111()
-magma_detect = silica.compile(detect, file_name="magma_detect.py")
+@pytest.fixture
+def magma_detect():
+    return silica.compile(detect111(), file_name="build/magma_detect.py")
 
 inputs =  list(map(bool, [1,1,0,1,1,1,0,1,0,1,1,1,1,1,1]))
-def test_detect111():
+def test_detect111(magma_detect):
+    detect = detect111()
     outputs = list(map(bool, [0,0,0,0,0,1,0,0,0,0,0,1,1,1,1]))
     for i, o in zip(inputs, outputs):
         assert o == detect.send(i)
@@ -37,5 +39,5 @@ def test_detect111():
     check(magma_detect, detect111(), len(inputs), inputs_generator(inputs))
 
 @pytest.mark.skipif(shutil.which("verilator") is None, reason="verilator not installed")
-def test_verilog():
+def test_verilog(magma_detect):
     check_verilog("detect111", magma_detect, detect111(), len(inputs), inputs_generator(inputs))
