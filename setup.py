@@ -12,6 +12,5 @@ setup(
     version='0.1-alpha',
     description='',
     packages=["silica"],
-    
     # install_requires=reqs
     )
