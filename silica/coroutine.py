@@ -33,8 +33,8 @@ class Coroutine:
                     pass
         raise KeyError(f"Could not find key {key}")
 
-    def send(self, *args):
-        return self.co.send(*args)
+    def send(self, args):
+        return self.co.send(args)
 
     def __next__(self):
         return next(self.co)
