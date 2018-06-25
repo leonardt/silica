@@ -348,7 +348,7 @@ class Desugar(ast.NodeTransformer):
         if isinstance(node.op, ast.Not):
             op = "not_"
         elif isinstance(node.op, ast.USub):
-            op = "negate"
+            op = "neg"
         else:
             raise NotImplementedError(node.op)
         return ast.parse(f"{op}({astor.to_source(node.operand).rstrip()})").body[0].value
