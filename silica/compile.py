@@ -1097,6 +1097,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog')
 
     has_ce = coroutine.has_ce
     tree = get_ast(coroutine._definition).body[0]  # Get the first element of the ast.Module
+    module_name = coroutine._name
     func_locals.update(coroutine._defn_locals)
     specialize_arguments(tree, coroutine)
     specialize_constants(tree, coroutine._defn_locals)
@@ -1204,10 +1205,9 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog')
     if has_ce:
         raise NotImplementedError("add ce to module decl")
     verilog_source += f"""
-module {tree.name} ({io_string}, input CLK);
+module {module_name} ({io_string}, input CLK);
 """
     for register in registers:
-        print(width_table[register])
         width = width_table[register]
         width_str = f"[{width-1}:0]" if width > 1 else ""
         verilog_source += f"    reg {width_str} {register};\n"
