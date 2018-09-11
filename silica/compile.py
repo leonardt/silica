@@ -1087,6 +1087,14 @@ def DefineSilicaMux(height, width):
         spec.loader.exec_module(module)
         return getattr(module, coroutine._name)
 
+
+class RemoveBits(ast.NodeTransformer):
+    def visit_Call(self, node):
+        if isinstance(node.func, ast.Name) and node.func.id == 'bits':
+            return node.args[0]
+        return node
+
+
 def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog'):
     if not isinstance(coroutine, Coroutine):
         raise ValueError("silica.compile expects a silica.Coroutine")
@@ -1207,10 +1215,22 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog')
     verilog_source += f"""
 module {module_name} ({io_string}, input CLK);
 """
+
+
+    init_strings = []
     for register in registers:
         width = width_table[register]
         width_str = f"[{width-1}:0]" if width > 1 else ""
         verilog_source += f"    reg {width_str} {register};\n"
+        if register in register_initial_values and register_initial_values[register] is not None:
+            init_strings.append(f"{register} = {register_initial_values[register]};")
+
+    init_string = '\n        '.join(init_strings)
+    verilog_source += f"""
+    initial begin
+        {init_string}
+    end
+"""
 
 
     raddrs = {}
@@ -1222,11 +1242,17 @@ module {module_name} ({io_string}, input CLK);
 """
     tab = "    "
     for i, state in enumerate(states):
-        cond = " & ".join(astor.to_source(cond).rstrip() for cond in state.conds)
-        verilog_source += f"\n{tab * 3}if ({cond}) begin"
+        _tab = tab * 3
+        offset = ""
+        if state.conds:
+            offset = tab
+            cond = " & ".join(astor.to_source(cond).rstrip() for cond in state.conds)
+            verilog_source += f"\n{_tab}if ({cond}) begin"
         for statement in state.statements:
-            verilog_source += f"\n{tab * 4}" + astor.to_source(statement).rstrip() + ";"
-        verilog_source += f"\n{tab * 3}end"
+            RemoveBits().visit(statement)
+            verilog_source += f"\n{_tab + offset}" + astor.to_source(statement).rstrip() + ";"
+        if state.conds:
+            verilog_source += f"\n{_tab}end"
     verilog_source += "\n    end\nendmodule"
     with open(file_name, "w") as f:
         f.write(verilog_source)
