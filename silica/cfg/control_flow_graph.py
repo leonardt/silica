@@ -273,7 +273,7 @@ class ControlFlowGraph:
         connects the current block to it
 
         Generates a new ``BasicBlock`` corresponding to the True edge of the
-        branch and sets ``self.curr_block`` to this new block. 
+        branch and sets ``self.curr_block`` to this new block.
 
         Returns the new Branch node so that the calling code can later on add a
         false edge if necessary
@@ -610,14 +610,16 @@ def build_state_info(paths, outputs, inputs):
                 __unique_cond_id += 1
                 cond = block.cond
                 if path[i + 1] is block.false_edge:
-                    cond = ast.Call(ast.Name("not_", ast.Load()), [cond], [])
+                    # cond = ast.Call(ast.Name("not_", ast.Load()), [cond], [])
+                    cond = ast.UnaryOp(ast.Invert(), cond)
                 names = collect_names(cond)
                 for name in names:
                     if outputs and name not in outputs and \
                        inputs and name not in inputs:
                         state_vars.update(names)
-                state.statements.append(ast.parse(f"__silica_cond_{__unique_cond_id} = {astor.to_source(cond).rstrip()}").body[0])
-                state.conds.append(ast.parse(f"__silica_cond_{__unique_cond_id}").body[0].value)
+                # state.statements.append(ast.parse(f"__silica_cond_{__unique_cond_id} = {astor.to_source(cond).rstrip()}").body[0])
+                # state.conds.append(ast.parse(f"__silica_cond_{__unique_cond_id}").body[0].value)
+                state.conds.append(cond)
             elif isinstance(block, BasicBlock):
                 state.statements.extend(block.statements)
             elif isinstance(block, HeadBlock):

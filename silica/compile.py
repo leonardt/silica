@@ -1,6 +1,7 @@
 import ast
 import astor
 import inspect
+import magma as m
 import magma
 import os
 import sys
@@ -1022,12 +1023,10 @@ wire(__silica_path_state.O, {name}_inputs_{i}.S)
 
     return magma_source
 
-def compile(coroutine, file_name=None, mux_strategy="one-hot"):
-    if not isinstance(coroutine, Coroutine):
-        raise ValueError("silica.compile expects a silica.Coroutine")
+def compile_magma(coroutine, file_name, mux_strategy, output):
     stack = inspect.stack()
-    func_locals = stack[1].frame.f_locals
-    func_globals = stack[1].frame.f_globals
+    func_locals = stack[2].frame.f_locals
+    func_globals = stack[2].frame.f_globals
     magma_source = magma_compile(coroutine, func_globals, func_locals)
     magma_source = f"""\
 from magma import *
@@ -1087,3 +1086,148 @@ def DefineSilicaMux(height, width):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         return getattr(module, coroutine._name)
+
+def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog'):
+    if not isinstance(coroutine, Coroutine):
+        raise ValueError("silica.compile expects a silica.Coroutine")
+
+    stack = inspect.stack()
+    func_locals = stack[1].frame.f_locals
+    func_globals = stack[1].frame.f_globals
+
+    has_ce = coroutine.has_ce
+    tree = get_ast(coroutine._definition).body[0]  # Get the first element of the ast.Module
+    func_locals.update(coroutine._defn_locals)
+    specialize_arguments(tree, coroutine)
+    specialize_constants(tree, coroutine._defn_locals)
+    constant_fold(tree)
+    specialize_list_comps(tree, func_globals, func_locals)
+    desugar_for_loops(tree)
+    width_table = {}
+    if coroutine._inputs:
+        for input_, type_ in coroutine._inputs.items():
+            width_table[input_] = get_input_width(type_)
+
+    constant_fold(tree)
+    type_table = {}
+    CollectInitialWidthsAndTypes(width_table, type_table).visit(tree)
+    PromoteWidths(width_table, type_table).visit(tree)
+    # Desugar(width_table).visit(tree)
+    type_table = {}
+    TypeChecker(width_table, type_table).check(tree)
+    # DesugarArrays().run(tree)
+    cfg = ControlFlowGraph(tree)
+    liveness_analysis(cfg)
+
+    if output == 'magma':
+        # NOTE: This is currently not maintained
+        return compile_magma(coroutine, file_name, mux_strategy, output)
+
+    registers = set()
+    outputs = tuple()
+    for path in cfg.paths:
+        registers |= path[0].live_ins  # Union
+        outputs += (collect_names(path[-1].value, ctx=ast.Load), )
+    assert all(outputs[1] == output for output in outputs[1:]), "Yield statements must all have the same outputs except for the first"
+    outputs = outputs[1]
+    io_strings = []
+    for output in outputs:
+        width = width_table[output]
+        if width is None:
+            io_strings.append(f"output {output}")
+        else:
+            io_strings.append(f"output [{width_table[output] - 1}:0] {output}")
+
+    if coroutine._inputs:
+        for input_, type_ in coroutine._inputs.items():
+            if isinstance(type_, m.BitKind):
+                io_strings.append(f"input {input_}")
+            elif isinstance(type_, m.ArrayKind) and isinstance(type_.T, m.BitKind):
+                io_strings.append(f"input [{len(type_)-1}:0] {input_}")
+            else:
+                raise NotImplementedError(type_)
+    io_string = ", ".join(io_strings)
+    states = cfg.states
+    num_yields = cfg.curr_yield_id
+    num_states = len(states)
+    register_initial_values = {}
+    initial_basic_block = False
+    sub_coroutines = []
+    # cfg.render()
+    verilog_source = ""
+    for node in cfg.paths[0][:-1]:
+        if isinstance(node, HeadBlock):
+            for statement in node:
+                if isinstance(statement.value, ast.Call) and isinstance(statement.value.func, ast.Name) and statement.value.func.id == "coroutine_create":
+                    sub_coroutine = eval(astor.to_source(statement.value.args[0]), func_globals, func_locals)
+                    raise NotImplementedError()
+                    verilog_source += verilog_compile(sub_coroutine(), func_globals, func_locals)
+                    statement.value.func = ast.Name(sub_coroutine._name, ast.Load())
+                    statement.value.args = []
+                    sub_coroutines.append((statement, sub_coroutine))
+                else:
+                    register_initial_values[statement.targets[0].id] = get_constant(statement.value)
+        initial_basic_block |= isinstance(node, BasicBlock)
+    if not initial_basic_block:
+        num_states -= 1
+        num_yields -= 1
+        states = states[1:]
+    # CE = f"VCC"
+    # if has_ce:
+        # CE = f"{tree.name}.CE"
+    if False:
+        new_states = []
+        for state in states:
+            for new_state in new_states:
+                if "\n".join(astor.to_source(statement) for statement in state.statements) == \
+                   "\n".join(astor.to_source(statement) for statement in new_state.statements):
+                       new_state.start_yield_ids.append(state.start_yield_id)
+                       break
+            else:
+                new_states.append(state)
+        states = new_states
+    num_states = len(states)
+    for i, state in enumerate(states):
+        new_statements = []
+        for statement in state.statements:
+            if isinstance(statement, ast.Assign) and isinstance(statement.value, ast.Call) and isinstance(statement.value.func, ast.Attribute) and statement.value.func.attr == "send":
+                if len(statement.targets) == 1:
+                    target = statement.targets[0].id
+                    sub_coroutine = statement.value.func.value
+                    for j, arg in enumerate(statement.value.args[0].elts):
+                        new_statements.append(ast.parse(f"wire({astor.to_source(sub_coroutine).rstrip()}_inputs_{j}.I{i}, {astor.to_source(arg).rstrip()})"))
+                    statement.value = ast.Attribute(sub_coroutine, target, ast.Load)
+                else:
+                    raise NotImplementedError()
+            new_statements.append(statement)
+        state.statements = new_statements
+    if has_ce:
+        raise NotImplementedError("add ce to module decl")
+    verilog_source += f"""
+module {tree.name} ({io_string}, input CLK);
+"""
+    for register in registers:
+        print(width_table[register])
+        width = width_table[register]
+        width_str = f"[{width-1}:0]" if width > 1 else ""
+        verilog_source += f"    reg {width_str} {register};\n"
+
+
+    raddrs = {}
+    waddrs = {}
+    wdatas = {}
+    wens = {}
+    verilog_source += """\
+    always @(posedge CLK) begin\
+"""
+    tab = "    "
+    for i, state in enumerate(states):
+        cond = " & ".join(astor.to_source(cond).rstrip() for cond in state.conds)
+        verilog_source += f"\n{tab * 3}if ({cond}) begin"
+        for statement in state.statements:
+            verilog_source += f"\n{tab * 4}" + astor.to_source(statement).rstrip() + ";"
+        verilog_source += f"\n{tab * 3}end"
+    verilog_source += "\n    end\nendmodule"
+    with open(file_name, "w") as f:
+        f.write(verilog_source)
+    return m.DefineFromVerilog(verilog_source, type_map={"CLK": m.In(m.Clock)})[-1]

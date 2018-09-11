@@ -6,8 +6,8 @@ from magma import clear_cachedFunctions
 @pytest.fixture(autouse=True)
 def silica_test():
     import silica
-    silica.config.compile_dir = 'callee_file_dir'
+    # silica.config.compile_dir = 'callee_file_dir'
     import magma
-    magma.config.set_compile_dir('callee_file_dir')
+    # magma.config.set_compile_dir('callee_file_dir')
     magma_clear_circuit_cache()
     clear_cachedFunctions()
