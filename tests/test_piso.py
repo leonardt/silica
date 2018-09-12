@@ -12,7 +12,7 @@ from common import evaluate_circuit
 
 def DefinePISO(n):
     @silica.coroutine(inputs={"PI": silica.Bits(n), "SI": silica.Bit, "LOAD": silica.Bit})
-    def PISO():
+    def SIPISO():
         values = bits(0, n)
         # O = values[-1]
         O = values[n-1]
@@ -26,8 +26,8 @@ def DefinePISO(n):
                     values[i] = values[i - 1]
                 values[0] = SI
             O = values[n-1]
-    PISO._name = f"PISO{n}"
-    return PISO
+    SIPISO._name = f"SIPISO{n}"
+    return SIPISO
 
 
 @silica.coroutine
@@ -76,10 +76,6 @@ def test_PISO():
 
     tester.compile_and_run(target="verilator", directory="tests/build", flags=['-Wno-fatal'])
     # check that they are the same
-    from magma.circuit import magma_clear_circuit_cache
-    from magma import clear_cachedFunctions
-    magma_clear_circuit_cache()
-    clear_cachedFunctions()
     mantle_PISO = mantle.DefinePISO(10)
     mantle_tester = tester.retarget(mantle_PISO, clock=mantle_PISO.CLK)
     m.compile("tests/build/mantle_piso", mantle_PISO)
@@ -89,7 +85,7 @@ def test_PISO():
 
 
         print("===== BEGIN : SILICA RESULTS =====")
-        evaluate_circuit("piso_si", "PISO10")
+        evaluate_circuit("piso_si", "SIPISO10")
         print("===== END   : SILICA RESULTS =====")
         print("===== BEGIN : MANTLE RESULTS =====")
         evaluate_circuit("mantle_piso", "PISO10")
