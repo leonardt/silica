@@ -8,26 +8,18 @@ addons:
       - verilator
 
 before_install:
-    # BEGIN: coreir installation
+  # BEGIN: coreir installation
   - wget https://github.com/rdaly525/coreir/releases/download/v0.0.3/coreir.tar.gz
   - mkdir coreir_release
   - tar -xf coreir.tar.gz -C coreir_release --strip-components 1
   - export PATH=$TRAVIS_BUILD_DIR/coreir_release/bin:$PATH
   - export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/coreir_release/lib:$LD_LIBRARY_PATH
-    # END: coreir installation
+  # END: coreir installation
 
-install: 
+install:
   - pip install -r requirements.txt
   - pip install pytest pytest-cov
-  # - "pip install codecov"
 
-script: 
+script:
   - pip install -e .
-    # - export MANTLE=lattice
-    # - pytest --cov=silica
-  - mkdir build
-  - export MANTLE=coreir
   - pytest --cov=silica
-
-# after_success:
-#   - bash <(curl -s https://codecov.io/bash)
