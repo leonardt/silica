@@ -21,7 +21,9 @@ def compile_state(state, index, _tab, one_state):
         if state.conds:
             cond += " & ".join(astor.to_source(RemoveMagmaFuncs().visit(cond)).rstrip() for cond in state.conds)
         if not one_state:
-            cond += f" & (yield_state == {state.start_yield_id})"
+            if cond:
+                cond += " & "
+            cond += f"(yield_state == {state.start_yield_id})"
         if index == 0:
             if_str = "if"
         else:
