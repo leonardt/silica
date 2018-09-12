@@ -3,10 +3,7 @@ from silica import bits, add
 import magma as m
 m.set_mantle_target('ice40')
 import fault
-from common import evaluate_circuit, ice40_verilog_sim
-
-with open("tests/cells_sim.v") as f:
-    ice40_verilog_sim = f.read()
+from common import evaluate_circuit
 
 
 @silica.coroutine
@@ -33,10 +30,10 @@ def test_counter():
     from mantle import DefineCounter
 
     mantle_counter = DefineCounter(N, cout=False)
-    mantle_tester = tester.copy(mantle_counter, mantle_counter.CLK)
+    mantle_tester = tester.retarget(mantle_counter, mantle_counter.CLK)
     mantle_tester.compile_and_run(target="verilator", directory="tests/build",
                                   flags=['-Wno-fatal'],
-                                  include_verilog=ice40_verilog_sim)
+                                  include_verilog_files=['../cells_sim.v'])
     if __name__ == '__main__':
         m.compile("tests/build/mantle_counter", mantle_counter)
         print("===== BEGIN : SILICA RESULTS =====")

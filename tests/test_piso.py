@@ -7,7 +7,7 @@ from magma.bitutils import seq2int, int2seq
 from magma.testing.coroutine import check
 import fault
 from bit_vector import BitVector
-from common import evaluate_circuit, ice40_verilog_sim
+from common import evaluate_circuit
 
 
 def DefinePISO(n):
@@ -81,10 +81,10 @@ def test_PISO():
     magma_clear_circuit_cache()
     clear_cachedFunctions()
     mantle_PISO = mantle.DefinePISO(10)
-    mantle_tester = tester.copy(mantle_PISO, clock=mantle_PISO.CLK)
+    mantle_tester = tester.retarget(mantle_PISO, clock=mantle_PISO.CLK)
     m.compile("tests/build/mantle_piso", mantle_PISO)
     mantle_tester.compile_and_run(target="verilator", directory="tests/build",
-                                  include_verilog=ice40_verilog_sim)
+                                  include_verilog_files=['../cells_sim.v'])
     if __name__ == '__main__':
 
 
