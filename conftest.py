@@ -13,4 +13,4 @@ def silica_test():
     magma_clear_circuit_cache()
     clear_cachedFunctions()
 
-    os.system("rm -r tests/build/*")
+    os.system("rm -rf tests/build/*")
