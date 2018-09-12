@@ -9,11 +9,11 @@ addons:
 
 before_install:
   # BEGIN: coreir installation
-  - wget https://github.com/rdaly525/coreir/releases/download/v0.0.3/coreir.tar.gz
-  - mkdir coreir_release
-  - tar -xf coreir.tar.gz -C coreir_release --strip-components 1
-  - export PATH=$TRAVIS_BUILD_DIR/coreir_release/bin:$PATH
-  - export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/coreir_release/lib:$LD_LIBRARY_PATH
+  - curl -s -L https://github.com/rdaly525/coreir/releases/latest | grep "href.*coreir.tar.gz" | cut -d \" -f 2 | xargs -I {} wget https://github.com"{}"
+  - mkdir coreir_release;
+  - tar -xf coreir.tar.gz -C coreir_release --strip-components 1;
+  - export PATH=$TRAVIS_BUILD_DIR/coreir_release/bin:$PATH;
+  - export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/coreir_release/lib:$LD_LIBRARY_PATH;
   # END: coreir installation
 
 install:
