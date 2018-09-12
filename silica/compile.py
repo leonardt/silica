@@ -14,6 +14,8 @@ from silica.ast_utils import get_ast
 from silica.liveness import liveness_analysis
 from silica.transformations import specialize_constants, replace_symbols, constant_fold, desugar_for_loops
 from silica.visitors import collect_names
+from silica.verilog import compile_state as verilog_compile_state
+
 
 
 def replace_assign_to_bits(statement, load_symbol_map, store_symbol_map):
@@ -1088,13 +1090,6 @@ def DefineSilicaMux(height, width):
         return getattr(module, coroutine._name)
 
 
-class RemoveBits(ast.NodeTransformer):
-    def visit_Call(self, node):
-        if isinstance(node.func, ast.Name) and node.func.id == 'bits':
-            return node.args[0]
-        return node
-
-
 def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog'):
     if not isinstance(coroutine, Coroutine):
         raise ValueError("silica.compile expects a silica.Coroutine")
@@ -1225,6 +1220,10 @@ module {module_name} ({io_string}, input CLK);
         if register in register_initial_values and register_initial_values[register] is not None:
             init_strings.append(f"{register} = {register_initial_values[register]};")
 
+    if len(states) > 1:
+        verilog_source += f"    reg [{len(states).bit_length() - 1}:0] yield_state;\n"
+        init_strings.append(f"yield_state = 0;")
+
     init_string = '\n        '.join(init_strings)
     verilog_source += f"""
     initial begin
@@ -1242,17 +1241,7 @@ module {module_name} ({io_string}, input CLK);
 """
     tab = "    "
     for i, state in enumerate(states):
-        _tab = tab * 3
-        offset = ""
-        if state.conds:
-            offset = tab
-            cond = " & ".join(astor.to_source(cond).rstrip() for cond in state.conds)
-            verilog_source += f"\n{_tab}if ({cond}) begin"
-        for statement in state.statements:
-            RemoveBits().visit(statement)
-            verilog_source += f"\n{_tab + offset}" + astor.to_source(statement).rstrip() + ";"
-        if state.conds:
-            verilog_source += f"\n{_tab}end"
+        verilog_source += verilog_compile_state(state, i, tab * 3, len(states) == 1)
     verilog_source += "\n    end\nendmodule"
     with open(file_name, "w") as f:
         f.write(verilog_source)

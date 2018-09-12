@@ -1,0 +1,61 @@
+import fault
+import silica
+from silica import bits, Bit, uint, zext
+import pytest
+import shutil
+import magma as m
+from common import evaluate_circuit
+
+@silica.coroutine(inputs={"I" : Bit})
+def detect111():
+    cnt = uint(0, 2)
+    I = yield
+    while True:
+        if (I):
+            if (cnt<3):
+                cnt = cnt+1
+        else:
+            cnt = 0
+        O = (cnt == 3)
+        I = yield O
+
+@silica.coroutine
+def inputs_generator(inputs):
+    while True:
+        for i in inputs:
+            I = i
+            yield I
+
+inputs =  list(map(bool, [1,1,0,1,1,1,0,1,0,1,1,1,1,1,1]))
+def test_detect111():
+    detect = detect111()
+    outputs = list(map(bool, [0,0,0,0,0,1,0,0,0,0,0,1,1,1,1]))
+    si_detect = silica.compile(detect111(), file_name="tests/build/si_detect.v")
+    tester = fault.Tester(si_detect, si_detect.CLK)
+    for i, o in zip(inputs, outputs):
+        tester.poke(si_detect.I, i)
+        tester.step(2)
+        tester.expect(si_detect.O, o)
+        assert o == detect.send(i)
+    tester.compile_and_run(target="verilator", directory="tests/build",
+                           flags=['-Wno-fatal'],
+                           include_verilog_files=['../cells_sim.v'])
+
+    verilog_detect = m.DefineFromVerilogFile(
+        'verilog/detect111.v', type_map={'CLK': m.In(m.Clock)})[0]
+    verilog_tester = tester.retarget(verilog_detect, verilog_detect.CLK)
+
+    verilog_tester.compile_and_run(target="verilator", directory="tests/build",
+                                   flags=['-Wno-fatal'])
+    if __name__ == '__main__':
+        print("===== BEGIN : SILICA RESULTS =====")
+        evaluate_circuit("si_detect", "detect111")
+        print("===== END   : SILICA RESULTS =====")
+        import shutil
+        shutil.copy('verilog/detect111.v', 'tests/build/verilog_detect111.v')
+        print("===== BEGIN : VERILOG RESULTS =====")
+        evaluate_circuit("verilog_detect", "detect111")
+        print("===== END   : VERILOG RESULTS =====")
+
+if __name__ == '__main__':
+    test_detect111()
