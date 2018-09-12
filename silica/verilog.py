@@ -15,9 +15,11 @@ tab = "    "
 def compile_state(state, index, _tab, one_state):
     offset = ""
     verilog_source = ""
-    if state.conds:
+    if state.conds or not one_state:
         offset = tab
-        cond = " & ".join(astor.to_source(RemoveMagmaFuncs().visit(cond)).rstrip() for cond in state.conds)
+        cond = ""
+        if state.conds:
+            cond += " & ".join(astor.to_source(RemoveMagmaFuncs().visit(cond)).rstrip() for cond in state.conds)
         if not one_state:
             cond += f" & (yield_state == {state.start_yield_id})"
         if index == 0:
@@ -30,6 +32,6 @@ def compile_state(state, index, _tab, one_state):
         verilog_source += f"\n{_tab + offset}" + astor.to_source(statement).rstrip() + ";"
     if not one_state:
         verilog_source += f"\n{_tab + offset}yield_state = {state.end_yield_id};"
-    if state.conds:
+    if state.conds or not one_state:
         verilog_source += f"\n{_tab}end"
     return verilog_source
