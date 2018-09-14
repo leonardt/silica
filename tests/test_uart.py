@@ -44,30 +44,39 @@ def uart_transmitter():
             ready = bit(1)
             data, valid = yield tx, ready
 
+        # Interestingly enough, this variant produces worse quality
+            # ready = bit(0)
+        # else:
+            # ready = bit(1)
+        # tx = bit(1)
+        # data, valid = yield tx, ready
+
 
 def test_UART():
     uart = uart_transmitter()
     si_uart = silica.compile(uart, "tests/build/uart.v")
     tester = fault.Tester(si_uart, si_uart.CLK)
-    tester.poke(si_uart.data, 0xDE)
-    tester.poke(si_uart.valid, 1)
     tester.step(2)
-    tester.poke(si_uart.data, 0xFF)
-    tester.poke(si_uart.valid, 0)
-    tester.expect(si_uart.ready, 0)
-
-    # start bit
-    tester.expect(si_uart.tx, 0)
-    tester.step(1)
-    for i in range(8):
+    for message in [0xDE, 0xAD]:
+        tester.expect(si_uart.ready, 1)
+        tester.poke(si_uart.data, message)
+        tester.poke(si_uart.valid, 1)
         tester.step(2)
-        tester.expect(si_uart.tx, (0xDE >> (7-i)) & 1)
-    tester.step(2)
-    # end bit
-    tester.expect(si_uart.tx, 1)
-    tester.step(2)
-    tester.expect(si_uart.ready, 1)
-    tester.eval()
+        tester.poke(si_uart.data, 0xFF)
+        tester.poke(si_uart.valid, 0)
+        tester.expect(si_uart.ready, 0)
+
+        # start bit
+        tester.expect(si_uart.tx, 0)
+        for i in range(8):
+            tester.step(2)
+            tester.expect(si_uart.tx, (message >> (7-i)) & 1)
+        tester.step(2)
+        # end bit
+        tester.expect(si_uart.tx, 1)
+        tester.step(2)
+        tester.expect(si_uart.ready, 1)
+        tester.eval()
 
     tester.compile_and_run(target="verilator", directory="tests/build",
                            flags=['-Wno-fatal'])

@@ -28,6 +28,9 @@ class Memory(list):
 def memory(height, width):
     return Memory(bits(0, width) for _ in range(height))
 
+def bit(val):
+    return val
+
 def bits(value, width):
     # TODO: Only support bitwise ops
     return BitVector(value, width)

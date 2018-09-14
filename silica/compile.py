@@ -1157,7 +1157,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog')
     register_initial_values = {}
     initial_basic_block = False
     sub_coroutines = []
-    # cfg.render()
+    cfg.render()
     verilog_source = ""
     for node in cfg.paths[0][:-1]:
         if isinstance(node, HeadBlock):
@@ -1215,7 +1215,6 @@ module {module_name} ({io_string}, input CLK);
     init_strings = []
     for register in registers:
         width = width_table[register]
-        print(width)
         width_str = f"[{width-1}:0]" if width is not None else ""
         verilog_source += f"    reg {width_str} {register};\n"
         if register in register_initial_values and register_initial_values[register] is not None:

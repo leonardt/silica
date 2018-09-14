@@ -4,7 +4,7 @@ import ast
 
 class RemoveMagmaFuncs(ast.NodeTransformer):
     def visit_Call(self, node):
-        if isinstance(node.func, ast.Name) and node.func.id in ['bits', 'uint']:
+        if isinstance(node.func, ast.Name) and node.func.id in ['bits', 'uint', 'bit']:
             return node.args[0]
         return node
 
