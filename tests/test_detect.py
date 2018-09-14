@@ -31,6 +31,8 @@ def test_detect111():
     detect = detect111()
     outputs = list(map(bool, [0,0,0,0,0,1,0,0,0,0,0,1,1,1,1]))
     si_detect = silica.compile(detect111(), file_name="tests/build/si_detect.v")
+    # si_detect = m.DefineFromVerilogFile("tests/build/si_detect.v",
+    #                             type_map={"CLK": m.In(m.Clock)})[0]
     tester = fault.Tester(si_detect, si_detect.CLK)
     for i, o in zip(inputs, outputs):
         tester.poke(si_detect.I, i)
@@ -52,7 +54,7 @@ def test_detect111():
         evaluate_circuit("si_detect", "detect111")
         print("===== END   : SILICA RESULTS =====")
         import shutil
-        shutil.copy('verilog/detect111.v', 'tests/build/verilog_detect111.v')
+        shutil.copy('verilog/detect111.v', 'tests/build/verilog_detect.v')
         print("===== BEGIN : VERILOG RESULTS =====")
         evaluate_circuit("verilog_detect", "detect111")
         print("===== END   : VERILOG RESULTS =====")
