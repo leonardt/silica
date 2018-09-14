@@ -1157,7 +1157,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog')
     register_initial_values = {}
     initial_basic_block = False
     sub_coroutines = []
-    cfg.render()
+    # cfg.render()
     verilog_source = ""
     for node in cfg.paths[0][:-1]:
         if isinstance(node, HeadBlock):
