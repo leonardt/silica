@@ -5,14 +5,14 @@ module detect111(
 );
   reg [1:0] cnt = 0;
 
-  wire [1:0] cnt_next;
+  /* wire [1:0] cnt_next; */
 
   always @(posedge CLK) begin
-    cnt <= cnt_next;
+    cnt <= I ? (cnt==3 ? cnt : cnt+1) : 0;
   end
 
-  assign cnt_next = I ? (cnt==3 ? cnt : cnt+1) : 0;
   // mealey version
+  /* assign cnt_next = I ? (cnt==3 ? cnt : cnt+1) : 0; */
   // assign O = (cnt_next==3);
   assign O = (cnt==3);
 
