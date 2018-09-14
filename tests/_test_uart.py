@@ -4,6 +4,16 @@ from magma.bitutils import seq2int, int2seq
 from magma.testing.coroutine import check
 
 
+def concat(*args):
+    result = []
+    for arg in args:
+        if isinstance(arg, list):
+            result += arg
+        elif isinstance(arg, silica.BitVector):
+            result += arg.as_bool_list()
+    return silica.BitVector(result)
+
+
 def DefinePISO(n):
     @silica.coroutine(inputs={"PI": silica.Bits(n), "SI": silica.Bit, "LOAD": silica.Bit})
     def PISO():
@@ -20,16 +30,6 @@ def DefinePISO(n):
                     values[i] = values[i - 1]
                 values[0] = SI
     return PISO
-
-
-def concat(*args):
-    result = []
-    for arg in args:
-        if isinstance(arg, list):
-            result += arg
-        elif isinstance(arg, silica.BitVector):
-            result += arg.as_bool_list()
-    return silica.BitVector(result)
 
 
 @silica.coroutine(inputs={"message": Bits(8)})
