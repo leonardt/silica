@@ -13,8 +13,10 @@ def Serializer4():
     data0 = bits(0, 16)
     data1 = bits(0, 16)
     data2 = bits(0, 16)
-    I0, I1, I2, I3 = yield
+    # I0, I1, I2, I3 = yield
+    O = bits(0, 16)
     while True:
+        I0, I1, I2, I3 = yield O
         O = I0
         # data = I[1:]
         data0 = I1
@@ -26,7 +28,6 @@ def Serializer4():
         O = data1
         I0, I1, I2, I3 = yield O
         O = data2
-        I0, I1, I2, I3 = yield O
         # for i in range(3):
         #     O = data[i]
         #     I0, I1, I2, I3 = yield O
@@ -47,6 +48,8 @@ inputs = [[4,5,6,7],[10,16,8,3]]
 def test_ser4():
     ser = Serializer4()
     serializer_si = si.compile(ser, "tests/build/serializer_si.v")
+    # serializer_si = m.DefineFromVerilogFile("tests/build/serializer_si.v",
+    #                             type_map={"CLK": m.In(m.Clock)})[0]
     tester = fault.Tester(serializer_si, serializer_si.CLK)
     for I in inputs:
         for j in range(len(I)):
