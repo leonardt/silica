@@ -23,7 +23,7 @@ def get_constant(node):
         return node.args[0].n
     elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and \
          node.func.id == "bit":
-        return int(node.args[0].value)
+        return int(node.args[0].n)
     elif isinstance(node, ast.NameConstant):
         return int(node.value)
 

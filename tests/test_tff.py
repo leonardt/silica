@@ -1,3 +1,4 @@
+from silica import bit
 import silica
 import magma as m
 m.set_mantle_target("ice40")
@@ -6,8 +7,8 @@ from common import evaluate_circuit
 
 
 @silica.coroutine(inputs={"I": silica.Bit})
-def TFF(init=False):
-    O = init
+def TFF(init=0):
+    O = bit(init)
     while True:
         I = yield O
         O = I ^ O
@@ -50,7 +51,7 @@ def test_TFF():
     mantle_tester = tester.retarget(MantleTFF, MantleTFF.CLK)
     mantle_tester.compile_and_run(target="verilator", directory="tests/build",
                                   flags=['-Wno-fatal'],
-                                  include_verilog_files=['../cells_sim.v'])
+                                  include_verilog_libraries=['../cells_sim.v'])
     if __name__ == '__main__':
         m.compile("tests/build/mantle_tff", MantleTFF)
         print("===== BEGIN : SILICA RESULTS =====")

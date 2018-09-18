@@ -15,6 +15,9 @@ from silica.liveness import liveness_analysis
 from silica.transformations import specialize_constants, replace_symbols, constant_fold, desugar_for_loops
 from silica.visitors import collect_names
 from silica.verilog import compile_state as verilog_compile_state
+from .verilog import get_width_str
+from .width import get_width
+from .memory import MemoryType
 
 
 
@@ -47,81 +50,6 @@ def specialize_arguments(tree, coroutine):
 
 
     return specialize_constants(tree, arg_map)
-
-
-class MemoryType:
-    def __init__(self, height, width):
-        self.height = height
-        self.width = width
-
-    def __eq__(self, other):
-        return isinstance(other, MemoryType) and self.height == other.height and self.width == other.width
-
-def get_width(node, width_table):
-    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and \
-       node.func.id in {"bits", "uint", "BitVector"}:
-        assert isinstance(node.args[1], ast.Num), "We should know all widths at compile time"
-        return node.args[1].n
-    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and \
-       node.func.id in {"bit"}:
-        return None
-    elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and \
-       node.func.id in {"memory"}:
-           return MemoryType(node.args[0].n, node.args[1].n)
-    elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and \
-       node.func.id in {"zext"}:
-        assert isinstance(node.args[1], ast.Num), "We should know all widths at compile time"
-        return get_width(node.args[0], width_table) + node.args[1].n
-    elif isinstance(node, ast.Name):
-        if node.id not in width_table:
-            raise Exception(f"Trying to get width of variable that hasn't been previously added to the width_table: {node.id} (width_table={width_table})")
-        return width_table[node.id]
-    elif isinstance(node, ast.Call):
-        if isinstance(node.func, ast.Name):
-            widths = [get_width(arg, width_table) for arg in node.args]
-            if node.func.id in {"add", "xor", "sub", "and_", "not_"}:
-                if not all(widths[0] == x for x in widths):
-                    raise TypeError(f"Calling {node.func.id} with different length types")
-                width = widths[0]
-                if node.func.id == "add":
-                    for keyword in node.keywords:
-                        if keyword.arg == "cout" and isinstance(keyword.value, ast.NameConstant) and keyword.value.value == True:
-                            width = (width, None)
-                return width
-            elif node.func.id == "eq":
-                if not all(widths[0] == x for x in widths):
-                    raise TypeError("Calling eq with different length types")
-                return None
-            elif node.func.id == "decoder":
-                return 2 ** get_width(node.args[0], width_table)
-            else:
-                raise NotImplementedError(ast.dump(node))
-        else:
-            raise NotImplementedError(ast.dump(node))
-    elif isinstance(node, ast.BinOp):
-        left_width = get_width(node.left, width_table)
-        right_width = get_width(node.right, width_table)
-        if left_width != right_width:
-            raise TypeError(f"Binary operation with mismatched widths {ast.dump(node)}")
-        return left_width
-    elif isinstance(node, ast.Compare):
-        # TODO: Check widths of operands
-        return None
-    elif isinstance(node, ast.NameConstant) and node.value in [True, False]:
-        return None
-    elif isinstance(node, ast.List):
-        widths = [get_width(arg, width_table) for arg in node.elts]
-        assert all(widths[0] == width for width in widths)
-        return (len(node.elts), widths[0])
-    elif isinstance(node, ast.Subscript):
-        if isinstance(node.slice, ast.Index):
-            width = get_width(node.value, width_table)
-            if isinstance(width, tuple):
-                return width[1]
-            elif isinstance(width, MemoryType):
-                return width.width
-            return None
-    raise NotImplementedError(ast.dump(node))
 
 
 class TypeChecker(ast.NodeVisitor):
@@ -1154,7 +1082,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog')
     states = cfg.states
     num_yields = cfg.curr_yield_id
     num_states = len(states)
-    register_initial_values = {}
+    initial_values = {}
     initial_basic_block = False
     sub_coroutines = []
     # cfg.render()
@@ -1170,7 +1098,10 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog')
                     statement.value.args = []
                     sub_coroutines.append((statement, sub_coroutine))
                 else:
-                    register_initial_values[statement.targets[0].id] = get_constant(statement.value)
+                    if isinstance(statement.value, ast.Name) and statement.value.id in initial_values:
+                        initial_values[statement.targets[0].id] = initial_values[statement.value.id]
+                    else:
+                        initial_values[statement.targets[0].id] = get_constant(statement.value)
         initial_basic_block |= isinstance(node, BasicBlock)
     if not initial_basic_block:
         num_states -= 1
@@ -1215,13 +1146,19 @@ module {module_name} ({io_string}, input CLK);
     init_strings = []
     for register in registers:
         width = width_table[register]
-        width_str = f"[{width-1}:0]" if width is not None else ""
-        verilog_source += f"    reg {width_str} {register};\n"
-        if register in register_initial_values and register_initial_values[register] is not None:
-            init_strings.append(f"{register} = {register_initial_values[register]};")
+        if isinstance(width, MemoryType):
+            width_str = get_width_str(width.width)
+            verilog_source += f"    reg {width_str} {register} [0:{width.height - 1}];\n"
+        else:
+            width_str = get_width_str(width)
+            verilog_source += f"    reg {width_str} {register};\n"
+    for key, value in initial_values.items():
+        if value is not None:
+            init_strings.append(f"{key} = {value};")
 
-    if len(states) > 1:
-        verilog_source += f"    reg [{len(states).bit_length() - 1}:0] yield_state;\n"
+
+    if cfg.curr_yield_id > 1:
+        verilog_source += f"    reg [{(cfg.curr_yield_id - 1).bit_length() - 1}:0] yield_state;\n"
         init_strings.append(f"yield_state = 0;")
 
     init_string = '\n        '.join(init_strings)
@@ -1236,12 +1173,16 @@ module {module_name} ({io_string}, input CLK);
     waddrs = {}
     wdatas = {}
     wens = {}
-    verilog_source += """\
+    always_source = """\
     always @(posedge CLK) begin\
 """
     tab = "    "
+    temp_var_source = ""
     for i, state in enumerate(states):
-        verilog_source += verilog_compile_state(state, i, tab * 3, len(states) == 1)
+        always_inside, temp_vars = verilog_compile_state(state, i, tab * 3, cfg.curr_yield_id == 1, width_table)
+        always_source += always_inside
+        temp_var_source += temp_vars
+    verilog_source += temp_var_source + always_source
     verilog_source += "\n    end\nendmodule"
     with open(file_name, "w") as f:
         f.write(verilog_source)

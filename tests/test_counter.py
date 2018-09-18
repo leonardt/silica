@@ -33,7 +33,7 @@ def test_counter():
     mantle_tester = tester.retarget(mantle_counter, mantle_counter.CLK)
     mantle_tester.compile_and_run(target="verilator", directory="tests/build",
                                   flags=['-Wno-fatal'],
-                                  include_verilog_files=['../cells_sim.v'])
+                                  include_verilog_libraries=['../cells_sim.v'])
     if __name__ == '__main__':
         m.compile("tests/build/mantle_counter", mantle_counter)
         print("===== BEGIN : SILICA RESULTS =====")

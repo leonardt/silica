@@ -1,9 +1,9 @@
 module fifo(
   input CLK,
-  input [4:0] wdata,
+  input [3:0] wdata,
   input wen,
   output full,
-  output [4:0] rdata,
+  output [3:0] rdata,
   input ren,
   output empty
 ); 
@@ -11,7 +11,7 @@ module fifo(
   reg [2:0] waddr = 0;
   reg [2:0] raddr = 0;
   
-  reg [4:0] data[4];
+  reg [3:0] data [0:3];
   
   wire wvalid;
   wire rvalid;

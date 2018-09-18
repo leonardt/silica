@@ -80,7 +80,7 @@ def test_PISO():
     mantle_tester = tester.retarget(mantle_PISO, clock=mantle_PISO.CLK)
     m.compile("tests/build/mantle_piso", mantle_PISO)
     mantle_tester.compile_and_run(target="verilator", directory="tests/build",
-                                  include_verilog_files=['../cells_sim.v'])
+                                  include_verilog_libraries=['../cells_sim.v'])
     if __name__ == '__main__':
 
 

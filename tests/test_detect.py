@@ -41,7 +41,7 @@ def test_detect111():
         assert o == detect.send(i)
     tester.compile_and_run(target="verilator", directory="tests/build",
                            flags=['-Wno-fatal'],
-                           include_verilog_files=['../cells_sim.v'])
+                           include_verilog_libraries=['../cells_sim.v'])
 
     verilog_detect = m.DefineFromVerilogFile(
         'verilog/detect111.v', type_map={'CLK': m.In(m.Clock)})[0]
