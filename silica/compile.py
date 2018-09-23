@@ -12,7 +12,8 @@ from silica.cfg import ControlFlowGraph, BasicBlock, HeadBlock
 from silica.cfg.control_flow_graph import render_paths_between_yields, build_state_info, render_fsm, get_constant
 from silica.ast_utils import get_ast
 from silica.liveness import liveness_analysis
-from silica.transformations import specialize_constants, replace_symbols, constant_fold, desugar_for_loops
+from silica.transformations import specialize_constants, replace_symbols, \
+    constant_fold, desugar_for_loops, specialize_evals, inline_yield_from_functions
 from silica.visitors import collect_names
 from silica.verilog import compile_state as verilog_compile_state
 from .verilog import get_width_str
@@ -1032,6 +1033,9 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog')
     func_locals.update(coroutine._defn_locals)
     specialize_arguments(tree, coroutine)
     specialize_constants(tree, coroutine._defn_locals)
+    specialize_evals(tree, func_globals, func_locals)
+    inline_yield_from_functions(tree, func_globals, func_locals)
+    print(astor.to_source(tree))
     constant_fold(tree)
     specialize_list_comps(tree, func_globals, func_locals)
     desugar_for_loops(tree)

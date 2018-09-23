@@ -1,11 +1,15 @@
 import ast
+import astor
 from .memory import MemoryType
 
 
 def get_width(node, width_table):
     if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and \
        node.func.id in {"bits", "uint", "BitVector"}:
-        assert isinstance(node.args[1], ast.Num), "We should know all widths at compile time"
+        if isinstance(node.args[1], ast.Call) and node.args[1].func.id == "eval":
+            return eval(astor.to_source(node.args[1]).rstrip())
+        if not isinstance(node.args[1], ast.Num):
+            raise TypeError(f"Cannot get width of {astor.to_source(node.args[1]).rstrip()}, we should know all widths at compile time.")
         return node.args[1].n
     if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and \
        node.func.id in {"bit"}:

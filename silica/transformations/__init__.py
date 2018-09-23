@@ -4,3 +4,5 @@ from silica.transformations.specialize_constants import specialize_constants
 from silica.transformations.constant_fold import constant_fold
 from silica.transformations.replace_symbols import replace_symbols
 from silica.transformations.inline_functions import inline_yield_from_functions
+from silica.transformations.specialize_evals import specialize_evals
+from silica.transformations.combinational_functions import compile_combinational_functions

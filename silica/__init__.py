@@ -3,8 +3,8 @@ from .compile import compile
 from ._config import Config
 config = Config()
 
-import magma
-from magma import Bit, zext, concat, Array, Bits
+import magma as m
+from magma import Bit, zext, concat, Array, Bits, UInt
 from magma.bit_vector import BitVector
 import operator
 
@@ -16,12 +16,12 @@ class BitVector(BitVector):
 
 class Memory(list):
     def __getitem__(self, key):
-        if isinstance(key, magma.bit_vector.BitVector):
+        if isinstance(key, m.bit_vector.BitVector):
             key = key.as_int()
         return super().__getitem__(key)
 
     def __setitem__(self, key, value):
-        if isinstance(key, magma.bit_vector.BitVector):
+        if isinstance(key, m.bit_vector.BitVector):
             key = key.as_int()
         return super().__setitem__(key, value)
 
@@ -32,7 +32,6 @@ def bit(val):
     return val
 
 def bits(value, width):
-    # TODO: Only support bitwise ops
     return BitVector(value, width)
 
 def uint(value, width):
@@ -43,7 +42,7 @@ def zext(value, n):
     return BitVector(value, num_bits=n + value.num_bits)
 
 def add(a, b, cout=False):
-    assert isinstance(a, magma.bit_vector.BitVector) and isinstance(b, magma.bit_vector.BitVector)
+    assert isinstance(a, m.bit_vector.BitVector) and isinstance(b, m.bit_vector.BitVector)
     assert len(a) == len(b)
     if cout:
         width = len(a)
@@ -78,3 +77,8 @@ def coroutine_create(x):
 
 def and_(a, b):
     return operator.and_(a, b)
+
+def combinational(fn):
+    fn.__silica_combinational = True
+    fn.__magma_circuit = m.circuit.combinational(fn).circuit_definition
+    return fn

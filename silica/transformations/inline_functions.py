@@ -1,6 +1,7 @@
 import ast
 import silica.ast_utils
 from silica.transformations.replace_symbols import replace_symbols
+import astor
 
 
 class YieldFromFunctionInliner(ast.NodeTransformer):
@@ -26,7 +27,7 @@ class YieldFromFunctionInliner(ast.NodeTransformer):
             return node
         return super().visit(node)
 
-    def visit_Expr(self, node):
+    def visit_Assign(self, node):
         """
         If node.value is a YieldFrom that is inlined, it will return a list, so
         here we pass the list on so it can be flattened into the body of the
@@ -43,15 +44,15 @@ class YieldFromFunctionInliner(ast.NodeTransformer):
             if not isinstance(func.func, ast.Name):
                 raise NotImplementedError(ast.dump(func))
             func_obj = eval(func.func.id, self._globals, self._locals)
-            if not getattr(func_obj, '__silica_inline', False):
-                return node
+            # if not getattr(func_obj, '__silica_inline', False):
+            #     return node
             # `ast_utils.get_ast` returns a module so grab first statement in body
-            func_def = silica.ast_utils.get_ast(func_obj).body[0]
+            func_def = silica.ast_utils.get_ast(func_obj._definition).body[0]
             symbol_table = {}
             for arg, param in zip(func.args, func_def.args.args):
                 symbol_table[param.arg] = arg
             func_def = replace_symbols(func_def, symbol_table)
-            return func_def.body
+            return func_def.body[:-1]
         else:
             return node
 
