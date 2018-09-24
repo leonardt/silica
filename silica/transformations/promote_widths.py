@@ -22,8 +22,13 @@ class PromoteWidths(ast.NodeTransformer):
                 type_ = self.type_table[node.value.id]
                 if type_ == "uint" and isinstance(node.slice, ast.Index):
                     return 1
+                elif type_ == "uint" and isinstance(node.slice, ast.Slice):
+                    if node.slice.lower is None and isinstance(node.slice.upper, ast.Num):
+                        if node.slice.step is not None:
+                            raise NotImplementedError()
+                        return node.slice.upper.n
                 else:
-                    raise NotImplementedError()
+                    raise NotImplementedError(ast.dump(node))
         raise NotImplementedError(node)
 
     def visit_Assign(self, node):

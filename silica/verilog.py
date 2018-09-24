@@ -7,12 +7,29 @@ def get_width_str(width):
     return f"[{width-1}:0] " if width is not None else ""
 
 
+class SwapSlices(ast.NodeTransformer):
+    def visit_Subscript(self, node):
+        node.slice = self.visit(node.slice)
+        if isinstance(node.slice, ast.Slice):
+            if node.slice.lower is None and isinstance(node.slice.upper, ast.Num):
+                if node.slice.step is not None:
+                    raise NotImplementedError()
+                node.slice.lower = ast.Num(node.slice.upper.n - 1)
+                node.slice.upper = ast.Num(0)
+        return node
+
+
 class RemoveMagmaFuncs(ast.NodeTransformer):
     def visit_Call(self, node):
         if isinstance(node.func, ast.Name) and node.func.id in ['bits', 'uint', 'bit']:
             return node.args[0]
         return node
 
+
+def process_statement(stmt):
+    RemoveMagmaFuncs().visit(stmt)
+    SwapSlices().visit(stmt)
+    return stmt
 
 class TempVarPromoter(ast.NodeTransformer):
     __unique_id = 0
@@ -57,7 +74,7 @@ def compile_state_by_path(state, index, _tab, one_state, width_table):
         offset = tab
         cond = ""
         if state.conds:
-            cond += " & ".join(astor.to_source(RemoveMagmaFuncs().visit(cond)).rstrip() for cond in state.conds)
+            cond += " & ".join(astor.to_source(process_statement(cond)).rstrip() for cond in state.conds)
         if not one_state:
             if cond:
                 cond += " & "
@@ -69,7 +86,7 @@ def compile_state_by_path(state, index, _tab, one_state, width_table):
         verilog_source += f"\n{_tab}{if_str} ({cond}) begin"
     # temp_var_promoter = TempVarPromoter(width_table)
     for statement in state.statements:
-        RemoveMagmaFuncs().visit(statement)
+        process_statement(statement)
         # temp_var_promoter.visit(statement)
         verilog_source += f"\n{_tab + offset}" + astor.to_source(statement).rstrip().replace(" = ", " = ") + ";"
     temp_var_source = ""
@@ -97,17 +114,17 @@ def compile_statements(states, _tab, one_state, width_table, statements):
                         offset = tab
                         these_conds = []
                         if state.conds:
-                            these_conds.extend(astor.to_source(RemoveMagmaFuncs().visit(cond)).rstrip() for cond in state.conds)
+                            these_conds.extend(astor.to_source(process_statement(cond)).rstrip() for cond in state.conds)
                         if not one_state:
                             these_conds.append(f"(yield_state == {state.start_yield_id})")
                         conds.append(" & ".join(these_conds))
             cond = " | ".join(conds)
             verilog_source += f"\n{_tab}if ({cond}) begin"
-            RemoveMagmaFuncs().visit(statement)
+            process_statement(statement)
             verilog_source += f"\n{_tab + offset}" + astor.to_source(statement).rstrip() + ";"
             verilog_source += f"\n{_tab}end"
         else:
-            RemoveMagmaFuncs().visit(statement)
+            process_statement(statement)
             verilog_source += f"\n{_tab}" + astor.to_source(statement).rstrip() + ";"
     temp_var_source = ""
     return verilog_source, temp_var_source
@@ -143,7 +160,7 @@ def compile_states(states, one_state, width_table, strategy="by_statement"):
                 offset = tab
                 cond = ""
                 if state.conds:
-                    cond += " & ".join(astor.to_source(RemoveMagmaFuncs().visit(cond)).rstrip() for cond in state.conds)
+                    cond += " & ".join(astor.to_source(process_statement(cond)).rstrip() for cond in state.conds)
                 if not one_state:
                     if cond:
                         cond += " & "

@@ -72,4 +72,10 @@ def get_width(node, width_table):
             elif isinstance(width, MemoryType):
                 return width.width
             return None
+        elif isinstance(node.slice, ast.Slice):
+            width = get_width(node.value, width_table)
+            if node.slice.lower is None and isinstance(node.slice.upper, ast.Num):
+                if node.slice.step is not None:
+                    raise NotImplementedError()
+                return node.slice.upper.n
     raise NotImplementedError(ast.dump(node))

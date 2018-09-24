@@ -83,7 +83,7 @@ def make_io_string(inputs, outputs, width_table):
     return ", ".join(io_strings)
 
 
-def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog'):
+def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog', strategy="by_statement"):
     if not isinstance(coroutine, Coroutine):
         raise ValueError("silica.compile expects a silica.Coroutine")
 
@@ -200,7 +200,7 @@ module {module_name} ({io_string}, input CLK);
     wdatas = {}
     wens = {}
     # render_paths_between_yields(cfg.paths)
-    always_source, temp_var_source = verilog.compile_states(states, cfg.curr_yield_id == 1, width_table)
+    always_source, temp_var_source = verilog.compile_states(states, cfg.curr_yield_id == 1, width_table, strategy)
     verilog_source += temp_var_source + always_source
     verilog_source += "\n    end\nendmodule"
     verilog_source = verilog_source.replace("True", "1")
