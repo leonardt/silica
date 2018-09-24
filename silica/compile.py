@@ -15,7 +15,7 @@ from silica.liveness import liveness_analysis
 from silica.transformations import specialize_constants, replace_symbols, \
     constant_fold, desugar_for_loops, specialize_evals, inline_yield_from_functions
 from silica.visitors import collect_names
-from silica.verilog import compile_state as verilog_compile_state
+import silica.verilog as verilog
 from .verilog import get_width_str
 from .width import get_width
 from .memory import MemoryType
@@ -199,16 +199,8 @@ module {module_name} ({io_string}, input CLK);
     waddrs = {}
     wdatas = {}
     wens = {}
-    always_source = """\
-    always @(posedge CLK) begin\
-"""
-    tab = "    "
-    temp_var_source = ""
     # render_paths_between_yields(cfg.paths)
-    for i, state in enumerate(states):
-        always_inside, temp_vars = verilog_compile_state(state, i, tab * 3, cfg.curr_yield_id == 1, width_table)
-        always_source += always_inside
-        temp_var_source += temp_vars
+    always_source, temp_var_source = verilog.compile_states(states, cfg.curr_yield_id == 1, width_table)
     verilog_source += temp_var_source + always_source
     verilog_source += "\n    end\nendmodule"
     verilog_source = verilog_source.replace("True", "1")

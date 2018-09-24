@@ -81,3 +81,15 @@ def compile_state(state, index, _tab, one_state, width_table):
     if state.conds or not one_state:
         verilog_source += f"\n{_tab}end"
     return verilog_source, temp_var_source
+
+def compile_states(states, one_state, width_table):
+    always_source = """\
+    always @(posedge CLK) begin\
+"""
+    tab = "    "
+    temp_var_source = ""
+    for i, state in enumerate(states):
+        always_inside, temp_vars = compile_state(state, i, tab * 3, one_state, width_table)
+        always_source += always_inside
+        temp_var_source += temp_vars
+    return always_source, temp_var_source
