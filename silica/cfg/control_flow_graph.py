@@ -4,7 +4,7 @@ Silica's Control Flow Graph (CFG)
 TODO: We need an explicit HeadBlock object?
 """
 import tempfile
-from copy import deepcopy
+from copy import deepcopy, copy
 
 import ast
 import astor
@@ -171,12 +171,12 @@ class ControlFlowGraph:
                 initial_block.initial_yield = block
                 return [path for path in self.find_paths(block.outgoing_edge[0], initial_block)]
             else:
-                return [[deepcopy(block)]]
+                return [[copy(block)]]
         elif isinstance(block, BasicBlock):
-            return [[deepcopy(block)] + path for path in self.find_paths(block.outgoing_edge[0], initial_block)]
+            return [[copy(block)] + path for path in self.find_paths(block.outgoing_edge[0], initial_block)]
         elif isinstance(block, Branch):
-            true_paths = [[deepcopy(block)] + path for path in self.find_paths(block.true_edge, initial_block)]
-            false_paths = [[deepcopy(block)] + path for path in self.find_paths(block.false_edge, initial_block)]
+            true_paths = [[copy(block)] + path for path in self.find_paths(block.true_edge, initial_block)]
+            false_paths = [[copy(block)] + path for path in self.find_paths(block.false_edge, initial_block)]
             for path in true_paths:
                 path[0].true_edge = path[1]
             for path in false_paths:

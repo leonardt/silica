@@ -1,6 +1,6 @@
 import fault
 import silica
-from silica import bits, Bit, uint, zext
+from silica import bits, Bit, uint, zext, bit
 import pytest
 import shutil
 import magma as m
@@ -9,15 +9,15 @@ from common import evaluate_circuit
 @silica.coroutine(inputs={"I" : Bit})
 def detect111():
     cnt = uint(0, 2)
-    I = yield
+    O = bit(0)
     while True:
+        I = yield O
         if (I):
             if (cnt<3):
                 cnt = cnt+1
         else:
             cnt = 0
         O = (cnt == 3)
-        I = yield O
 
 @silica.coroutine
 def inputs_generator(inputs):

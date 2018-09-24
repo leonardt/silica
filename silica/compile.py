@@ -205,6 +205,7 @@ module {module_name} ({io_string}, input CLK);
     verilog_source += "\n    end\nendmodule"
     verilog_source = verilog_source.replace("True", "1")
     verilog_source = verilog_source.replace("False", "0")
+    # cfg.render()
     with open(file_name, "w") as f:
         f.write(verilog_source)
     return m.DefineFromVerilog(verilog_source, type_map={"CLK": m.In(m.Clock)})[-1]

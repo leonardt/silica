@@ -9,11 +9,11 @@ module detect111(
 
   always @(posedge CLK) begin
     cnt <= I ? (cnt==3 ? cnt : cnt+1) : 0;
+    O <= (cnt==3);
   end
 
   // mealey version
   /* assign cnt_next = I ? (cnt==3 ? cnt : cnt+1) : 0; */
   // assign O = (cnt_next==3);
-  assign O = (cnt==3);
 
 endmodule

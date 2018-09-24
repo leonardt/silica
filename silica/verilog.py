@@ -50,7 +50,7 @@ class TempVarPromoter(ast.NodeTransformer):
 tab = "    "
 
 
-def compile_state(state, index, _tab, one_state, width_table):
+def compile_state_by_path(state, index, _tab, one_state, width_table):
     offset = ""
     verilog_source = ""
     if state.conds or not one_state:
@@ -82,14 +82,79 @@ def compile_state(state, index, _tab, one_state, width_table):
         verilog_source += f"\n{_tab}end"
     return verilog_source, temp_var_source
 
-def compile_states(states, one_state, width_table):
+
+def compile_statements(states, _tab, one_state, width_table, statements):
+    offset = ""
+    verilog_source = ""
+    # temp_var_promoter = TempVarPromoter(width_table)
+    for statement in statements:
+        conds = []
+        contained = [state for state in states if statement in state.statements]
+        if contained != states:
+            for state in states:
+                if statement in state.statements:
+                    if state.conds or not one_state:
+                        offset = tab
+                        these_conds = []
+                        if state.conds:
+                            these_conds.extend(astor.to_source(RemoveMagmaFuncs().visit(cond)).rstrip() for cond in state.conds)
+                        if not one_state:
+                            these_conds.append(f"(yield_state == {state.start_yield_id})")
+                        conds.append(" & ".join(these_conds))
+            cond = " | ".join(conds)
+            verilog_source += f"\n{_tab}if ({cond}) begin"
+            RemoveMagmaFuncs().visit(statement)
+            verilog_source += f"\n{_tab + offset}" + astor.to_source(statement).rstrip() + ";"
+            verilog_source += f"\n{_tab}end"
+        else:
+            RemoveMagmaFuncs().visit(statement)
+            verilog_source += f"\n{_tab}" + astor.to_source(statement).rstrip() + ";"
+    temp_var_source = ""
+    return verilog_source, temp_var_source
+
+
+def compile_states(states, one_state, width_table, strategy="by_statement"):
     always_source = """\
     always @(posedge CLK) begin\
 """
     tab = "    "
     temp_var_source = ""
-    for i, state in enumerate(states):
-        always_inside, temp_vars = compile_state(state, i, tab * 3, one_state, width_table)
+    if strategy == "by_path":
+        for i, state in enumerate(states):
+            always_inside, temp_vars = compile_state_by_path(state, i, tab * 3, one_state, width_table)
+            always_source += always_inside
+            temp_var_source += temp_vars
+    elif strategy == "by_statement":
+        statements = []
+        for i, state in enumerate(states):
+            for statement in state.statements:
+                if statement not in statements:
+                    statements.append(statement)
+                else:
+                    # Move it to the back
+                    statements.remove(statement)
+                    statements.append(statement)
+        always_inside, temp_vars = compile_statements(states, tab * 3, one_state, width_table, statements)
         always_source += always_inside
         temp_var_source += temp_vars
+        if not one_state:
+            for i, state in enumerate(states):
+                _tab = tab * 3
+                offset = tab
+                cond = ""
+                if state.conds:
+                    cond += " & ".join(astor.to_source(RemoveMagmaFuncs().visit(cond)).rstrip() for cond in state.conds)
+                if not one_state:
+                    if cond:
+                        cond += " & "
+                    cond += f"(yield_state == {state.start_yield_id})"
+                if i == 0:
+                    if_str = "if"
+                else:
+                    if_str = "else if"
+                always_source += f"\n{_tab}{if_str} ({cond}) begin"
+                always_source += f"\n{_tab + offset}yield_state = {state.end_yield_id};"
+                always_source += f"\n{_tab}end"
+    else:
+        raise NotImplementedError(strategy)
     return always_source, temp_var_source
