@@ -63,6 +63,26 @@ def get_input_width(type_):
         raise NotImplementedError(type_)
 
 
+def make_io_string(inputs, outputs, width_table):
+    io_strings = []
+    for output in outputs:
+        width = width_table[output]
+        if width is None:
+            io_strings.append(f"output {output}")
+        else:
+            io_strings.append(f"output [{width_table[output] - 1}:0] {output}")
+
+    if inputs:
+        for input_, type_ in inputs.items():
+            if isinstance(type_, m.BitKind):
+                io_strings.append(f"input {input_}")
+            elif isinstance(type_, m.ArrayKind) and isinstance(type_.T, m.BitKind):
+                io_strings.append(f"input [{len(type_)-1}:0] {input_}")
+            else:
+                raise NotImplementedError(type_)
+    return ", ".join(io_strings)
+
+
 def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog'):
     if not isinstance(coroutine, Coroutine):
         raise ValueError("silica.compile expects a silica.Coroutine")
@@ -110,23 +130,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog')
         outputs += (collect_names(path[-1].value, ctx=ast.Load), )
     assert all(outputs[1] == output for output in outputs[1:]), "Yield statements must all have the same outputs except for the first"
     outputs = outputs[1]
-    io_strings = []
-    for output in outputs:
-        width = width_table[output]
-        if width is None:
-            io_strings.append(f"output {output}")
-        else:
-            io_strings.append(f"output [{width_table[output] - 1}:0] {output}")
-
-    if coroutine._inputs:
-        for input_, type_ in coroutine._inputs.items():
-            if isinstance(type_, m.BitKind):
-                io_strings.append(f"input {input_}")
-            elif isinstance(type_, m.ArrayKind) and isinstance(type_.T, m.BitKind):
-                io_strings.append(f"input [{len(type_)-1}:0] {input_}")
-            else:
-                raise NotImplementedError(type_)
-    io_string = ", ".join(io_strings)
+    io_string = make_io_string(coroutine._inputs, outputs, width_table)
     states = cfg.states
     num_yields = cfg.curr_yield_id
     num_states = len(states)
@@ -155,35 +159,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog')
         num_states -= 1
         num_yields -= 1
         states = states[1:]
-    # CE = f"VCC"
-    # if has_ce:
-        # CE = f"{tree.name}.CE"
-    if False:
-        new_states = []
-        for state in states:
-            for new_state in new_states:
-                if "\n".join(astor.to_source(statement) for statement in state.statements) == \
-                   "\n".join(astor.to_source(statement) for statement in new_state.statements):
-                       new_state.start_yield_ids.append(state.start_yield_id)
-                       break
-            else:
-                new_states.append(state)
-        states = new_states
     num_states = len(states)
-    for i, state in enumerate(states):
-        new_statements = []
-        for statement in state.statements:
-            if isinstance(statement, ast.Assign) and isinstance(statement.value, ast.Call) and isinstance(statement.value.func, ast.Attribute) and statement.value.func.attr == "send":
-                if len(statement.targets) == 1:
-                    target = statement.targets[0].id
-                    sub_coroutine = statement.value.func.value
-                    for j, arg in enumerate(statement.value.args[0].elts):
-                        new_statements.append(ast.parse(f"wire({astor.to_source(sub_coroutine).rstrip()}_inputs_{j}.I{i}, {astor.to_source(arg).rstrip()})"))
-                    statement.value = ast.Attribute(sub_coroutine, target, ast.Load)
-                else:
-                    raise NotImplementedError()
-            new_statements.append(statement)
-        state.statements = new_statements
     if has_ce:
         raise NotImplementedError("add ce to module decl")
     verilog_source += f"""
