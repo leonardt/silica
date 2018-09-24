@@ -7,7 +7,7 @@ import magma as m
 from common import evaluate_circuit
 
 @silica.coroutine(inputs={"I" : Bit})
-def detect111():
+def SIDetect111():
     cnt = uint(0, 2)
     O = bit(0)
     while True:
@@ -28,9 +28,9 @@ def inputs_generator(inputs):
 
 inputs =  list(map(bool, [1,1,0,1,1,1,0,1,0,1,1,1,1,1,1]))
 def test_detect111():
-    detect = detect111()
+    detect = SIDetect111()
     outputs = list(map(bool, [0,0,0,0,0,1,0,0,0,0,0,1,1,1,1]))
-    si_detect = silica.compile(detect111(), file_name="tests/build/si_detect.v")
+    si_detect = silica.compile(detect, file_name="tests/build/si_detect.v")
     # si_detect = m.DefineFromVerilogFile("tests/build/si_detect.v",
     #                             type_map={"CLK": m.In(m.Clock)})[0]
     tester = fault.Tester(si_detect, si_detect.CLK)
@@ -51,7 +51,7 @@ def test_detect111():
                                    flags=['-Wno-fatal'])
     if __name__ == '__main__':
         print("===== BEGIN : SILICA RESULTS =====")
-        evaluate_circuit("si_detect", "detect111")
+        evaluate_circuit("si_detect", "SIDetect111")
         print("===== END   : SILICA RESULTS =====")
         import shutil
         shutil.copy('verilog/detect111.v', 'tests/build/verilog_detect.v')
