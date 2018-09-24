@@ -5,6 +5,125 @@ from silica.transformations.promote_widths import PromoteWidths
 from silica.desugar import Desugar, DesugarArrays
 
 
+
+class ArrayReplacer(ast.NodeTransformer):
+    def __init__(self, array, state):
+        self.array = array
+        self.state = state
+        self.stored = False
+        self.raddr = None
+        self.waddr = None
+        self.wdata = None
+
+    def visit_Call(self, node):
+        # Skip wire calls because they are not silica code
+        if isinstance(node.func, ast.Name) and node.func.id in {"wire"}:
+            return node
+        elif isinstance(node.func, ast.Attribute) and node.func.attr in {"append"}:
+            return node
+        if isinstance(node.func, ast.Name) and node.func.id in {"__silica_skip"}:
+            return node.args[0]
+        return super().generic_visit(node)
+
+    def visit_Subscript(self, node):
+        if isinstance(node.value, ast.Name) and self.array in node.value.id:
+            if isinstance(node.ctx, ast.Load):
+                if isinstance(node.slice, ast.Index):
+                    if isinstance(node.slice.value, ast.Num) or \
+                       isinstance(node.slice.value, ast.Call) and \
+                       node.slice.value.func.id in {"uint"}:
+                        if "_tmp" in node.value.id:
+                            return ast.parse(f"{astor.to_source(node).rstrip()}").body[0].value
+                        else:
+                            return ast.parse(f"{astor.to_source(node).rstrip()}.O").body[0].value
+                    else:
+                        self.raddr = astor.to_source(node.slice).rstrip(0)
+                    # else:
+                    #     if "_tmp" in node.value.id:
+                    #         return ast.parse(f"mux([x for x in {astor.to_source(node.value).rstrip()}], {astor.to_source(node.slice).rstrip()})").body[0].value
+                    #     else:
+                    #         return ast.parse(f"mux([x.O for x in {astor.to_source(node.value).rstrip()}], {astor.to_source(node.slice).rstrip()})").body[0].value
+        return node
+
+    def visit_Assign(self, node):
+        if len(node.targets) == 1 and isinstance(node.targets[0], ast.Subscript) and \
+                                      isinstance(node.targets[0].value, ast.Name) and \
+                                      node.targets[0].value.id == self.array:
+            if isinstance(node.targets[0].slice.value, ast.Num):
+                return node
+            self.waddr = astor.to_source(node.targets[0].slice.value).rstrip()
+            self.wdata = astor.to_source(node.value).rstrip()
+            return ast.parse("None")
+            target = replace_symbols(node.targets[0], {self.array: ast.parse(f"{self.array}_next_{self.state}_tmp").body[0].value})
+            target = astor.to_source(target).rstrip()
+            value = astor.to_source(node.value).rstrip()
+            self.stored = True
+            return ast.parse(f"{target} = {value}")
+        elif isinstance(node.value, ast.Subscript) and \
+             isinstance(node.value.value, ast.Name) and \
+             node.value.value.id == self.array:
+            if isinstance(node.value.slice.value, ast.Num):
+                return ast.parse(f"{astor.to_source(node).rstrip()}.O")
+            self.raddr = astor.to_source(node.value.slice).rstrip()
+            node.value = ast.parse(f"{self.array}.rdata").body[0].value
+            return node
+        return super().generic_visit(node)
+
+
+    def run(self, tree):
+        tree = self.visit(tree)
+        return tree, self.stored, self.raddr, self.waddr, self.wdata
+
+
+def replace_arrays(tree, array, state):
+    return ArrayReplacer(array, state).run(tree)
+
+
+def replace_memory(tree, memory, state):
+    class MemoryReplacer(ast.NodeTransformer):
+        def __init__(self):
+            self.raddr = self.waddr = self.wdata = None
+
+        def visit_Assign(self, node):
+            if len(node.targets) == 1 and isinstance(node.targets[0], ast.Subscript) and \
+                                          isinstance(node.targets[0].value, ast.Name) and \
+                                          node.targets[0].value.id == memory:
+                self.waddr = astor.to_source(node.targets[0].slice.value).rstrip()
+                self.wdata = astor.to_source(node.value).rstrip()
+                return ast.parse("None")
+            elif isinstance(node.value, ast.Subscript) and \
+                 isinstance(node.value.value, ast.Name) and \
+                 node.value.value.id == memory:
+                self.raddr = astor.to_source(node.value.slice).rstrip()
+                node.value = ast.parse(f"{memory}.rdata").body[0].value
+                return node
+            return super().generic_visit(node)
+
+        def run(self, tree):
+            tree = self.visit(tree)
+            return tree, self.raddr, self.waddr, self.wdata
+    return MemoryReplacer().run(tree)
+
+class CollectStoredArrays(ast.NodeVisitor):
+    def __init__(self):
+        self.inside_assign_target = False
+        self.stored = set()
+
+    def run(self, node):
+        self.visit(node)
+        return self.stored
+
+    def visit_Subscript(self, node):
+        if self.inside_assign_target and isinstance(node.value, ast.Name):
+            self.stored.add(node.value.id)
+
+    def visit_Assign(self, node):
+        self.inside_assign_target = True
+        for target in node.targets:
+            self.visit(target)
+        self.inside_assign_target = False
+
+
 def magma_compile(coroutine, func_globals, func_locals):
     # TODO: Simplify clock enables wired up to 1
     has_ce = coroutine.has_ce
