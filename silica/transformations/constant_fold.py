@@ -23,5 +23,15 @@ class ConstantFold(ast.NodeTransformer):
                 return node.left
         return node
 
+    def visit_Compare(self, node):
+        node.left = self.visit(node.left)
+        node.comparators = [self.visit(x) for x in node.comparators]
+        if isinstance(node.left, ast.Num) and all(isinstance(comparator, ast.Num) for comparator in node.comparators):
+            result = eval(astor.to_source(node))
+            if result is True or result is False:
+                return ast.NameConstant(result)
+            return ast.Num(result)
+        return node
+
 def constant_fold(tree):
     return ConstantFold().visit(tree)

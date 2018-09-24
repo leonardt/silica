@@ -73,6 +73,7 @@ class PromoteWidths(ast.NodeTransformer):
                 if not isinstance(comparator, ast.Num):
                     width = get_width(comparator, self.width_table)
                     type_ = self.get_type(comparator)
+                    break
             else:
                 assert False, "Constant fold should have folded this expression {ast.dump(node)}"
             self.check_valid(node.left.n.bit_length(), width)

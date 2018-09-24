@@ -119,6 +119,7 @@ class ControlFlowGraph:
         inputs, outputs = get_io(tree)
         self.build(tree)
         self.bypass_conds()
+        # self.adjust_yield_ids()
         try:
             self.paths_between_yields = self.paths = self.collect_paths_between_yields()
         except RecursionError as error:
@@ -184,6 +185,18 @@ class ControlFlowGraph:
         else:
             raise NotImplementedError(type(block))
 
+    def adjust_yield_ids(self):
+        paths = []
+        has_initial_yield = False
+        for block in self.blocks:
+            if isinstance(block, Yield) and block.is_initial_yield:
+                has_initial_yield = True
+        if not has_initial_yield:
+            for block in self.blocks:
+                if isinstance(block, Yield) and not block.is_initial_yield:
+                    block.yield_id += 1
+
+
     def collect_paths_between_yields(self):
         """
         For each block, if it's a Yield (or HeadBlock): TODO: HeadBlock is confusing
@@ -193,10 +206,7 @@ class ControlFlowGraph:
         paths = []
         for block in self.blocks:
             if isinstance(block, (Yield, HeadBlock)):
-                if isinstance(block, Yield) and (isinstance(block.value, ast.Yield) \
-                                                 and block.value.value is None \
-                                                 or isinstance(block.value, ast.Assign) \
-                                                 and block.value.value.value is None):
+                if isinstance(block, Yield) and block.is_initial_yield:
                        continue  # Skip initial yield
                 paths.extend([deepcopy(block)] + path for path in self.find_paths(block.outgoing_edge[0], block))
         for path in paths:

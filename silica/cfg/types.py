@@ -68,6 +68,14 @@ class Yield(Block):
         super().__init__()
         self.value = value
 
+    @property
+    def is_initial_yield(self):
+        return (isinstance(self.value, ast.Yield) \
+                and self.value.value is None \
+                or isinstance(self.value, ast.Assign) \
+                and isinstance(self.value.value, ast.Yield) \
+                and self.value.value.value is None)
+
 
 class State:
     def __init__(self, start_yield_id, end_yield_id):

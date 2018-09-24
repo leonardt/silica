@@ -99,7 +99,6 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog')
     specialize_constants(tree, coroutine._defn_locals)
     specialize_evals(tree, func_globals, func_locals)
     inline_yield_from_functions(tree, func_globals, func_locals)
-    print(astor.to_source(tree))
     constant_fold(tree)
     specialize_list_comps(tree, func_globals, func_locals)
     desugar_for_loops(tree)
@@ -159,6 +158,9 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog')
         num_states -= 1
         num_yields -= 1
         states = states[1:]
+        # for state in states:
+        #     state.start_yield_id -= 1
+        #     state.end_yield_id -= 1
     num_states = len(states)
     if has_ce:
         raise NotImplementedError("add ce to module decl")
@@ -202,12 +204,15 @@ module {module_name} ({io_string}, input CLK);
 """
     tab = "    "
     temp_var_source = ""
+    # render_paths_between_yields(cfg.paths)
     for i, state in enumerate(states):
         always_inside, temp_vars = verilog_compile_state(state, i, tab * 3, cfg.curr_yield_id == 1, width_table)
         always_source += always_inside
         temp_var_source += temp_vars
     verilog_source += temp_var_source + always_source
     verilog_source += "\n    end\nendmodule"
+    verilog_source = verilog_source.replace("True", "1")
+    verilog_source = verilog_source.replace("False", "0")
     with open(file_name, "w") as f:
         f.write(verilog_source)
     return m.DefineFromVerilog(verilog_source, type_map={"CLK": m.In(m.Clock)})[-1]

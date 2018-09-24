@@ -67,15 +67,15 @@ def compile_state(state, index, _tab, one_state, width_table):
         else:
             if_str = "else if"
         verilog_source += f"\n{_tab}{if_str} ({cond}) begin"
-    temp_var_promoter = TempVarPromoter(width_table)
+    # temp_var_promoter = TempVarPromoter(width_table)
     for statement in state.statements:
         RemoveMagmaFuncs().visit(statement)
         # temp_var_promoter.visit(statement)
         verilog_source += f"\n{_tab + offset}" + astor.to_source(statement).rstrip().replace(" = ", " = ") + ";"
     temp_var_source = ""
-    for width, assign in temp_var_promoter.assigns:
-        width_str = get_width_str(width)
-        temp_var_source += f"    wire {width_str}" + astor.to_source(assign).rstrip() + ";\n"
+    # for width, assign in temp_var_promoter.assigns:
+    #     width_str = get_width_str(width)
+    #     temp_var_source += f"    wire {width_str}" + astor.to_source(assign).rstrip() + ";\n"
     if not one_state:
         verilog_source += f"\n{_tab + offset}yield_state = {state.end_yield_id};"
     if state.conds or not one_state:

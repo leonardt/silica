@@ -64,6 +64,7 @@ operators = {
     "lt": lt,
     "le": le,
     "not_": not_,
+    "bits": bits,
     "uint": uint,
     "BitVector": BitVector
 }
