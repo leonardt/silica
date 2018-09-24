@@ -3,3 +3,6 @@ __pycache__
 silica.egg-info
 parser.out
 parsetab.py
+.cache
+.magma
+.pytest_cache
