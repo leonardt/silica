@@ -2,6 +2,7 @@ from silica.transformations.replace_assign_to_bits import replace_assign_to_bits
 from silica.transformations.specialize_arguments import specialize_arguments
 from silica.type_check import TypeChecker
 from silica.transformations.promote_widths import PromoteWidths
+from silica.desugar import Desugar, DesugarArrays
 
 
 def magma_compile(coroutine, func_globals, func_locals):
