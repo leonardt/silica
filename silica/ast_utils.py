@@ -23,13 +23,15 @@ def get_ast(obj):
 # Automatically generate is_{} functions for classes in the ast module
 module_obj = sys.modules[__name__]
 
+_first_cap_re=re.compile(r'(.)([A-Z][a-z]+)')
+_all_cap_re=re.compile(r'([a-z0-9])([A-Z])')
 def to_camel_case(name):
     """ Converts name from SnakeCase to camel_case
 
     https://stackoverflow.com/questions/1175208/elegant-python-function-to-convert-camelcase-to-snake-case
     """
-    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+    s1 = re.sub(_first_cap_re, r'\1_\2', name)
+    return re.sub(_all_cap_re, r'\1_\2', s1).lower()
 
 def is_generator(name):
     def f(node):
