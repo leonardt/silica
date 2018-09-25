@@ -1,6 +1,8 @@
 import ast
 import astor
 import inspect
+import re
+import sys
 import textwrap
 import magma
 
@@ -18,17 +20,25 @@ def get_ast(obj):
     # return astor.code_to_ast(obj)
 
 
-# TODO: would be cool to metaprogram these is_* funcs
-def is_call(node):
-    return isinstance(node, ast.Call)
+# Automatically generate is_{} functions for classes in the ast module
+module_obj = sys.modules[__name__]
 
+def to_camel_case(name):
+    """ Converts name from SnakeCase to camel_case
 
-def is_name(node):
-    return isinstance(node, ast.Name)
+    https://stackoverflow.com/questions/1175208/elegant-python-function-to-convert-camelcase-to-snake-case
+    """
+    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
+def is_generator(name):
+    def f(node):
+        return isinstance(node, getattr(ast, name))
 
-def is_subscript(node):
-    return isinstance(node, ast.Subscript)
+    setattr(module_obj, "is_" + to_camel_case(name), f)
+
+for x in [m[0] for m in inspect.getmembers(ast, inspect.isclass) if m[1].__module__ == '_ast']:
+    is_generator(x)
 
 
 def get_call_func(node):
