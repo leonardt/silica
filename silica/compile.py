@@ -116,6 +116,10 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     TypeChecker(width_table, type_table).check(tree)
     # DesugarArrays().run(tree)
     cfg = ControlFlowGraph(tree)
+    for var in cfg.replacer.seen:
+        width = width_table[var]
+        for i in range(cfg.replacer.seen[var] + 1):
+            width_table[f"{var}_{i}"] = width
     liveness_analysis(cfg)
 
     if output == 'magma':
@@ -182,10 +186,23 @@ module {module_name} ({io_string}, input CLK);
         if value is not None:
             init_strings.append(f"{key} = {value};")
 
+    for var in cfg.replacer.seen:
+        width = width_table[var]
+        for i in range(cfg.replacer.seen[var] + 1):
+            if f"{var}_{i}" not in registers:
+                width_str = get_width_str(width)
+                verilog_source += f"    wire {width_str} {var}_{i};\n"
+
 
     if cfg.curr_yield_id > 1:
         verilog_source += f"    reg [{(cfg.curr_yield_id - 1).bit_length() - 1}:0] yield_state;\n"
         init_strings.append(f"yield_state = 0;")
+
+    if initial_basic_block:
+        for statement in states[0].statements:
+            verilog.process_statement(statement)
+            # temp_var_promoter.visit(statement)
+            init_strings.append(astor.to_source(statement).rstrip().replace(" = ", " = ") + ";")
 
     init_string = '\n        '.join(init_strings)
     verilog_source += f"""
@@ -200,6 +217,8 @@ module {module_name} ({io_string}, input CLK);
     wdatas = {}
     wens = {}
     # render_paths_between_yields(cfg.paths)
+    if initial_basic_block:
+        states = states[1:]
     always_source, temp_var_source = verilog.compile_states(states, cfg.curr_yield_id == 1, width_table, strategy)
     verilog_source += temp_var_source + always_source
     verilog_source += "\n    end\nendmodule"
