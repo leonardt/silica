@@ -2,6 +2,7 @@
 Silica's Control Flow Graph (CFG)
 
 TODO: We need an explicit HeadBlock object?
+
 """
 import tempfile
 from copy import deepcopy, copy
@@ -14,6 +15,36 @@ import silica
 from silica.transformations import specialize_constants, replace_symbols, constant_fold
 from silica.visitors import collect_names
 from silica.cfg.types import BasicBlock, Yield, Branch, HeadBlock, State
+from silica.cfg.ssa import SSAReplacer
+
+
+class AssignToSubscriptCollector(ast.NodeVisitor):
+    def __init__(self):
+        super().__init__()
+        self.seen = set()
+
+    def get_name(self, node):
+        if isinstance(node, ast.Subscript):
+            return self.get_name(node.value)
+        elif isinstance(node, ast.Name):
+            return node.id
+        else:
+            raise NotImplementedError("Found assign to subscript that isn't of the form name[x][y]...[z]")
+
+    def visit_Assign(self, node):
+        if len(node.targets) == 1 and isinstance(node.targets[0], ast.Subscript):
+            self.seen.add(self.get_name(node.targets[0]))
+
+def collect_assign_to_subscript(tree):
+    collector = AssignToSubscriptCollector()
+    collector.visit(tree)
+    return collector.seen
+
+def collect_stores(tree):
+    assign_to_names = collect_names(tree, ast.Store)
+    assign_to_subscript = collect_assign_to_subscript(tree)
+
+    return assign_to_names | assign_to_subscript
 
 def get_constant(node):
     if isinstance(node, ast.Num) and len(stmt.targets) == 1:
@@ -98,42 +129,6 @@ class IOCollector(ast.NodeVisitor):
 
 def get_io(tree):
     return IOCollector().run(tree)
-
-
-class SSAReplacer(ast.NodeTransformer):
-    def __init__(self):
-        self.seen = {}
-        self.phi_vars = {}
-        self.stmts_seen = set()
-
-    def visit_Assign(self, node):
-        node.value = self.visit(node.value)
-        assert len(node.targets) == 1
-        node.targets[0] = self.visit(node.targets[0])
-        return node
-
-    def visit_Name(self, node):
-        if isinstance(node.ctx, ast.Load):
-            # phi_args = []
-            # for block, _ in self.curr_block.incoming_edges:
-            #     phi_args.append(ast.Name(f"{node.id}_{block.seen[node.id]}", ast.Load()))
-            # if len(phi_args):
-            #     return ast.Call(ast.Name("phi", ast.Load()), phi_args, [])
-            if node.id in self.seen:
-                node.id += f"_{self.seen[node.id]}"
-            return node
-        else:
-            if node.id not in self.seen:
-                self.seen[node.id] = 0
-            else:
-                self.seen[node.id] += 1
-            return ast.Name(f"{node.id}_{self.seen[node.id]}", ast.Store)
-
-    def process_block(self, block):
-        self.curr_block = block
-        for statement in block:
-            self.visit(statement)
-        block.seen = copy(self.seen)
 
 
 def get_next_block(block):
@@ -456,10 +451,12 @@ class ControlFlowGraph:
                 if var in self.replacer.seen:
                     phi_vars[var] = [None, f"{var}_{self.replacer.seen[var]}"]
             # stmt.body holds the True path for both If and While nodes
+            orig_seen = copy(self.replacer.seen)
             for sub_stmt in stmt.body:
                 self.process_stmt(sub_stmt)
+            true_seen = copy(self.replacer.seen)
             for var in true_stores:
-                if var in self.replacer.seen:
+                if var in self.replacer.seen and var in phi_vars:
                     phi_vars[var][0] = f"{var}_{self.replacer.seen[var]}"
             if isinstance(stmt, ast.While):
                 for base_var, (true_var, false_var) in phi_vars.items():
@@ -478,13 +475,23 @@ class ControlFlowGraph:
                 if stmt.orelse:
                     false_stores = set()
                     for sub_stmt in stmt.orelse:
-                        false_stores |= collect_names(sub_stmt, ast.Store)
+                        false_stores |= collect_stores(sub_stmt)
                     self.curr_block = self.gen_new_block()
                     add_false_edge(branch, self.curr_block)
+                    load_store_offset = {}
+                    for var, value in true_seen.items():
+                        diff = value - orig_seen[var]
+                        if diff:
+                            load_store_offset[var] = diff
+                    self.replacer.load_store_offset = load_store_offset
                     for sub_stmt in stmt.orelse:
                         self.process_stmt(sub_stmt)
+                    false_seen = self.replacer.seen
+                    for var, diff in load_store_offset.items():
+                        self.replacer.seen[var] += diff
+                    self.replacer.load_store_offset = {}
                     for var in false_stores:
-                        if var in self.replacer.seen:
+                        if var in self.replacer.seen and var in phi_vars:
                             phi_vars[var][1] = f"{var}_{self.replacer.seen[var]}"
                     end_else_block = self.curr_block
                 self.curr_block = self.gen_new_block()
@@ -504,8 +511,9 @@ class ControlFlowGraph:
         elif isinstance(stmt, ast.Expr):
             if isinstance(stmt.value, ast.Yield):
                 # replacer.visit(stmt.value)
-                output = stmt.value.id
-                self.curr_block.statements.append(ast.parse(f"{output} = {output}_{self.replacer.seen[output]}"))
+                if stmt.value is not None:
+                    output = stmt.value.value.id
+                    self.curr_block.statements.append(ast.parse(f"{output} = {output}_{self.replacer.seen[output]}"))
                 self.add_new_yield(stmt.value)
             elif isinstance(stmt.value, ast.Str):
                 # Docstring, ignore
@@ -516,8 +524,16 @@ class ControlFlowGraph:
                 # raise NotImplementedError(stmt.value)
         elif isinstance(stmt, ast.Assign):
             if isinstance(stmt.value, ast.Yield):
-                output = stmt.value.value.id
-                self.curr_block.statements.append(ast.parse(f"{output} = {output}_{self.replacer.seen[output]}"))
+                if stmt.value.value is not None:
+                    if isinstance(stmt.value.value, ast.Name):
+                        output = stmt.value.value.id
+                        self.curr_block.statements.append(ast.parse(f"{output} = {output}_{self.replacer.seen[output]}"))
+                    elif isinstance(stmt.value.value, ast.Tuple):
+                        for element in stmt.value.value.elts:
+                            output = element.id
+                            self.curr_block.statements.append(ast.parse(f"{output} = {output}_{self.replacer.seen[output]}"))
+                    else:
+                        raise NotImplementedError(stmt.value.value)
                 self.add_new_yield(stmt)
             else:
                 self.replacer.visit(stmt)
@@ -778,7 +794,6 @@ def build_state_info(paths, outputs, inputs):
     """
     states = []
     state_vars = {"yield_state"}
-    print(len(paths))
     for path in paths:
         if isinstance(path[0], HeadBlock):
             start_yield_id = 0
