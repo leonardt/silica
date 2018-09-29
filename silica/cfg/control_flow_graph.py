@@ -13,38 +13,9 @@ import magma
 
 import silica
 from silica.transformations import specialize_constants, replace_symbols, constant_fold
-from silica.visitors import collect_names
+from silica.visitors import collect_names, collect_stores
 from silica.cfg.types import BasicBlock, Yield, Branch, HeadBlock, State
 from silica.cfg.ssa import SSAReplacer
-
-
-class AssignToSubscriptCollector(ast.NodeVisitor):
-    def __init__(self):
-        super().__init__()
-        self.seen = set()
-
-    def get_name(self, node):
-        if isinstance(node, ast.Subscript):
-            return self.get_name(node.value)
-        elif isinstance(node, ast.Name):
-            return node.id
-        else:
-            raise NotImplementedError("Found assign to subscript that isn't of the form name[x][y]...[z]")
-
-    def visit_Assign(self, node):
-        if len(node.targets) == 1 and isinstance(node.targets[0], ast.Subscript):
-            self.seen.add(self.get_name(node.targets[0]))
-
-def collect_assign_to_subscript(tree):
-    collector = AssignToSubscriptCollector()
-    collector.visit(tree)
-    return collector.seen
-
-def collect_stores(tree):
-    assign_to_names = collect_names(tree, ast.Store)
-    assign_to_subscript = collect_assign_to_subscript(tree)
-
-    return assign_to_names | assign_to_subscript
 
 def get_constant(node):
     if isinstance(node, ast.Num) and len(stmt.targets) == 1:
