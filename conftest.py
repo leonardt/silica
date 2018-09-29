@@ -4,6 +4,9 @@ from magma import clear_cachedFunctions
 import os
 
 
+collect_ignore=["silica/_testing.py"]
+
+
 @pytest.fixture(autouse=True)
 def silica_test():
     import silica

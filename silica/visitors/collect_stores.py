@@ -31,10 +31,12 @@ def collect_stores(tree):
         ast.Subscript(ast.Subscript(...(ast.Name, ast.Load()), ...), ...)
             where the Subscript is a child in the targets of an ast.Assign node
 
-    collect_stores(ast.parse("x = y")) == set("x")
-    collect_stores(ast.parse("x[0] = y")) == set("x")
-    collect_stores(ast.parse("x[0][0] = y")) == set("x")
-
+    >>> collect_stores(ast.parse("x = y")) 
+    {'x'}
+    >>> collect_stores(ast.parse("x[0] = y")) 
+    {'x'}
+    >>> collect_stores(ast.parse("x[0][0] = y")) 
+    {'x'}
     """
     assign_to_names = collect_names(tree, ast.Store)
     assign_to_subscript = collect_assign_to_subscript(tree)
