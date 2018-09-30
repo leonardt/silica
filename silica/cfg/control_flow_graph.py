@@ -429,6 +429,20 @@ class ControlFlowGraph:
                 self.curr_block.statements.append(
                     # ast.parse(f"{orig_var} = phi({true_var}, {orig_var}, cond={astor.to_source(stmt.test)})").body[0])
                     ast.parse(f"{false_var} = {true_var} if {astor.to_source(stmt.test).rstrip()} else {false_var}").body[0])
+            for (name, index), value in self.replacer.array_stores.items():
+                if (name, index, value) in self.replacer.array_store_processed:
+                    continue
+                self.replacer.array_store_processed.add((name, index, value))
+                index_hash = "_".join(ast.dump(i) for i in index)
+                count = self.replacer.index_map[index_hash]
+                if not (name, index) in orig_array_stores or \
+                        orig_index_map[index_hash] < count:
+                    index_str = ""
+                    for i in index:
+                        index_str = f"[{astor.to_source(i).rstrip()}]" + index_str
+                    false_var = name + index_str
+                    true_var = name + f"_{value}_i{count}"
+                    self.curr_block.statements.append( ast.parse(f"{name}{index_str} = {true_var} if {astor.to_source(stmt.test).rstrip()} else {false_var}").body[0])
             # Exit the current basic block by looping back to the branch
             # node
             add_edge(self.curr_block, branch)
@@ -474,10 +488,13 @@ class ControlFlowGraph:
                     target = false_var
                 else:
                     target = true_var
-                self.curr_block.statements.insert(
+                self.curr_block.statements.append(
                     # 0, ast.parse(f"{last_var} = phi({true_var}, {false_var}, cond={astor.to_source(stmt.test)})").body[0])
-                    0, ast.parse(f"{target} = {true_var} if {astor.to_source(stmt.test).rstrip()} else {false_var}").body[0])
+                    ast.parse(f"{target} = {true_var} if {astor.to_source(stmt.test).rstrip()} else {false_var}").body[0])
             for (name, index), value in self.replacer.array_stores.items():
+                if (name, index, value) in self.replacer.array_store_processed:
+                    continue
+                self.replacer.array_store_processed.add((name, index, value))
                 index_hash = "_".join(ast.dump(i) for i in index)
                 count = self.replacer.index_map[index_hash]
                 if not (name, index) in orig_array_stores or \

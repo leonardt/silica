@@ -106,6 +106,7 @@ def compile_statements(states, _tab, one_state, width_table, statements):
     # temp_var_promoter = TempVarPromoter(width_table)
     for statement in statements:
         conds = []
+        yields = set()
         contained = [state for state in states if statement in state.statements]
         if contained != states:
             for state in states:
@@ -115,10 +116,13 @@ def compile_statements(states, _tab, one_state, width_table, statements):
                         these_conds = []
                         # if state.conds:
                         #     these_conds.extend(astor.to_source(process_statement(cond)).rstrip() for cond in state.conds)
-                        if not one_state:
-                            these_conds.append(f"(yield_state == {state.start_yield_id})")
-                        if these_conds:
-                            conds.append(" & ".join(these_conds))
+                        # if not one_state:
+                        #     these_conds.append(f"(yield_state == {state.start_yield_id})")
+                        yields.add(state.start_yield_id)
+                        # if these_conds:
+                        #     conds.append(" & ".join(these_conds))
+            if not one_state:
+                conds = [f"(yield_state == {yield_id})" for yield_id in yields]
             process_statement(statement)
             if conds:
                 cond = " | ".join(conds)

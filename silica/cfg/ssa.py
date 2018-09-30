@@ -10,6 +10,7 @@ class SSAReplacer(ast.NodeTransformer):
         self.seen = set()
         self.array_stores = {}
         self.index_map = {}
+        self.array_store_processed = set()
 
     def increment_id(self, key):
         if key not in self.id_counter:
