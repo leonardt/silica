@@ -22,4 +22,4 @@ install:
 
 script:
   - pip install -e .
-  - pytest --cov=silica
+  - pytest --cov=silica --doctest-modules
