@@ -430,13 +430,13 @@ class ControlFlowGraph:
                     # ast.parse(f"{orig_var} = phi({true_var}, {orig_var}, cond={astor.to_source(stmt.test)})").body[0])
                     ast.parse(f"{false_var} = {true_var} if {astor.to_source(stmt.test).rstrip()} else {false_var}").body[0])
             for (name, index), value in self.replacer.array_stores.items():
-                if (name, index, value) in self.replacer.array_store_processed:
-                    continue
-                self.replacer.array_store_processed.add((name, index, value))
                 index_hash = "_".join(ast.dump(i) for i in index)
                 count = self.replacer.index_map[index_hash]
                 if not (name, index) in orig_array_stores or \
                         orig_index_map[index_hash] < count:
+                    if (name, index, value, count) in self.replacer.array_store_processed:
+                        continue
+                    self.replacer.array_store_processed.add((name, index, value, count))
                     index_str = ""
                     for i in index:
                         index_str = f"[{astor.to_source(i).rstrip()}]" + index_str
@@ -492,13 +492,13 @@ class ControlFlowGraph:
                     # 0, ast.parse(f"{last_var} = phi({true_var}, {false_var}, cond={astor.to_source(stmt.test)})").body[0])
                     ast.parse(f"{target} = {true_var} if {astor.to_source(stmt.test).rstrip()} else {false_var}").body[0])
             for (name, index), value in self.replacer.array_stores.items():
-                if (name, index, value) in self.replacer.array_store_processed:
-                    continue
-                self.replacer.array_store_processed.add((name, index, value))
                 index_hash = "_".join(ast.dump(i) for i in index)
                 count = self.replacer.index_map[index_hash]
                 if not (name, index) in orig_array_stores or \
                         orig_index_map[index_hash] < count:
+                    if (name, index, value, count) in self.replacer.array_store_processed:
+                        continue
+                    self.replacer.array_store_processed.add((name, index, value, count))
                     index_str = ""
                     for i in index:
                         index_str = f"[{astor.to_source(i).rstrip()}]" + index_str
