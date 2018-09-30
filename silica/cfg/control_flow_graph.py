@@ -359,7 +359,7 @@ class ControlFlowGraph:
         self.curr_block = self.gen_new_block()
         add_edge(old_block, self.curr_block)
 
-    def add_new_yield(self, value):
+    def add_new_yield(self, value, output_map={}):
         """
         Adds a new ``Yield`` block to the CFG and connects ``self.curr_block``
         to it.
@@ -368,7 +368,7 @@ class ControlFlowGraph:
         adds an edge from the new ``Yield`` block to this new ``BasicBlock``.
         """
         old_block = self.curr_block
-        self.curr_block = Yield(value)
+        self.curr_block = Yield(value, output_map)
         add_edge(old_block, self.curr_block)
         self.blocks.append(self.curr_block)
         # We need unique ids for each yield in the current cfg
@@ -452,9 +452,10 @@ class ControlFlowGraph:
                 add_false_edge(branch, self.curr_block)
                 load_store_offset = {}
                 for var, value in true_id_counter.items():
-                    diff = value - orig_id_counter[var]
-                    if diff:
-                        load_store_offset[var] = diff
+                    if var in orig_id_counter:
+                        diff = value - orig_id_counter[var]
+                        if diff:
+                            load_store_offset[var] = diff
                 self.replacer.load_store_offset = load_store_offset
                 for sub_stmt in stmt.orelse:
                     self.process_stmt(sub_stmt)
@@ -510,8 +511,9 @@ class ControlFlowGraph:
             # replacer.visit(stmt.value)
             if stmt.value is not None:
                 output = stmt.value.value.id
-                self.curr_block.statements.append(ast.parse(f"{output} = {output}_{self.replacer.id_counter[output]}"))
-            self.add_new_yield(stmt.value)
+                # self.curr_block.statements.append(ast.parse(f"{output} = {output}_{self.replacer.id_counter[output]}"))
+                output_map = {output: f"{output}_{self.replacer.id_counter[output]}"}
+            self.add_new_yield(stmt.value, output_map)
         elif isinstance(stmt.value, ast.Str):
             # Docstring, ignore
             pass
@@ -522,17 +524,20 @@ class ControlFlowGraph:
 
     def process_assign(self, stmt):
         if isinstance(stmt.value, ast.Yield):
+            output_map = {}
             if stmt.value.value is not None:
                 if isinstance(stmt.value.value, ast.Name):
                     output = stmt.value.value.id
-                    self.curr_block.statements.append(ast.parse(f"{output} = {output}_{self.replacer.id_counter[output]}"))
+                    output_map[output] = f"{output}_{self.replacer.id_counter[output]}"
+                    # self.curr_block.statements.append(ast.parse(f"{output} = {output}_{self.replacer.id_counter[output]}"))
                 elif isinstance(stmt.value.value, ast.Tuple):
                     for element in stmt.value.value.elts:
                         output = element.id
-                        self.curr_block.statements.append(ast.parse(f"{output} = {output}_{self.replacer.id_counter[output]}"))
+                        # self.curr_block.statements.append(ast.parse(f"{output} = {output}_{self.replacer.id_counter[output]}"))
+                        output_map[output] = f"{output}_{self.replacer.id_counter[output]}"
                 else:
                     raise NotImplementedError(stmt.value.value)
-            self.add_new_yield(stmt)
+            self.add_new_yield(stmt, output_map)
         else:
             self.replacer.visit(stmt)
             self.curr_block.add(stmt)
@@ -813,7 +818,7 @@ def build_state_info(paths, outputs, inputs):
         else:
             start_yield_id = path[0].yield_id
         end_yield_id = path[-1].yield_id
-        state = State(start_yield_id, end_yield_id)
+        state = State(start_yield_id, end_yield_id, path)
         for i in range(0, len(path)):
             block = path[i]
             if isinstance(block, Branch):

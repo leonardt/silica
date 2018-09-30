@@ -64,9 +64,10 @@ class Branch(Block):
 
 
 class Yield(Block):
-    def __init__(self, value):
+    def __init__(self, value, output_map):
         super().__init__()
         self.value = value
+        self.output_map = output_map
 
     @property
     def is_initial_yield(self):
@@ -78,12 +79,13 @@ class Yield(Block):
 
 
 class State:
-    def __init__(self, start_yield_id, end_yield_id):
+    def __init__(self, start_yield_id, end_yield_id, path):
         self.start_yield_id = start_yield_id
         self.end_yield_id = end_yield_id
         self.conds = []
         self.statements = []
         self.start_yield_ids = [start_yield_id]
+        self.path = path
         # self.statements.append(ast.Assign(
         #     [ast.Name("yield_state", ast.Store())],
         #     ast.Num(end_yield_id)

@@ -116,9 +116,9 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     TypeChecker(width_table, type_table).check(tree)
     # DesugarArrays().run(tree)
     cfg = ControlFlowGraph(tree)
-    for var in cfg.replacer.seen:
+    for var in cfg.replacer.id_counter:
         width = width_table[var]
-        for i in range(cfg.replacer.seen[var] + 1):
+        for i in range(cfg.replacer.id_counter[var] + 1):
             width_table[f"{var}_{i}"] = width
     liveness_analysis(cfg)
 
@@ -173,6 +173,28 @@ module {module_name} ({io_string}, input CLK);
 """
 
 
+
+    for var in cfg.replacer.id_counter:
+        width = width_table[var]
+        for i in range(cfg.replacer.id_counter[var] + 1):
+            if f"{var}_{i}" not in registers:
+                width_str = get_width_str(width)
+                verilog_source += f"    wire {width_str} {var}_{i};\n"
+
+    for (name, index), value in cfg.replacer.array_stores.items():
+        width = width_table[name]
+        if isinstance(width, MemoryType):
+            width = width.width
+        else:
+            width = None
+        if len(index) > 1: raise NotImplementedError()
+        index_hash = "_".join(ast.dump(i) for i in index)
+        count = cfg.replacer.index_map[index_hash]
+        for i in range(count + 1):
+            var = name + f"_{value}_i{count}"
+            width_table[var] = width
+    print(width_table)
+
     init_strings = []
     for register in registers:
         width = width_table[register]
@@ -185,13 +207,6 @@ module {module_name} ({io_string}, input CLK);
     for key, value in initial_values.items():
         if value is not None:
             init_strings.append(f"{key} = {value};")
-
-    for var in cfg.replacer.seen:
-        width = width_table[var]
-        for i in range(cfg.replacer.seen[var] + 1):
-            if f"{var}_{i}" not in registers:
-                width_str = get_width_str(width)
-                verilog_source += f"    wire {width_str} {var}_{i};\n"
 
 
     if cfg.curr_yield_id > 1:

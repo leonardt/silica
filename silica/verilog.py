@@ -158,13 +158,13 @@ def compile_states(states, one_state, width_table, strategy="by_statement"):
         always_inside, temp_vars = compile_statements(states, tab * 3, one_state, width_table, statements)
         always_source += always_inside
         temp_var_source += temp_vars
+        _tab = tab * 3
         if not one_state:
             for i, state in enumerate(states):
-                _tab = tab * 3
                 offset = tab
                 cond = ""
-                # if state.conds:
-                #     cond += " & ".join(astor.to_source(process_statement(cond)).rstrip() for cond in state.conds)
+                if state.conds:
+                    cond += " & ".join(astor.to_source(process_statement(cond)).rstrip() for cond in state.conds)
                 if not one_state:
                     if cond:
                         cond += " & "
@@ -175,7 +175,13 @@ def compile_states(states, one_state, width_table, strategy="by_statement"):
                     if_str = "else if"
                 always_source += f"\n{_tab}{if_str} ({cond}) begin"
                 always_source += f"\n{_tab + offset}yield_state = {state.end_yield_id};"
+                for output, var in state.path[-1].output_map.items():
+                    always_source += f"\n{_tab + offset}{output} = {var};"
+
                 always_source += f"\n{_tab}end"
+        else:
+            for output, var in states[0].path[-1].output_map.items():
+                always_source += f"\n{_tab}{output} = {var};"
     else:
         raise NotImplementedError(strategy)
 
