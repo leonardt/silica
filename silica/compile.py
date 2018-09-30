@@ -193,7 +193,6 @@ module {module_name} ({io_string}, input CLK);
         for i in range(count + 1):
             var = name + f"_{value}_i{count}"
             width_table[var] = width
-    print(width_table)
 
     init_strings = []
     for register in registers:
