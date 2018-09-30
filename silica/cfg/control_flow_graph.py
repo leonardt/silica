@@ -401,6 +401,142 @@ class ControlFlowGraph:
         # TODO: This is confusing, can we make it simpler?
         return branch
 
+    def process_branch(self, stmt):
+        orig_array_stores = copy(self.replacer.array_stores)
+        orig_index_map = copy(self.replacer.index_map)
+        # Emit new blocks for the branching instruction
+        self.replacer.visit(stmt.test)
+        branch = self.add_new_branch(stmt.test)
+        orig_bb = self.curr_block
+        true_stores = set()
+        for sub_stmt in stmt.body:
+            # true_stores |= collect_stores(sub_stmt)
+            true_stores |= collect_names(sub_stmt, ast.Store)
+        phi_vars = {}
+        for var in true_stores:
+            if var in self.replacer.id_counter:
+                phi_vars[var] = [None, f"{var}_{self.replacer.id_counter[var]}"]
+        # stmt.body holds the True path for both If and While nodes
+        orig_id_counter = copy(self.replacer.id_counter)
+        for sub_stmt in stmt.body:
+            self.process_stmt(sub_stmt)
+        true_id_counter = copy(self.replacer.id_counter)
+        for var in true_stores:
+            if var in self.replacer.id_counter and var in phi_vars:
+                phi_vars[var][0] = f"{var}_{self.replacer.id_counter[var]}"
+        if isinstance(stmt, ast.While):
+            for base_var, (true_var, false_var) in phi_vars.items():
+                self.curr_block.statements.append(
+                    # ast.parse(f"{orig_var} = phi({true_var}, {orig_var}, cond={astor.to_source(stmt.test)})").body[0])
+                    ast.parse(f"{false_var} = {true_var} if {astor.to_source(stmt.test).rstrip()} else {false_var}").body[0])
+            # Exit the current basic block by looping back to the branch
+            # node
+            add_edge(self.curr_block, branch)
+            # Generate a new basic block and set the false edge of the
+            # branch to the new basic block (exiting the loop)
+            self.curr_block = self.gen_new_block()
+            add_false_edge(branch, self.curr_block)
+        elif isinstance(stmt, (ast.If,)):
+            end_then_block = self.curr_block
+            true_counts = {}
+            for (name, index), value in self.replacer.array_stores.items():
+                index_hash = "_".join(ast.dump(i) for i in index)
+                count = self.replacer.index_map[index_hash]
+                true_counts[name, index] = count
+            if stmt.orelse:
+                false_stores = set()
+                for sub_stmt in stmt.orelse:
+                    # false_stores |= collect_stores(sub_stmt)
+                    false_stores |= collect_names(sub_stmt, ast.Store)
+                self.curr_block = self.gen_new_block()
+                add_false_edge(branch, self.curr_block)
+                load_store_offset = {}
+                for var, value in true_id_counter.items():
+                    diff = value - orig_id_counter[var]
+                    if diff:
+                        load_store_offset[var] = diff
+                self.replacer.load_store_offset = load_store_offset
+                for sub_stmt in stmt.orelse:
+                    self.process_stmt(sub_stmt)
+                false_id_counter = self.replacer.id_counter
+                for var, diff in load_store_offset.items():
+                    if var in false_stores:
+                        self.replacer.id_counter[var] += diff
+                self.replacer.load_store_offset = {}
+                for var in false_stores:
+                    if var in self.replacer.id_counter and var in phi_vars:
+                        phi_vars[var][1] = f"{var}_{self.replacer.id_counter[var]}"
+                end_else_block = self.curr_block
+            self.curr_block = self.gen_new_block()
+            for base_var, (true_var, false_var) in phi_vars.items():
+                if stmt.orelse:
+                    target = false_var
+                else:
+                    target = true_var
+                self.curr_block.statements.insert(
+                    # 0, ast.parse(f"{last_var} = phi({true_var}, {false_var}, cond={astor.to_source(stmt.test)})").body[0])
+                    0, ast.parse(f"{target} = {true_var} if {astor.to_source(stmt.test).rstrip()} else {false_var}").body[0])
+            for (name, index), value in self.replacer.array_stores.items():
+                index_hash = "_".join(ast.dump(i) for i in index)
+                count = self.replacer.index_map[index_hash]
+                if not (name, index) in orig_array_stores or \
+                        orig_index_map[index_hash] < count:
+                    index_str = ""
+                    for i in index:
+                        index_str = f"[{astor.to_source(i).rstrip()}]" + index_str
+                    false_var = name + index_str
+                    if stmt.orelse:
+                        if (name, index) not in true_counts:
+                            true_var = name + index_str
+                            false_var = name + f"_{value}_i{count}"
+                        elif true_counts[name, index] == count:
+                            true_var = name + f"_{value}_i{count}"
+                        else:
+                            true_var = name + f"_{value}_i{count - 1}"
+                            false_var = name + f"_{value}_i{count}"
+                    else:
+                        true_var = name + f"_{value}_i{count}"
+                    self.curr_block.statements.insert(
+                        0, ast.parse(f"{name}{index_str} = {true_var} if {astor.to_source(stmt.test).rstrip()} else {false_var}").body[0])
+
+            add_edge(end_then_block, self.curr_block)
+            if stmt.orelse:
+                add_edge(end_else_block, self.curr_block)
+            else:
+                add_false_edge(branch, self.curr_block)
+
+    def process_expr(self, stmt):
+        if isinstance(stmt.value, ast.Yield):
+            # replacer.visit(stmt.value)
+            if stmt.value is not None:
+                output = stmt.value.value.id
+                self.curr_block.statements.append(ast.parse(f"{output} = {output}_{self.replacer.id_counter[output]}"))
+            self.add_new_yield(stmt.value)
+        elif isinstance(stmt.value, ast.Str):
+            # Docstring, ignore
+            pass
+        else:  # pragma: no cover
+            self.replacer.visit(stmt)
+            self.curr_block.add(stmt)
+            # raise NotImplementedError(stmt.value)
+
+    def process_assign(self, stmt):
+        if isinstance(stmt.value, ast.Yield):
+            if stmt.value.value is not None:
+                if isinstance(stmt.value.value, ast.Name):
+                    output = stmt.value.value.id
+                    self.curr_block.statements.append(ast.parse(f"{output} = {output}_{self.replacer.id_counter[output]}"))
+                elif isinstance(stmt.value.value, ast.Tuple):
+                    for element in stmt.value.value.elts:
+                        output = element.id
+                        self.curr_block.statements.append(ast.parse(f"{output} = {output}_{self.replacer.id_counter[output]}"))
+                else:
+                    raise NotImplementedError(stmt.value.value)
+            self.add_new_yield(stmt)
+        else:
+            self.replacer.visit(stmt)
+            self.curr_block.add(stmt)
+
     def process_stmt(self, stmt):
         """
         Adds ``stmt`` to the CFG
@@ -410,105 +546,11 @@ class ControlFlowGraph:
         Otherwise appends stmt to the current basic block
         """
         if isinstance(stmt, (ast.While, ast.If)):
-            # Emit new blocks for the branching instruction
-            self.replacer.visit(stmt.test)
-            branch = self.add_new_branch(stmt.test)
-            orig_bb = self.curr_block
-            true_stores = set()
-            for sub_stmt in stmt.body:
-                true_stores |= collect_names(sub_stmt, ast.Store)
-            phi_vars = {}
-            for var in true_stores:
-                if var in self.replacer.seen:
-                    phi_vars[var] = [None, f"{var}_{self.replacer.seen[var]}"]
-            # stmt.body holds the True path for both If and While nodes
-            orig_seen = copy(self.replacer.seen)
-            for sub_stmt in stmt.body:
-                self.process_stmt(sub_stmt)
-            true_seen = copy(self.replacer.seen)
-            for var in true_stores:
-                if var in self.replacer.seen and var in phi_vars:
-                    phi_vars[var][0] = f"{var}_{self.replacer.seen[var]}"
-            if isinstance(stmt, ast.While):
-                for base_var, (true_var, false_var) in phi_vars.items():
-                    self.curr_block.statements.append(
-                        # ast.parse(f"{orig_var} = phi({true_var}, {orig_var}, cond={astor.to_source(stmt.test)})").body[0])
-                        ast.parse(f"{false_var} = {true_var} if {astor.to_source(stmt.test).rstrip()} else {false_var}").body[0])
-                # Exit the current basic block by looping back to the branch
-                # node
-                add_edge(self.curr_block, branch)
-                # Generate a new basic block and set the false edge of the
-                # branch to the new basic block (exiting the loop)
-                self.curr_block = self.gen_new_block()
-                add_false_edge(branch, self.curr_block)
-            elif isinstance(stmt, (ast.If,)):
-                end_then_block = self.curr_block
-                if stmt.orelse:
-                    false_stores = set()
-                    for sub_stmt in stmt.orelse:
-                        false_stores |= collect_stores(sub_stmt)
-                    self.curr_block = self.gen_new_block()
-                    add_false_edge(branch, self.curr_block)
-                    load_store_offset = {}
-                    for var, value in true_seen.items():
-                        diff = value - orig_seen[var]
-                        if diff:
-                            load_store_offset[var] = diff
-                    self.replacer.load_store_offset = load_store_offset
-                    for sub_stmt in stmt.orelse:
-                        self.process_stmt(sub_stmt)
-                    false_seen = self.replacer.seen
-                    for var, diff in load_store_offset.items():
-                        self.replacer.seen[var] += diff
-                    self.replacer.load_store_offset = {}
-                    for var in false_stores:
-                        if var in self.replacer.seen and var in phi_vars:
-                            phi_vars[var][1] = f"{var}_{self.replacer.seen[var]}"
-                    end_else_block = self.curr_block
-                self.curr_block = self.gen_new_block()
-                for base_var, (true_var, false_var) in phi_vars.items():
-                    if stmt.orelse:
-                        target = false_var
-                    else:
-                        target = true_var
-                    self.curr_block.statements.insert(
-                        # 0, ast.parse(f"{last_var} = phi({true_var}, {false_var}, cond={astor.to_source(stmt.test)})").body[0])
-                        0, ast.parse(f"{target} = {true_var} if {astor.to_source(stmt.test).rstrip()} else {false_var}").body[0])
-                add_edge(end_then_block, self.curr_block)
-                if stmt.orelse:
-                    add_edge(end_else_block, self.curr_block)
-                else:
-                    add_false_edge(branch, self.curr_block)
+            self.process_branch(stmt)
         elif isinstance(stmt, ast.Expr):
-            if isinstance(stmt.value, ast.Yield):
-                # replacer.visit(stmt.value)
-                if stmt.value is not None:
-                    output = stmt.value.value.id
-                    self.curr_block.statements.append(ast.parse(f"{output} = {output}_{self.replacer.seen[output]}"))
-                self.add_new_yield(stmt.value)
-            elif isinstance(stmt.value, ast.Str):
-                # Docstring, ignore
-                pass
-            else:  # pragma: no cover
-                self.replacer.visit(stmt)
-                self.curr_block.add(stmt)
-                # raise NotImplementedError(stmt.value)
+            self.process_expr(stmt)
         elif isinstance(stmt, ast.Assign):
-            if isinstance(stmt.value, ast.Yield):
-                if stmt.value.value is not None:
-                    if isinstance(stmt.value.value, ast.Name):
-                        output = stmt.value.value.id
-                        self.curr_block.statements.append(ast.parse(f"{output} = {output}_{self.replacer.seen[output]}"))
-                    elif isinstance(stmt.value.value, ast.Tuple):
-                        for element in stmt.value.value.elts:
-                            output = element.id
-                            self.curr_block.statements.append(ast.parse(f"{output} = {output}_{self.replacer.seen[output]}"))
-                    else:
-                        raise NotImplementedError(stmt.value.value)
-                self.add_new_yield(stmt)
-            else:
-                self.replacer.visit(stmt)
-                self.curr_block.add(stmt)
+            self.process_assign(stmt)
         else:
             self.replacer.visit(stmt)
             # Append a normal statement to the current block
