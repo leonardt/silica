@@ -151,14 +151,12 @@ def compile_states(states, one_state, width_table, strategy="by_statement"):
             temp_var_source += temp_vars
     elif strategy == "by_statement":
         statements = []
-        for  state in states:
+        for state in states:
             index = len(statements)
-            for statement in state.statements:
+            for statement in reversed(state.statements):
                 if statement in statements:
                     index = statements.index(statement)
-                    break
-            for statement in reversed(state.statements):
-                if statement not in statements:
+                else:
                     statements.insert(index, statement)
         always_inside, temp_vars = compile_statements(states, tab * 3, one_state, width_table, statements)
         always_source += always_inside
