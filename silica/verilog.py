@@ -151,14 +151,15 @@ def compile_states(states, one_state, width_table, strategy="by_statement"):
             temp_var_source += temp_vars
     elif strategy == "by_statement":
         statements = []
-        for i, state in enumerate(states):
+        for  state in states:
+            index = len(statements)
             for statement in state.statements:
+                if statement in statements:
+                    index = statements.index(statement)
+                    break
+            for statement in reversed(state.statements):
                 if statement not in statements:
-                    statements.append(statement)
-                else:
-                    # Move it to the back
-                    statements.remove(statement)
-                    statements.append(statement)
+                    statements.insert(index, statement)
         always_inside, temp_vars = compile_statements(states, tab * 3, one_state, width_table, statements)
         always_source += always_inside
         temp_var_source += temp_vars
@@ -181,6 +182,8 @@ def compile_states(states, one_state, width_table, strategy="by_statement"):
                 always_source += f"\n{_tab + offset}yield_state = {state.end_yield_id};"
                 for output, var in state.path[-1].output_map.items():
                     always_source += f"\n{_tab + offset}{output} = {var};"
+                for stmt in state.path[-1].array_stores_to_process:
+                    always_source += f"\n{tab + offset}" + astor.to_source(process_statement(stmt)).rstrip() + ";"
 
                 always_source += f"\n{_tab}end"
         else:

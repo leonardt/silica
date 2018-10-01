@@ -359,7 +359,7 @@ class ControlFlowGraph:
         self.curr_block = self.gen_new_block()
         add_edge(old_block, self.curr_block)
 
-    def add_new_yield(self, value, output_map={}):
+    def add_new_yield(self, value, output_map={}, array_stores_to_process=[]):
         """
         Adds a new ``Yield`` block to the CFG and connects ``self.curr_block``
         to it.
@@ -368,7 +368,7 @@ class ControlFlowGraph:
         adds an edge from the new ``Yield`` block to this new ``BasicBlock``.
         """
         old_block = self.curr_block
-        self.curr_block = Yield(value, output_map)
+        self.curr_block = Yield(value, output_map, array_stores_to_process)
         add_edge(old_block, self.curr_block)
         self.blocks.append(self.curr_block)
         # We need unique ids for each yield in the current cfg
@@ -554,7 +554,20 @@ class ControlFlowGraph:
                         output_map[output] = f"{output}_{self.replacer.id_counter[output]}"
                 else:
                     raise NotImplementedError(stmt.value.value)
-            self.add_new_yield(stmt, output_map)
+            array_stores_to_process = []
+            for (name, index), value in self.replacer.array_stores.items():
+                index_hash = "_".join(ast.dump(i) for i in index)
+                count = self.replacer.index_map[index_hash]
+                if (name, index, value, count) in self.replacer.array_store_processed:
+                    continue
+                index_str = ""
+                for i in index:
+                    index_str = f"[{astor.to_source(i).rstrip()}]" + index_str
+                self.replacer.array_store_processed.add((name, index, value, count))
+                true_var = name + f"_{value}_i{count}"
+                array_stores_to_process.append(
+                    ast.parse(f"{name}{index_str} = {true_var}").body[0])
+            self.add_new_yield(stmt, output_map, array_stores_to_process)
         else:
             self.replacer.visit(stmt)
             self.curr_block.add(stmt)

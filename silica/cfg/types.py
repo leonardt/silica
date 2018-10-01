@@ -64,10 +64,11 @@ class Branch(Block):
 
 
 class Yield(Block):
-    def __init__(self, value, output_map):
+    def __init__(self, value, output_map={}, array_stores_to_process=[]):
         super().__init__()
         self.value = value
         self.output_map = output_map
+        self.array_stores_to_process = array_stores_to_process
 
     @property
     def is_initial_yield(self):
