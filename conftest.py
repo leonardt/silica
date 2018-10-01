@@ -4,7 +4,7 @@ from magma import clear_cachedFunctions
 import os
 
 
-collect_ignore=["silica/_testing.py"]
+collect_ignore=["silica/_testing.py", "generate_notebooks.py", "examples/jtag_tap.py"]
 
 
 @pytest.fixture(autouse=True)
