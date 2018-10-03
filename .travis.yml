@@ -4,8 +4,11 @@ python:
 
 addons:
   apt:
+    sources:
+      - ubuntu-toolchain-r-test
     packages:
       - verilator
+      - g++-4.9
 
 before_install:
   # BEGIN: coreir installation
