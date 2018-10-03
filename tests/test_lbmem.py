@@ -7,12 +7,12 @@ from bit_vector import BitVector
 from common import evaluate_circuit
 
 
-@si.combinational
-def saturating_add(a : si.UInt(7), b : si.UInt(7), max_ : si.UInt(7)) -> si.UInt(7):
-    c = a + b
-    if c == max_:
-        c = 0
-    return c
+# @si.combinational
+# def saturating_add(a : si.UInt(7), b : si.UInt(7), max_ : si.UInt(7)) -> si.UInt(7):
+#     c = a + b
+#     if c == max_:
+#         c = 0
+#     return c
 
 
 @si.generator
