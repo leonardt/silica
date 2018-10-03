@@ -10,7 +10,7 @@ import silica
 from silica.coroutine import Coroutine
 from silica.cfg import ControlFlowGraph, BasicBlock, HeadBlock
 from silica.cfg.control_flow_graph import render_paths_between_yields, build_state_info, render_fsm, get_constant
-from silica.ast_utils import get_ast, print_ast
+from silica.ast_utils import *
 from silica.liveness import liveness_analysis
 from silica.transformations import specialize_constants, replace_symbols, \
     constant_fold, desugar_for_loops, specialize_evals, inline_yield_from_functions
@@ -36,7 +36,7 @@ def specialize_list_comps(tree, globals, locals):
             return ast.parse(f"[{result}]").body[0].value
 
         def visit_Call(self, node):
-            if isinstance(node.func, ast.Name) and node.func.id == "list":
+            if is_name(node.func) and node.func.id == "list":
                 result = eval(astor.to_source(node), globals, locals)
                 result = ", ".join(repr(x) for x in result)
                 return ast.parse(f"[{result}]").body[0].value
@@ -161,7 +161,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     for node in cfg.paths[0][:-1]:
         if isinstance(node, HeadBlock):
             for statement in node:
-                if isinstance(statement.value, ast.Call) and isinstance(statement.value.func, ast.Name) and statement.value.func.id == "coroutine_create":
+                if is_call(statement.value) and is_name(statement.value.func) and statement.value.func.id == "coroutine_create":
                     sub_coroutine = eval(astor.to_source(statement.value.args[0]), func_globals, func_locals)
                     raise NotImplementedError()
                     verilog_source += verilog_compile(sub_coroutine(), func_globals, func_locals)
@@ -169,7 +169,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
                     statement.value.args = []
                     sub_coroutines.append((statement, sub_coroutine))
                 else:
-                    if isinstance(statement.value, ast.Name) and statement.value.id in initial_values:
+                    if is_name(statement.value) and statement.value.id in initial_values:
                         initial_values[statement.targets[0].id] = initial_values[statement.value.id]
                     else:
                         initial_values[statement.targets[0].id] = get_constant(statement.value)
