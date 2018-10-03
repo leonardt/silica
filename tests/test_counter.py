@@ -27,21 +27,21 @@ def test_counter():
         tester.expect(si_counter.O, i)
         tester.step(2)
     tester.compile_and_run(target="verilator", directory="tests/build", flags=['-Wno-fatal'])
-    from mantle import DefineCounter
+    # from mantle import DefineCounter
 
-    mantle_counter = DefineCounter(N, cout=False)
-    mantle_tester = tester.retarget(mantle_counter, mantle_counter.CLK)
-    mantle_tester.compile_and_run(target="verilator", directory="tests/build",
-                                  flags=['-Wno-fatal'],
-                                  include_verilog_libraries=['../cells_sim.v'])
-    if __name__ == '__main__':
-        m.compile("tests/build/mantle_counter", mantle_counter)
-        print("===== BEGIN : SILICA RESULTS =====")
-        evaluate_circuit("counter_si", "SilicaCounter")
-        print("===== END   : SILICA RESULTS =====")
-        print("===== BEGIN : MANTLE RESULTS =====")
-        evaluate_circuit("mantle_counter", "Counter3")
-        print("===== END   : MANTLE RESULTS =====")
+    # mantle_counter = DefineCounter(N, cout=False)
+    # mantle_tester = tester.retarget(mantle_counter, mantle_counter.CLK)
+    # mantle_tester.compile_and_run(target="verilator", directory="tests/build",
+    #                               flags=['-Wno-fatal'],
+    #                               include_verilog_libraries=['../cells_sim.v'])
+    # if __name__ == '__main__':
+    #     m.compile("tests/build/mantle_counter", mantle_counter)
+    #     print("===== BEGIN : SILICA RESULTS =====")
+    #     evaluate_circuit("counter_si", "SilicaCounter")
+    #     print("===== END   : SILICA RESULTS =====")
+    #     print("===== BEGIN : MANTLE RESULTS =====")
+    #     evaluate_circuit("mantle_counter", "Counter3")
+    #     print("===== END   : MANTLE RESULTS =====")
 
 if __name__ == '__main__':
     test_counter()

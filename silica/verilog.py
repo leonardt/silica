@@ -1,7 +1,9 @@
 import astor
 import ast
 from .width import get_width
-
+from .ast_utils import *
+from functools import *
+from veriloggen import *
 
 def get_width_str(width):
     return f"[{width-1}:0] " if width is not None else ""
@@ -25,10 +27,36 @@ class RemoveMagmaFuncs(ast.NodeTransformer):
             return node.args[0]
         return node
 
+class ExpandLists(ast.NodeTransformer):
+    # TODO: probably should take in width_table in __init__ like TempVarPromoter
+    def visit_Assign(self, node):
+        if is_list(node.value):
+            name = node.targets[0].id
+            targets = [ast.Subscript(ast.Name(name, ast.Load()), ast.Index(ast.Num(x)), ast.Store()) for x in range(len(node.value.elts))]
+            targets = [ast.Tuple(targets)]
+            values = ast.Tuple(node.value.elts, ast.Load())
+            return ast.Assign(targets, values)
+        return node
+
+class ListToVerilog(ast.NodeTransformer):
+    def visit_List(self, node):
+        print(ast.dump(node))
+        node = ast.Set(node.elts)
+        return node
+
+class TupleAssignToVerilog(ast.NodeTransformer):
+    def visit_Assign(self, node):
+        if is_tuple(node.targets[0]):
+            body = [ast.Assign([node.targets[0].elts[n]], node.value.elts[n])
+                    for n in range(len(node.value.elts))]
+            return ast.Module(body)
+        return node
 
 def process_statement(stmt):
     RemoveMagmaFuncs().visit(stmt)
     SwapSlices().visit(stmt)
+    stmt = ExpandLists().visit(stmt)
+    stmt = TupleAssignToVerilog().visit(stmt)
     return stmt
 
 class TempVarPromoter(ast.NodeTransformer):
@@ -86,7 +114,7 @@ def compile_state_by_path(state, index, _tab, one_state, width_table):
         verilog_source += f"\n{_tab}{if_str} ({cond}) begin"
     # temp_var_promoter = TempVarPromoter(width_table)
     for statement in state.statements:
-        process_statement(statement)
+        statement = process_statement(statement)
         # temp_var_promoter.visit(statement)
         verilog_source += f"\n{_tab + offset}" + astor.to_source(statement).rstrip().replace(" = ", " = ") + ";"
     temp_var_source = ""
@@ -120,17 +148,18 @@ def compile_statements(states, _tab, one_state, width_table, statements):
                         conds.append(" & ".join(these_conds))
             cond = " | ".join(conds)
             verilog_source += f"\n{_tab}if ({cond}) begin"
-            process_statement(statement)
+            statement = process_statement(statement)
             verilog_source += f"\n{_tab + offset}" + astor.to_source(statement).rstrip() + ";"
             verilog_source += f"\n{_tab}end"
         else:
-            process_statement(statement)
+            statement = process_statement(statement)
             verilog_source += f"\n{_tab}" + astor.to_source(statement).rstrip() + ";"
     temp_var_source = ""
     return verilog_source, temp_var_source
 
 
 def compile_states(states, one_state, width_table, strategy="by_statement"):
+    seq = TmpSeq(m, CLK)
     always_source = """\
     always @(posedge CLK) begin\
 """
@@ -158,18 +187,23 @@ def compile_states(states, one_state, width_table, strategy="by_statement"):
             for i, state in enumerate(states):
                 _tab = tab * 3
                 offset = tab
+                # cond = reduce(Land, (process_statement(cond) for cond in state.conds), (yield_state == {state.start_yield_id}))
                 cond = ""
                 if state.conds:
                     cond += " & ".join(astor.to_source(process_statement(cond)).rstrip() for cond in state.conds)
-                if not one_state:
-                    if cond:
-                        cond += " & "
-                    cond += f"(yield_state == {state.start_yield_id})"
+
+                if cond:
+                    cond += " & "
+                cond += f"(yield_state == {state.start_yield_id})"
+
                 if i == 0:
+                    # seqif = seq.If(cond)
                     if_str = "if"
                 else:
+                    # seqif = seq.Elif(cond)
                     if_str = "else if"
                 always_source += f"\n{_tab}{if_str} ({cond}) begin"
+                # seqif(yield_state = state.end_yield_id)
                 always_source += f"\n{_tab + offset}yield_state = {state.end_yield_id};"
                 always_source += f"\n{_tab}end"
     else:

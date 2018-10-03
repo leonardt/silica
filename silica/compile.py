@@ -10,7 +10,7 @@ import silica
 from silica.coroutine import Coroutine
 from silica.cfg import ControlFlowGraph, BasicBlock, HeadBlock
 from silica.cfg.control_flow_graph import render_paths_between_yields, build_state_info, render_fsm, get_constant
-from silica.ast_utils import get_ast
+from silica.ast_utils import get_ast, print_ast
 from silica.liveness import liveness_analysis
 from silica.transformations import specialize_constants, replace_symbols, \
     constant_fold, desugar_for_loops, specialize_evals, inline_yield_from_functions
@@ -23,7 +23,9 @@ from silica.transformations.specialize_arguments import specialize_arguments
 from silica.type_check import TypeChecker
 from silica.analysis import CollectInitialWidthsAndTypes
 from silica.transformations.promote_widths import PromoteWidths
+from silica.transformations.desugar_for_loops import propagate_types, aaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 
+import veriloggen as vg
 
 def specialize_list_comps(tree, globals, locals):
     locals.update(silica.operators)
@@ -101,16 +103,33 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     inline_yield_from_functions(tree, func_globals, func_locals)
     constant_fold(tree)
     specialize_list_comps(tree, func_globals, func_locals)
-    desugar_for_loops(tree)
+    tree, list_lens = propagate_types(tree)
+    tree, loopvars = desugar_for_loops(tree, list_lens)
+
+    print_ast(tree)
+
     width_table = {}
     if coroutine._inputs:
         for input_, type_ in coroutine._inputs.items():
             width_table[input_] = get_input_width(type_)
 
+    for name,width in loopvars:
+        width_table[name] = width
+
     constant_fold(tree)
     type_table = {}
+
+    for name,_ in loopvars:
+        type_table[name] = 'uint'
+
     CollectInitialWidthsAndTypes(width_table, type_table).visit(tree)
     PromoteWidths(width_table, type_table).visit(tree)
+    # TODO: >>> NEW PASS SHOULD GO HERE <<<
+    tree, loopvars = aaaaaaaaaaaaaaaaaaaaaaaaaaaaa(tree, width_table, func_locals, func_globals)
+
+    for name,width in loopvars.items():
+        width_table[name] = width
+
     # Desugar(width_table).visit(tree)
     type_table = {}
     TypeChecker(width_table, type_table).check(tree)
@@ -137,6 +156,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     initial_basic_block = False
     sub_coroutines = []
     # cfg.render()
+
     verilog_source = ""
     for node in cfg.paths[0][:-1]:
         if isinstance(node, HeadBlock):
@@ -164,10 +184,43 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     num_states = len(states)
     if has_ce:
         raise NotImplementedError("add ce to module decl")
+
+    print(cfg)
+    print(initial_values)
+    print(initial_basic_block)
+    print(num_states)
+    print(num_yields)
+    print(states)
+    print(registers)
+    print(width_table)
+    print(strategy)
+
     verilog_source += f"""
 module {module_name} ({io_string}, input CLK);
 """
+    # def make_io_string(inputs, outputs, width_table):
+    # io_strings = []
 
+    # if inputs:
+    #     for input_, type_ in inputs.items():
+    #         if isinstance(type_, m.BitKind):
+    #             io_strings.append(f"input {input_}")
+    #         elif isinstance(type_, m.ArrayKind) and isinstance(type_.T, m.BitKind):
+    #             io_strings.append(f"input [{len(type_)-1}:0] {input_}")
+    #         else:
+    #             raise NotImplementedError(type_)
+    # return ", ".join(io_strings)
+
+    m = vg.Module(module_name)
+    for i,t in coroutine._inputs.items():
+        a = m.Input(i, 5, 4)
+        print(inspect.getmembers(a))
+        print(i,t)
+    for o in outputs:
+        m.Output(o, width_table.get(o, 1))
+        print(o)
+    print(io_string)
+    print(m.to_verilog())
 
     init_strings = []
     for register in registers:
