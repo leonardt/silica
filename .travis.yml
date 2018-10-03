@@ -26,7 +26,7 @@ install:
 
 script:
   - pip install -e .
-  - pytest --cov=silica --doctest-modules
+  - pytest --cov=silica
 
 
 after_success:
