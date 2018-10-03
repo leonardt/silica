@@ -12,7 +12,8 @@ before_install:
   # - curl -s -L https://github.com/rdaly525/coreir/releases/latest | grep "href.*coreir.tar.gz" | cut -d \" -f 2 | xargs -I {} wget https://github.com"{}"
   - wget https://github.com/rdaly525/coreir/archive/v0.0.25.tar.gz
   - mkdir coreir_release;
-  - tar -xf coreir.tar.gz -C coreir_release --strip-components 1;
+    # - tar -xf coreir.tar.gz -C coreir_release --strip-components 1;
+  - tar -xf v0.0.25.tar.gz -C coreir_release --strip-components 1;
   - export PATH=$TRAVIS_BUILD_DIR/coreir_release/bin:$PATH;
   - export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/coreir_release/lib:$LD_LIBRARY_PATH;
   # END: coreir installation
