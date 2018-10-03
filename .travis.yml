@@ -4,8 +4,11 @@ python:
 
 addons:
   apt:
+    sources:
+      - ubuntu-toolchain-r-test
     packages:
       - verilator
+      - g++-4.9
 
 before_install:
   # BEGIN: coreir installation
@@ -18,8 +21,13 @@ before_install:
 
 install:
   - pip install -r requirements.txt
+  - pip install python-coveralls
   - pip install pytest pytest-cov
 
 script:
   - pip install -e .
   - pytest --cov=silica
+
+
+after_success:
+    - coveralls

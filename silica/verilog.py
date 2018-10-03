@@ -106,6 +106,7 @@ def compile_statements(states, _tab, one_state, width_table, statements):
     # temp_var_promoter = TempVarPromoter(width_table)
     for statement in statements:
         conds = []
+        yields = set()
         contained = [state for state in states if statement in state.statements]
         if contained != states:
             for state in states:
@@ -113,16 +114,23 @@ def compile_statements(states, _tab, one_state, width_table, statements):
                     if state.conds or not one_state:
                         offset = tab
                         these_conds = []
-                        if state.conds:
-                            these_conds.extend(astor.to_source(process_statement(cond)).rstrip() for cond in state.conds)
-                        if not one_state:
-                            these_conds.append(f"(yield_state == {state.start_yield_id})")
-                        conds.append(" & ".join(these_conds))
-            cond = " | ".join(conds)
-            verilog_source += f"\n{_tab}if ({cond}) begin"
+                        # if state.conds:
+                        #     these_conds.extend(astor.to_source(process_statement(cond)).rstrip() for cond in state.conds)
+                        # if not one_state:
+                        #     these_conds.append(f"(yield_state == {state.start_yield_id})")
+                        yields.add(state.start_yield_id)
+                        # if these_conds:
+                        #     conds.append(" & ".join(these_conds))
+            if not one_state:
+                conds = [f"(yield_state == {yield_id})" for yield_id in yields]
             process_statement(statement)
-            verilog_source += f"\n{_tab + offset}" + astor.to_source(statement).rstrip() + ";"
-            verilog_source += f"\n{_tab}end"
+            if conds:
+                cond = " | ".join(conds)
+                verilog_source += f"\n{_tab}if ({cond}) begin"
+                verilog_source += f"\n{_tab + offset}" + astor.to_source(statement).rstrip() + ";"
+                verilog_source += f"\n{_tab}end"
+            else:
+                verilog_source += f"\n{_tab}" + astor.to_source(statement).rstrip() + ";"
         else:
             process_statement(statement)
             verilog_source += f"\n{_tab}" + astor.to_source(statement).rstrip() + ";"
@@ -143,20 +151,19 @@ def compile_states(states, one_state, width_table, strategy="by_statement"):
             temp_var_source += temp_vars
     elif strategy == "by_statement":
         statements = []
-        for i, state in enumerate(states):
-            for statement in state.statements:
-                if statement not in statements:
-                    statements.append(statement)
+        for state in states:
+            index = len(statements)
+            for statement in reversed(state.statements):
+                if statement in statements:
+                    index = statements.index(statement)
                 else:
-                    # Move it to the back
-                    statements.remove(statement)
-                    statements.append(statement)
+                    statements.insert(index, statement)
         always_inside, temp_vars = compile_statements(states, tab * 3, one_state, width_table, statements)
         always_source += always_inside
         temp_var_source += temp_vars
+        _tab = tab * 3
         if not one_state:
             for i, state in enumerate(states):
-                _tab = tab * 3
                 offset = tab
                 cond = ""
                 if state.conds:
@@ -171,7 +178,25 @@ def compile_states(states, one_state, width_table, strategy="by_statement"):
                     if_str = "else if"
                 always_source += f"\n{_tab}{if_str} ({cond}) begin"
                 always_source += f"\n{_tab + offset}yield_state = {state.end_yield_id};"
+                for output, var in state.path[-1].output_map.items():
+                    always_source += f"\n{_tab + offset}{output} = {var};"
+                for stmt in state.path[-1].array_stores_to_process:
+                    always_source += f"\n{tab + offset}" + astor.to_source(process_statement(stmt)).rstrip() + ";"
+
                 always_source += f"\n{_tab}end"
+        else:
+            for output, var in states[0].path[-1].output_map.items():
+                always_source += f"\n{_tab}{output} = {var};"
     else:
         raise NotImplementedError(strategy)
-    return always_source, temp_var_source
+
+    new_always_source = ""
+    for line in always_source.split("\n"):
+        if "if" in line and "else" in line and not "else if" in line:
+            assign, rest = line.split(" = ")
+            true, rest = rest.split("if")
+            cond, false = rest.split("else")
+            new_always_source += f"{assign} ={cond}? {true}:{false}" + "\n"
+        else:
+            new_always_source += line + "\n"
+    return new_always_source, temp_var_source

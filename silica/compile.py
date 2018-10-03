@@ -116,6 +116,10 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     TypeChecker(width_table, type_table).check(tree)
     # DesugarArrays().run(tree)
     cfg = ControlFlowGraph(tree)
+    for var in cfg.replacer.id_counter:
+        width = width_table[var]
+        for i in range(cfg.replacer.id_counter[var] + 1):
+            width_table[f"{var}_{i}"] = width
     liveness_analysis(cfg)
 
     if output == 'magma':
@@ -169,6 +173,27 @@ module {module_name} ({io_string}, input CLK);
 """
 
 
+
+    for var in cfg.replacer.id_counter:
+        width = width_table[var]
+        for i in range(cfg.replacer.id_counter[var] + 1):
+            if f"{var}_{i}" not in registers:
+                width_str = get_width_str(width)
+                verilog_source += f"    wire {width_str} {var}_{i};\n"
+
+    for (name, index), value in cfg.replacer.array_stores.items():
+        width = width_table[name]
+        if isinstance(width, MemoryType):
+            width = width.width
+        else:
+            width = None
+        if len(index) > 1: raise NotImplementedError()
+        index_hash = "_".join(ast.dump(i) for i in index)
+        count = cfg.replacer.index_map[index_hash]
+        for i in range(count + 1):
+            var = name + f"_{value}_i{count}"
+            width_table[var] = width
+
     init_strings = []
     for register in registers:
         width = width_table[register]
@@ -187,6 +212,12 @@ module {module_name} ({io_string}, input CLK);
         verilog_source += f"    reg [{(cfg.curr_yield_id - 1).bit_length() - 1}:0] yield_state;\n"
         init_strings.append(f"yield_state = 0;")
 
+    if initial_basic_block:
+        for statement in states[0].statements:
+            verilog.process_statement(statement)
+            # temp_var_promoter.visit(statement)
+            init_strings.append(astor.to_source(statement).rstrip().replace(" = ", " = ") + ";")
+
     init_string = '\n        '.join(init_strings)
     verilog_source += f"""
     initial begin
@@ -200,6 +231,8 @@ module {module_name} ({io_string}, input CLK);
     wdatas = {}
     wens = {}
     # render_paths_between_yields(cfg.paths)
+    if initial_basic_block:
+        states = states[1:]
     always_source, temp_var_source = verilog.compile_states(states, cfg.curr_yield_id == 1, width_table, strategy)
     verilog_source += temp_var_source + always_source
     verilog_source += "\n    end\nendmodule"

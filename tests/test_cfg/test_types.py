@@ -47,6 +47,6 @@ def test_Branch():
 
 def test_Yield():
     from silica.cfg.types import Block, Yield
-    y = Yield(ast.parse("(A, B)").body[0].value)
+    y = Yield(ast.parse("(A, B)").body[0].value, {})
     assert isinstance(y, Block)
 
