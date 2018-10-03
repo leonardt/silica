@@ -6,6 +6,6 @@ setup(
     description='',
     packages=["silica"],
     install_requires=[
-        "fault==0.24"
+        "fault==0.27"
     ]
 )
