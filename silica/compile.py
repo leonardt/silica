@@ -24,6 +24,7 @@ from silica.type_check import TypeChecker
 from silica.analysis import CollectInitialWidthsAndTypes
 from silica.transformations.promote_widths import PromoteWidths
 
+import veriloggen as vg
 
 def specialize_list_comps(tree, globals, locals):
     locals.update(silica.operators)
@@ -168,17 +169,25 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     num_states = len(states)
     if has_ce:
         raise NotImplementedError("add ce to module decl")
+
+    # declare module and ports
+    module = vg.Module(module_name)
+    for o in outputs:
+        module.Output(o, width_table.get(o, 1))
+    for i,t in coroutine._inputs.items():
+        module.Input(i, t.N)
+    module.Input("CLK")
     verilog_source += f"""
 module {module_name} ({io_string}, input CLK);
 """
 
-
-
+    # declare wires
     for var in cfg.replacer.id_counter:
         width = width_table[var]
         for i in range(cfg.replacer.id_counter[var] + 1):
             if f"{var}_{i}" not in registers:
                 width_str = get_width_str(width)
+                module.Wire(f"{var}_{i}", width)
                 verilog_source += f"    wire {width_str} {var}_{i};\n"
 
     for (name, index), value in cfg.replacer.array_stores.items():
@@ -194,24 +203,30 @@ module {module_name} ({io_string}, input CLK);
             var = name + f"_{value}_i{count}"
             width_table[var] = width
 
+    # declare regs
     init_strings = []
     for register in registers:
         width = width_table[register]
         if isinstance(width, MemoryType):
+            module.Reg(register, width.width, width.height)
             width_str = get_width_str(width.width)
             verilog_source += f"    reg {width_str} {register} [0:{width.height - 1}];\n"
         else:
+            module.Reg(register, width)
             width_str = get_width_str(width)
             verilog_source += f"    reg {width_str} {register};\n"
+
+    # TODO: need to do this
     for key, value in initial_values.items():
         if value is not None:
             init_strings.append(f"{key} = {value};")
 
-
     if cfg.curr_yield_id > 1:
+        module.Reg("yield_state", (cfg.curr_yield_id - 1).bit_length(), initval=0)
         verilog_source += f"    reg [{(cfg.curr_yield_id - 1).bit_length() - 1}:0] yield_state;\n"
         init_strings.append(f"yield_state = 0;")
 
+    # TODO: need to do this
     if initial_basic_block:
         for statement in states[0].statements:
             verilog.process_statement(statement)
@@ -225,7 +240,6 @@ module {module_name} ({io_string}, input CLK);
     end
 """
 
-
     raddrs = {}
     waddrs = {}
     wdatas = {}
@@ -233,12 +247,20 @@ module {module_name} ({io_string}, input CLK);
     # render_paths_between_yields(cfg.paths)
     if initial_basic_block:
         states = states[1:]
-    always_source, temp_var_source = verilog.compile_states(states, cfg.curr_yield_id == 1, width_table, strategy)
+    always_source, temp_var_source = verilog.compile_states(module, states, cfg.curr_yield_id == 1, width_table, strategy)
     verilog_source += temp_var_source + always_source
     verilog_source += "\n    end\nendmodule"
     verilog_source = verilog_source.replace("True", "1")
     verilog_source = verilog_source.replace("False", "0")
     # cfg.render()
+
+    # print(module.to_verilog())
+    # print(verilog_source)
+
+    # with open(file_name, "w") as f:
+    #     f.write(verilog_source)
+    # return m.DefineFromVerilog(verilog_source, type_map={"CLK": m.In(m.Clock)})[-1]
+
     with open(file_name, "w") as f:
-        f.write(verilog_source)
-    return m.DefineFromVerilog(verilog_source, type_map={"CLK": m.In(m.Clock)})[-1]
+        f.write(module.to_verilog())
+    return m.DefineFromVerilog(module.to_verilog(), type_map={"CLK": m.In(m.Clock)})[-1]
