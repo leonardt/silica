@@ -57,6 +57,7 @@ def test_ser4():
         tester.step(2)
         ser.send(I)
         assert ser.O == I[0]
+        tester.print(serializer_si.O)
         tester.expect(serializer_si.O, I[0])
         for i in range(3):
             for j in range(len(I)):

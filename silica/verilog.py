@@ -1,12 +1,123 @@
 import astor
 import ast
 from .width import get_width
-from .ast_utils import *
+import veriloggen as vg
 from functools import *
-from veriloggen import *
+from .ast_utils import *
+import magma
 
-def get_width_str(width):
-    return f"[{width-1}:0] " if width is not None else ""
+class Context:
+    def __init__(self, name):
+        self.module = vg.Module(name)
+
+    def declare_ports(self, inputs, outputs):
+        if outputs:
+            for o,n in outputs.items():
+                if n > 1:
+                    self.module.Output(o, n)
+                else:
+                    self.module.Output(o)
+        if inputs:
+            for i,n in inputs.items():
+                if n > 1:
+                    self.module.Input(i, n)
+                else:
+                    self.module.Input(i)
+
+    def declare_wire(self, name, width=None, height=None):
+        self.module.Wire(name, width, height)
+
+    def declare_reg(self, name, width=None, height=None):
+        self.module.Reg(name, width, height)
+
+    def assign(self, lhs, rhs):
+        return vg.Subst(lhs, rhs, self.is_reg(lhs))
+
+    def initial(self, body=[]):
+        return self.module.Initial(body)
+
+    def get_by_name(self, name):
+        if name in self.module.get_vars():
+            return self.module.get_vars()[name]
+        elif name in self.module.get_ports():
+            return self.module.get_ports()[name]
+
+        raise KeyError(f"`{name}` is not a valid port or variable.")
+
+    def is_reg(self, obj):
+        return isinstance(obj, vg.core.vtypes.Reg)
+
+    # TODO: should reorder the switch into more sensible ordering
+    # TODO: should split this up into a few translate functions that translate certain classes of inputs
+    def translate(self, stmt):
+        if isinstance(stmt, bool):
+            return vg.Int(1 if stmt else 0)
+        elif is_add(stmt):
+            return vg.Add
+        elif is_assign(stmt):
+            target = self.translate(stmt.targets[0])
+            return vg.Subst(
+                target,
+                self.translate(stmt.value),
+                not self.is_reg(target)
+            )
+        elif is_bin_op(stmt):
+            return self.translate(stmt.op)(
+                self.translate(stmt.left),
+                self.translate(stmt.right)
+            )
+        elif is_bit_and(stmt):
+            return vg.And
+        elif is_bit_xor(stmt):
+            return vg.Xor
+        elif is_compare(stmt):
+            assert(len(stmt.ops) == len(stmt.comparators) == 1)
+            return self.translate(stmt.ops[0])(
+                self.translate(stmt.left),
+                self.translate(stmt.comparators[0])
+            )
+        elif is_eq(stmt):
+            return vg.Eq
+        elif is_if_exp(stmt):
+            return vg.Cond(
+                self.translate(stmt.test),
+                self.translate(stmt.body),
+                self.translate(stmt.orelse)
+            )
+        elif is_invert(stmt):
+            return vg.Unot
+        elif is_lt(stmt):
+            return vg.LessThan
+        elif is_name(stmt):
+            return self.get_by_name(stmt.id)
+        elif is_name_constant(stmt):
+            # TODO: distinguish between int, bool, etc.
+            return self.translate(stmt.value)
+        elif is_not_eq(stmt):
+            return vg.NotEq
+        elif is_num(stmt):
+            return vg.Int(stmt.n)
+        elif is_sub(stmt):
+            return vg.Sub
+        elif is_subscript(stmt):
+            if is_index(stmt.slice):
+                return vg.Pointer(
+                    self.translate(stmt.value),
+                    self.translate(stmt.slice.value)
+                )
+            elif is_slice(stmt.slice):
+                return vg.Slice(
+                    self.translate(stmt.value),
+                    self.translate(stmt.slice.lower),
+                    self.translate(stmt.slice.upper)
+                )
+        elif is_unary_op(stmt):
+            return self.translate(stmt.op)(self.translate(stmt.operand))
+
+        raise NotImplementedError(stmt)
+
+    def to_verilog(self):
+        return self.module.to_verilog()
 
 
 class SwapSlices(ast.NodeTransformer):
@@ -19,7 +130,6 @@ class SwapSlices(ast.NodeTransformer):
                 node.slice.lower = ast.Num(node.slice.upper.n - 1)
                 node.slice.upper = ast.Num(0)
         return node
-
 
 class RemoveMagmaFuncs(ast.NodeTransformer):
     def visit_Call(self, node):
@@ -89,123 +199,94 @@ class TempVarPromoter(ast.NodeTransformer):
         return node
 
 
-
-
-
-tab = "    "
-
-
-def compile_state_by_path(state, index, _tab, one_state, width_table):
-    offset = ""
-    verilog_source = ""
-    if state.conds or not one_state:
-        offset = tab
-        cond = ""
-        if state.conds:
-            cond += " & ".join(astor.to_source(process_statement(cond)).rstrip() for cond in state.conds)
-        if not one_state:
-            if cond:
-                cond += " & "
-            cond += f"(yield_state == {state.start_yield_id})"
-        if index == 0:
-            if_str = "if"
-        else:
-            if_str = "else if"
-        verilog_source += f"\n{_tab}{if_str} ({cond}) begin"
-    # temp_var_promoter = TempVarPromoter(width_table)
-    for statement in state.statements:
-        statement = process_statement(statement)
-        # temp_var_promoter.visit(statement)
-        verilog_source += f"\n{_tab + offset}" + astor.to_source(statement).rstrip().replace(" = ", " = ") + ";"
-    temp_var_source = ""
-    # for width, assign in temp_var_promoter.assigns:
-    #     width_str = get_width_str(width)
-    #     temp_var_source += f"    wire {width_str}" + astor.to_source(assign).rstrip() + ";\n"
-    if not one_state:
-        verilog_source += f"\n{_tab + offset}yield_state = {state.end_yield_id};"
-    if state.conds or not one_state:
-        verilog_source += f"\n{_tab}end"
-    return verilog_source, temp_var_source
-
-
-def compile_statements(states, _tab, one_state, width_table, statements):
-    offset = ""
-    verilog_source = ""
+def compile_statements(ctx, seq, states, one_state, width_table, statements):
+    module = ctx.module
     # temp_var_promoter = TempVarPromoter(width_table)
     for statement in statements:
         conds = []
+        yields = set()
         contained = [state for state in states if statement in state.statements]
         if contained != states:
             for state in states:
                 if statement in state.statements:
                     if state.conds or not one_state:
-                        offset = tab
                         these_conds = []
-                        if state.conds:
-                            these_conds.extend(astor.to_source(process_statement(cond)).rstrip() for cond in state.conds)
-                        if not one_state:
-                            these_conds.append(f"(yield_state == {state.start_yield_id})")
-                        conds.append(" & ".join(these_conds))
-            cond = " | ".join(conds)
-            verilog_source += f"\n{_tab}if ({cond}) begin"
-            statement = process_statement(statement)
-            verilog_source += f"\n{_tab + offset}" + astor.to_source(statement).rstrip() + ";"
-            verilog_source += f"\n{_tab}end"
+                        # if state.conds:
+                        #     these_conds.extend(astor.to_source(process_statement(cond)).rstrip() for cond in state.conds)
+                        # if not one_state:
+                        #     these_conds.append(f"(yield_state == {state.start_yield_id})")
+                        yields.add(state.start_yield_id)
+                        # if these_conds:
+                        #     conds.append(" & ".join(these_conds))
+            if not one_state:
+                conds = [module.get_vars()["yield_state"] == yield_id for yield_id in yields]
+            process_statement(statement)
+            if conds:
+                cond = reduce(vg.Lor, conds)
+                seq.If(cond)(
+                    vg.Subst(ctx.translate(statement.targets[0]), ctx.translate(statement.value), 1)
+                )
+            else:
+                seq(
+                    vg.Subst(ctx.translate(statement.targets[0]), ctx.translate(statement.value), 1)
+                )
         else:
-            statement = process_statement(statement)
-            verilog_source += f"\n{_tab}" + astor.to_source(statement).rstrip() + ";"
-    temp_var_source = ""
-    return verilog_source, temp_var_source
+            process_statement(statement)
+            seq(
+                vg.Subst(ctx.translate(statement.targets[0]), ctx.translate(statement.value), 1)
+            )
 
 
-def compile_states(states, one_state, width_table, strategy="by_statement"):
-    seq = TmpSeq(m, CLK)
-    always_source = """\
-    always @(posedge CLK) begin\
-"""
-    tab = "    "
-    temp_var_source = ""
-    if strategy == "by_path":
-        for i, state in enumerate(states):
-            always_inside, temp_vars = compile_state_by_path(state, i, tab * 3, one_state, width_table)
-            always_source += always_inside
-            temp_var_source += temp_vars
-    elif strategy == "by_statement":
+def compile_states(ctx, states, one_state, width_table, strategy="by_statement"):
+    module = ctx.module
+    seq = vg.TmpSeq(module, module.get_ports()["CLK"])
+    comb_body = []
+
+    if strategy == "by_statement":
         statements = []
-        for i, state in enumerate(states):
-            for statement in state.statements:
-                if statement not in statements:
-                    statements.append(statement)
+        for state in states:
+            index = len(statements)
+            for statement in reversed(state.statements):
+                if statement in statements:
+                    index = statements.index(statement)
                 else:
-                    # Move it to the back
-                    statements.remove(statement)
-                    statements.append(statement)
-        always_inside, temp_vars = compile_statements(states, tab * 3, one_state, width_table, statements)
-        always_source += always_inside
-        temp_var_source += temp_vars
+                    statements.insert(index, statement)
+        compile_statements(ctx, seq, states, one_state, width_table, statements)
         if not one_state:
             for i, state in enumerate(states):
-                _tab = tab * 3
-                offset = tab
-                # cond = reduce(Land, (process_statement(cond) for cond in state.conds), (yield_state == {state.start_yield_id}))
-                cond = ""
+                conds = []
                 if state.conds:
-                    cond += " & ".join(astor.to_source(process_statement(cond)).rstrip() for cond in state.conds)
-
-                if cond:
-                    cond += " & "
-                cond += f"(yield_state == {state.start_yield_id})"
+                    conds = [ctx.translate(process_statement(cond)) for cond in state.conds]
+                cond = reduce(vg.Land, conds, ctx.get_by_name('yield_state') == state.start_yield_id)
 
                 if i == 0:
-                    # seqif = seq.If(cond)
-                    if_str = "if"
+                    if_stmt = seq.If(cond)
                 else:
-                    # seqif = seq.Elif(cond)
-                    if_str = "else if"
-                always_source += f"\n{_tab}{if_str} ({cond}) begin"
-                # seqif(yield_state = state.end_yield_id)
-                always_source += f"\n{_tab + offset}yield_state = {state.end_yield_id};"
-                always_source += f"\n{_tab}end"
+                    if_stmt = seq.Elif(cond)
+
+                output_stmts = []
+                for output, var in state.path[-1].output_map.items():
+                    output_stmts.append(ctx.assign(ctx.get_by_name(output), ctx.get_by_name(var)))
+
+                stmts = []
+                stmts.append(ctx.assign(ctx.get_by_name('yield_state'), state.end_yield_id))
+                for stmt in state.path[-1].array_stores_to_process:
+                    stmts.append(ctx.translate(process_statement(stmt)))
+
+                if_stmt(stmts)
+                comb_cond = reduce(vg.Land, conds, ctx.get_by_name('yield_state') == state.end_yield_id)
+                if i == 0:
+                    comb_body.append(vg.If(comb_cond)(output_stmts))
+                else:
+                    comb_body[-1] = comb_body[-1].Elif(comb_cond)(output_stmts)
+
+        else:
+            for output, var in states[0].path[-1].output_map.items():
+                comb_body.append(vg.Subst(ctx.get_by_name(output),
+                                          ctx.get_by_name(var), 1))
     else:
         raise NotImplementedError(strategy)
-    return always_source, temp_var_source
+
+    ctx.module.Always(vg.SensitiveAll())(
+        comb_body
+    )

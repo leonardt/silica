@@ -1,0 +1,5 @@
+[run]
+omit =
+    silica/_config.py
+    silica/_testing.py
+    silica/magma_compile.py

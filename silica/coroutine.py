@@ -60,7 +60,7 @@ def coroutine(func=None, inputs=None):
     else:
         class _Coroutine(Coroutine):
             _definition = func
-            _inputs = inputs
+            _inputs = {}
             _defn_locals = defn_locals
             _name = func.__name__
         return _Coroutine

@@ -7,12 +7,12 @@ from bit_vector import BitVector
 from common import evaluate_circuit
 
 
-@si.combinational
-def saturating_add(a : si.UInt(7), b : si.UInt(7), max_ : si.UInt(7)) -> si.UInt(7):
-    c = a + b
-    if c == max_:
-        c = 0
-    return c
+# @si.combinational
+# def saturating_add(a : si.UInt(7), b : si.UInt(7), max_ : si.UInt(7)) -> si.UInt(7):
+#     c = a + b
+#     if c == max_:
+#         c = 0
+#     return c
 
 
 @si.generator
@@ -156,3 +156,21 @@ def test_lbmem():
 
 if __name__ == "__main__":
     test_lbmem()
+
+
+"""
+$display("-------------------");
+$display("start_yield_state      =  %d", yield_state);
+$display("lbmem_0[0]       = %d", lbmem_0[0]);
+$display("lbmem_0[1]       = %d", lbmem_0[1]);
+$display("lbmem_0[2]       = %d", lbmem_0[2]);
+$display("lbmem_0[3]       = %d", lbmem_0[3]);
+$display("lbmem_0[4]       = %d", lbmem_0[4]);
+$display("lbmem_0[5]       = %d", lbmem_0[5]);
+$display("lbmem_0[6]       = %d", lbmem_0[6]);
+$display("lbmem_0[7]       = %d", lbmem_0[7]);
+$display("raddr1       = %d", raddr_1);
+$display("rdata       = %d", rdata);
+$display("end yield state   = %d", yield_state);
+$display("-------------------");
+"""

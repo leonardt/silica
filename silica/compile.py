@@ -10,13 +10,12 @@ import silica
 from silica.coroutine import Coroutine
 from silica.cfg import ControlFlowGraph, BasicBlock, HeadBlock
 from silica.cfg.control_flow_graph import render_paths_between_yields, build_state_info, render_fsm, get_constant
-from silica.ast_utils import *
+import silica.ast_utils as ast_utils
 from silica.liveness import liveness_analysis
 from silica.transformations import specialize_constants, replace_symbols, \
     constant_fold, desugar_for_loops, specialize_evals, inline_yield_from_functions
 from silica.visitors import collect_names
 import silica.verilog as verilog
-from .verilog import get_width_str
 from .width import get_width
 from .memory import MemoryType
 from silica.transformations.specialize_arguments import specialize_arguments
@@ -36,7 +35,7 @@ def specialize_list_comps(tree, globals, locals):
             return ast.parse(f"[{result}]").body[0].value
 
         def visit_Call(self, node):
-            if is_name(node.func) and node.func.id == "list":
+            if ast_utils.is_name(node.func) and node.func.id == "list":
                 result = eval(astor.to_source(node), globals, locals)
                 result = ", ".join(repr(x) for x in result)
                 return ast.parse(f"[{result}]").body[0].value
@@ -65,26 +64,6 @@ def get_input_width(type_):
         raise NotImplementedError(type_)
 
 
-def make_io_string(inputs, outputs, width_table):
-    io_strings = []
-    for output in outputs:
-        width = width_table[output]
-        if width is None:
-            io_strings.append(f"output {output}")
-        else:
-            io_strings.append(f"output [{width_table[output] - 1}:0] {output}")
-
-    if inputs:
-        for input_, type_ in inputs.items():
-            if isinstance(type_, m.BitKind):
-                io_strings.append(f"input {input_}")
-            elif isinstance(type_, m.ArrayKind) and isinstance(type_.T, m.BitKind):
-                io_strings.append(f"input [{len(type_)-1}:0] {input_}")
-            else:
-                raise NotImplementedError(type_)
-    return ", ".join(io_strings)
-
-
 def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog', strategy="by_statement"):
     if not isinstance(coroutine, Coroutine):
         raise ValueError("silica.compile expects a silica.Coroutine")
@@ -94,7 +73,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     func_globals = stack[1].frame.f_globals
 
     has_ce = coroutine.has_ce
-    tree = get_ast(coroutine._definition).body[0]  # Get the first element of the ast.Module
+    tree = ast_utils.get_ast(coroutine._definition).body[0]  # Get the first element of the ast.Module
     module_name = coroutine._name
     func_locals.update(coroutine._defn_locals)
     specialize_arguments(tree, coroutine)
@@ -135,7 +114,12 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     TypeChecker(width_table, type_table).check(tree)
     # DesugarArrays().run(tree)
     cfg = ControlFlowGraph(tree)
+    for var in cfg.replacer.id_counter:
+        width = width_table[var]
+        for i in range(cfg.replacer.id_counter[var] + 1):
+            width_table[f"{var}_{i}"] = width
     liveness_analysis(cfg)
+    # render_paths_between_yields(cfg.paths)
 
     if output == 'magma':
         # NOTE: This is currently not maintained
@@ -148,7 +132,6 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
         outputs += (collect_names(path[-1].value, ctx=ast.Load), )
     assert all(outputs[1] == output for output in outputs[1:]), "Yield statements must all have the same outputs except for the first"
     outputs = outputs[1]
-    io_string = make_io_string(coroutine._inputs, outputs, width_table)
     states = cfg.states
     num_yields = cfg.curr_yield_id
     num_states = len(states)
@@ -156,20 +139,17 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     initial_basic_block = False
     sub_coroutines = []
     # cfg.render()
-
-    verilog_source = ""
     for node in cfg.paths[0][:-1]:
         if isinstance(node, HeadBlock):
             for statement in node:
-                if is_call(statement.value) and is_name(statement.value.func) and statement.value.func.id == "coroutine_create":
+                if ast_utils.is_call(statement.value) and ast_utils.is_name(statement.value.func) and statement.value.func.id == "coroutine_create":
                     sub_coroutine = eval(astor.to_source(statement.value.args[0]), func_globals, func_locals)
                     raise NotImplementedError()
-                    verilog_source += verilog_compile(sub_coroutine(), func_globals, func_locals)
                     statement.value.func = ast.Name(sub_coroutine._name, ast.Load())
                     statement.value.args = []
                     sub_coroutines.append((statement, sub_coroutine))
                 else:
-                    if is_name(statement.value) and statement.value.id in initial_values:
+                    if ast_utils.is_name(statement.value) and statement.value.id in initial_values:
                         initial_values[statement.targets[0].id] = initial_values[statement.value.id]
                     else:
                         initial_values[statement.targets[0].id] = get_constant(statement.value)
@@ -185,80 +165,71 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     if has_ce:
         raise NotImplementedError("add ce to module decl")
 
-    print(cfg)
-    print(initial_values)
-    print(initial_basic_block)
-    print(num_states)
-    print(num_yields)
-    print(states)
-    print(registers)
-    print(width_table)
-    print(strategy)
+    # declare module and ports
+    ctx = verilog.Context(module_name)
 
-    verilog_source += f"""
-module {module_name} ({io_string}, input CLK);
-"""
-    # def make_io_string(inputs, outputs, width_table):
-    # io_strings = []
+    def get_len(t):
+        try:
+            return len(t)
+        except Exception:
+            return 1
 
-    # if inputs:
-    #     for input_, type_ in inputs.items():
-    #         if isinstance(type_, m.BitKind):
-    #             io_strings.append(f"input {input_}")
-    #         elif isinstance(type_, m.ArrayKind) and isinstance(type_.T, m.BitKind):
-    #             io_strings.append(f"input [{len(type_)-1}:0] {input_}")
-    #         else:
-    #             raise NotImplementedError(type_)
-    # return ", ".join(io_strings)
+    inputs = { i : get_len(t) for i,t in coroutine._inputs.items() }
+    inputs["CLK"] = 1
+    outputs = { o : width_table.get(o, 1) or 1 for o in outputs }
+    ctx.declare_ports(inputs, outputs)
 
-    m = vg.Module(module_name)
-    for i,t in coroutine._inputs.items():
-        a = m.Input(i, 5, 4)
-        print(inspect.getmembers(a))
-        print(i,t)
-    for o in outputs:
-        m.Output(o, width_table.get(o, 1))
-        print(o)
-    print(io_string)
-    print(m.to_verilog())
+    # declare wires
+    for var in cfg.replacer.id_counter:
+        width = width_table[var]
+        for i in range(cfg.replacer.id_counter[var] + 1):
+            if f"{var}_{i}" not in registers:
+                ctx.declare_wire(f"{var}_{i}", width)
 
-    init_strings = []
+    for (name, index), value in cfg.replacer.array_stores.items():
+        width = width_table[name]
+        if isinstance(width, MemoryType):
+            width = width.width
+        else:
+            width = None
+        if len(index) > 1: raise NotImplementedError()
+        index_hash = "_".join(ast.dump(i) for i in index)
+        count = cfg.replacer.index_map[index_hash]
+        for i in range(count + 1):
+            var = name + f"_{value}_i{count}"
+            width_table[var] = width
+
+    # declare regs
     for register in registers:
         width = width_table[register]
         if isinstance(width, MemoryType):
-            width_str = get_width_str(width.width)
-            verilog_source += f"    reg {width_str} {register} [0:{width.height - 1}];\n"
+            ctx.declare_reg(register, width.width, width.height)
         else:
-            width_str = get_width_str(width)
-            verilog_source += f"    reg {width_str} {register};\n"
-    for key, value in initial_values.items():
-        if value is not None:
-            init_strings.append(f"{key} = {value};")
+            ctx.declare_reg(register, width)
 
+    init_body = [ctx.assign(ctx.get_by_name(key), value) for key,value in initial_values.items() if value is not None]
 
     if cfg.curr_yield_id > 1:
-        verilog_source += f"    reg [{(cfg.curr_yield_id - 1).bit_length() - 1}:0] yield_state;\n"
-        init_strings.append(f"yield_state = 0;")
+        ctx.declare_reg("yield_state", (cfg.curr_yield_id - 1).bit_length())
+        init_body.append(ctx.assign(ctx.get_by_name("yield_state"), 0))
 
-    init_string = '\n        '.join(init_strings)
-    verilog_source += f"""
-    initial begin
-        {init_string}
-    end
-"""
+    if initial_basic_block:
+        for statement in states[0].statements:
+            verilog.process_statement(statement)
+            # init_body.append(ctx.translate(statement)) # TODO: redefinition bug?
+            # temp_var_promoter.visit(statement)
 
+    ctx.initial(init_body)
 
     raddrs = {}
     waddrs = {}
     wdatas = {}
     wens = {}
-    # render_paths_between_yields(cfg.paths)
-    always_source, temp_var_source = verilog.compile_states(states, cfg.curr_yield_id == 1, width_table, strategy)
-    verilog_source += temp_var_source + always_source
-    verilog_source += "\n    end\nendmodule"
-    verilog_source = verilog_source.replace("True", "1")
-    verilog_source = verilog_source.replace("False", "0")
+    if initial_basic_block:
+        states = states[1:]
+    verilog.compile_states(ctx, states, cfg.curr_yield_id == 1, width_table, strategy)
     # cfg.render()
+
     with open(file_name, "w") as f:
-        f.write(verilog_source)
-    return m.DefineFromVerilog(verilog_source, type_map={"CLK": m.In(m.Clock)})[-1]
+        f.write(ctx.to_verilog())
+    return m.DefineFromVerilog(ctx.to_verilog(), type_map={"CLK": m.In(m.Clock)})[-1]

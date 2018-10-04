@@ -36,6 +36,7 @@ def analyze(node):
     analyzer = Analyzer()
     if isinstance(node, cfg_types.Yield):
         analyzer.visit(node.value)
+        analyzer.gen = set(value for value in node.output_map.values())
         if not node.terminal:  # We only use assigments
             analyzer.gen = set()
         else:

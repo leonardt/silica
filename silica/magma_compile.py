@@ -1,3 +1,9 @@
+# **NOTE:** Support for this backend is not currently being maintained so does
+# not likely work in its current state.
+# TODO: If reviving this backend, please enable coverage checking in
+# `.coveragerc`
+
+import ast
 from silica.transformations.replace_assign_to_bits import replace_assign_to_bits
 from silica.transformations.specialize_arguments import specialize_arguments
 from silica.type_check import TypeChecker
