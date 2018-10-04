@@ -214,6 +214,7 @@ def compile_statements(module, seq, states, _tab, one_state, width_table, statem
 
 def compile_states(module, states, one_state, width_table, strategy="by_statement"):
     seq = vg.TmpSeq(module, module.get_ports()["CLK"])
+    comb_body = []
     always_source = """\
     always @(posedge CLK) begin\
 """
@@ -262,23 +263,35 @@ def compile_states(module, states, one_state, width_table, strategy="by_statemen
                 stmts.append(get_by_name(module, 'yield_state')(state.end_yield_id))
                 always_source += f"\n{_tab}{if_str} ({cond}) begin"
                 always_source += f"\n{_tab + offset}yield_state = {state.end_yield_id};"
+                output_stmts = []
                 for output, var in state.path[-1].output_map.items():
-                    stmts.append(get_by_name(module, output)(get_by_name(module, var)))
+                    output_stmts.append(vg.Subst(get_by_name(module, output),
+                                                 get_by_name(module, var), 1))
                     always_source += f"\n{_tab + offset}{output} = {var};"
                 for stmt in state.path[-1].array_stores_to_process:
                     always_source += f"\n{tab + offset}" + astor.to_source(process_statement(stmt)).rstrip() + ";"
                     stmts.append(translate_value(module, process_statement(stmt)))
                 always_source += f"\n{_tab}end"
                 if_stmt(stmts)
+                comb_cond = reduce(vg.Land, conds, get_by_name(module, 'yield_state') == state.end_yield_id)
+                if i == 0:
+                    comb_body.append(vg.If(comb_cond)(output_stmts))
+                else:
+                    comb_body[-1] = comb_body[-1].Elif(comb_cond)(output_stmts)
 
         else:
             for output, var in states[0].path[-1].output_map.items():
-                seq(
-                    get_by_name(module, output)(get_by_name(module, var))
-                )
+                comb_body.append(vg.Subst(get_by_name(module, output),
+                                          get_by_name(module, var), 1))
+                # seq(
+                #     get_by_name(module, output)(get_by_name(module, var))
+                # )
                 always_source += f"\n{_tab}{output} = {var};"
     else:
         raise NotImplementedError(strategy)
+    module.Always(vg.SensitiveAll())(
+        comb_body
+    )
 
     # rewrite (a if cond else b) to cond ? a : b
     new_always_source = ""

@@ -122,6 +122,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
         for i in range(cfg.replacer.id_counter[var] + 1):
             width_table[f"{var}_{i}"] = width
     liveness_analysis(cfg)
+    # render_paths_between_yields(cfg.paths)
 
     if output == 'magma':
         # NOTE: This is currently not maintained
@@ -208,6 +209,7 @@ module {module_name} ({io_string}, input CLK);
             width_table[var] = width
 
     # declare regs
+    print(registers)
     for register in registers:
         width = width_table[register]
         if isinstance(width, MemoryType):
@@ -251,7 +253,6 @@ module {module_name} ({io_string}, input CLK);
     waddrs = {}
     wdatas = {}
     wens = {}
-    # render_paths_between_yields(cfg.paths)
     if initial_basic_block:
         states = states[1:]
     always_source, temp_var_source = verilog.compile_states(module, states, cfg.curr_yield_id == 1, width_table, strategy)
