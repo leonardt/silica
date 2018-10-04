@@ -1,7 +1,6 @@
 import ast
 import astor
 from .memory import MemoryType
-from .ast_utils import *
 
 def get_width(node, width_table):
     if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and \
@@ -80,7 +79,7 @@ def get_width(node, width_table):
                 return node.slice.upper.n
             elif node.slice.upper is None:
                 lower = 0
-                if is_num(node.slice.lower):
+                if isinstance(node.slice.lower, ast.Num):
                     lower = node.slice.lower.n
                 width = width_table[node.value.id]
                 return MemoryType(width.height - lower, width.width)

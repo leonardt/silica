@@ -101,7 +101,6 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
 
     CollectInitialWidthsAndTypes(width_table, type_table).visit(tree)
     PromoteWidths(width_table, type_table).visit(tree)
-    # TODO: >>> NEW PASS SHOULD GO HERE <<<
     tree, loopvars = aaaaaaaaaaaaaaaaaaaaaaaaaaaaa(tree, width_table, func_locals, func_globals)
 
     for name,width in loopvars.items():

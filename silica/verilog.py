@@ -4,6 +4,7 @@ from .width import get_width
 import veriloggen as vg
 from functools import *
 from .ast_utils import *
+import pyverilog.vparser.ast as vast
 import magma
 
 class Context:
@@ -86,6 +87,9 @@ class Context:
             )
         elif is_invert(stmt):
             return vg.Unot
+        elif is_list(stmt):
+            print(astor.dump_tree(stmt))
+            print(vast.Concat(tuple(self.translate(elt) for elt in stmt.elts)))
         elif is_lt(stmt):
             return vg.LessThan
         elif is_name(stmt):
