@@ -85,8 +85,6 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     tree, list_lens = propagate_types(tree)
     tree, loopvars = desugar_for_loops(tree, list_lens)
 
-    print_ast(tree)
-
     width_table = {}
     if coroutine._inputs:
         for input_, type_ in coroutine._inputs.items():
