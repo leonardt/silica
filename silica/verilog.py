@@ -104,23 +104,63 @@ def compile_state_by_path(state, index, _tab, one_state, width_table):
 def get_by_name(module, name):
     return module.get_ports().get(name, module.get_vars().get(name))
 
+# TODO: these translate functions should be merged
+# TODO: the only reason translate takes in a module is to do the name lookup. should figure out how to not need to pass in module.
+def translate_slice(module, slice, target):
+    if is_index(slice):
+        return vg.Pointer(target, translate_value(module, slice.value))
+    elif is_slice(slice):
+        return vg.Slice(target, translate_value(module, slice.lower), translate_value(module, slice.upper))
+
+    raise NotImplementedError(slice)
+
+# TODO: should reorder the switch into more sensible ordering
+# TODO: should split this up into a few translate functions that translate certain classes of inputs
 def translate_value(module, value):
     if isinstance(value, bool):
         return vg.Int(1 if value else 0)
-    elif is_name(value):
-        return get_by_name(module, value.id)
+    elif is_add(value):
+        return vg.Add
+    elif is_assign(value):
+        return vg.Subst(translate_value(module, value.targets[0]), translate_value(module, value.value), 1)
+    elif is_bin_op(value):
+        return translate_value(module, value.op)(translate_value(module, value.left), translate_value(module, value.right))
+    elif is_bit_and(value):
+        return vg.And
+    elif is_bit_xor(value):
+        return vg.Xor
+    elif is_compare(value):
+        assert(len(value.ops) == len(value.comparators) == 1)
+        return translate_value(module, value.ops[0])(translate_value(module, value.left), translate_value(module, value.comparators[0]))
+    elif is_eq(value):
+        return vg.Eq
     elif is_if_exp(value):
-        print(astor.dump_tree(value))
         return vg.Cond(
             translate_value(module, value.test),
             translate_value(module, value.body),
             translate_value(module, value.orelse)
         )
+    elif is_invert(value):
+        return vg.Unot
+    elif is_lt(value):
+        return vg.LessThan
+    elif is_name(value):
+        return get_by_name(module, value.id)
     elif is_name_constant(value):
         # TODO: distinguish between int, bool, etc.
         return translate_value(module, value.value)
-    else:
-        raise NotImplementedError(value)
+    elif is_not_eq(value):
+        return vg.NotEq
+    elif is_num(value):
+        return vg.Int(value.n)
+    elif is_sub(value):
+        return vg.Sub
+    elif is_subscript(value):
+        return translate_slice(module, value.slice, translate_value(module, value.value))
+    elif is_unary_op(value):
+        return translate_value(module, value.op)(translate_value(module, value.operand))
+
+    raise NotImplementedError(value)
 
 def compile_statements(module, seq, states, _tab, one_state, width_table, statements):
     offset = ""
@@ -149,10 +189,8 @@ def compile_statements(module, seq, states, _tab, one_state, width_table, statem
             process_statement(statement)
             if conds:
                 cond = reduce(vg.Lor, conds)
-                stmt = module.get_vars()[statement.targets[0].id](translate_value(module, statement.value))
-                stmt.blk = 1
                 seq.If(cond)(
-                    stmt
+                    vg.Subst(translate_value(module, statement.targets[0]), translate_value(module, statement.value), 1)
                 )
                 # TODO: remove
                 cond_old = " | ".join(conds_old)
@@ -160,12 +198,16 @@ def compile_statements(module, seq, states, _tab, one_state, width_table, statem
                 verilog_source += f"\n{_tab + offset}" + astor.to_source(statement).rstrip() + ";"
                 verilog_source += f"\n{_tab}end"
             else:
-                raise NotImplementedError("not implemented.")
                 verilog_source += f"\n{_tab}" + astor.to_source(statement).rstrip() + ";"
+                seq(
+                    vg.Subst(translate_value(module, statement.targets[0]), translate_value(module, statement.value), 1)
+                )
         else:
-            raise NotImplementedError("not implemented.")
             process_statement(statement)
             verilog_source += f"\n{_tab}" + astor.to_source(statement).rstrip() + ";"
+            seq(
+                vg.Subst(translate_value(module, statement.targets[0]), translate_value(module, statement.value), 1)
+            )
     temp_var_source = ""
     return verilog_source, temp_var_source
 
@@ -202,13 +244,14 @@ def compile_states(module, states, one_state, width_table, strategy="by_statemen
             for i, state in enumerate(states):
                 offset = tab
                 cond = ""
+                conds = []
                 if state.conds:
-                    raise NotImplementedError("not implemented.")
                     cond += " & ".join(astor.to_source(process_statement(cond)).rstrip() for cond in state.conds)
+                    conds = [translate_value(module, process_statement(cond)) for cond in state.conds]
                 if cond:
                     cond += " & "
                 cond += f"(yield_state == {state.start_yield_id})"
-                cond_new = reduce(vg.Land, [], get_by_name(module, 'yield_state') == state.start_yield_id)
+                cond_new = reduce(vg.Land, conds, get_by_name(module, 'yield_state') == state.start_yield_id)
                 if i == 0:
                     if_stmt = seq.If(cond_new)
                     if_str = "if"
@@ -223,18 +266,21 @@ def compile_states(module, states, one_state, width_table, strategy="by_statemen
                     stmts.append(get_by_name(module, output)(get_by_name(module, var)))
                     always_source += f"\n{_tab + offset}{output} = {var};"
                 for stmt in state.path[-1].array_stores_to_process:
-                    raise NotImplementedError("not implemented.")
                     always_source += f"\n{tab + offset}" + astor.to_source(process_statement(stmt)).rstrip() + ";"
+                    stmts.append(translate_value(module, process_statement(stmt)))
                 always_source += f"\n{_tab}end"
                 if_stmt(stmts)
 
         else:
             for output, var in states[0].path[-1].output_map.items():
+                seq(
+                    get_by_name(module, output)(get_by_name(module, var))
+                )
                 always_source += f"\n{_tab}{output} = {var};"
     else:
         raise NotImplementedError(strategy)
 
-    # TODO: ?????
+    # rewrite (a if cond else b) to cond ? a : b
     new_always_source = ""
     for line in always_source.split("\n"):
         if "if" in line and "else" in line and not "else if" in line:
@@ -244,4 +290,5 @@ def compile_states(module, states, one_state, width_table, strategy="by_statemen
             new_always_source += f"{assign} ={cond}? {true}:{false}" + "\n"
         else:
             new_always_source += line + "\n"
+
     return new_always_source, temp_var_source

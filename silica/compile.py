@@ -174,8 +174,12 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     module = vg.Module(module_name)
     for o in outputs:
         module.Output(o, width_table.get(o, 1))
-    for i,t in coroutine._inputs.items():
-        module.Input(i, t.N)
+    if coroutine._inputs:
+        for i,t in coroutine._inputs.items():
+            if isinstance(t, m.BitKind):
+                module.Input(i)
+            else:
+                module.Input(i, t.N)
     module.Input("CLK")
     verilog_source += f"""
 module {module_name} ({io_string}, input CLK);
@@ -204,7 +208,6 @@ module {module_name} ({io_string}, input CLK);
             width_table[var] = width
 
     # declare regs
-    init_strings = []
     for register in registers:
         width = width_table[register]
         if isinstance(width, MemoryType):
@@ -216,9 +219,13 @@ module {module_name} ({io_string}, input CLK);
             width_str = get_width_str(width)
             verilog_source += f"    reg {width_str} {register};\n"
 
-    # TODO: need to do this
+    init_strings = []
+    init = module.Initial()
     for key, value in initial_values.items():
         if value is not None:
+            init.add(
+                verilog.get_by_name(module, key)(value)
+            )
             init_strings.append(f"{key} = {value};")
 
     if cfg.curr_yield_id > 1:
@@ -231,7 +238,7 @@ module {module_name} ({io_string}, input CLK);
         for statement in states[0].statements:
             verilog.process_statement(statement)
             # temp_var_promoter.visit(statement)
-            init_strings.append(astor.to_source(statement).rstrip().replace(" = ", " = ") + ";")
+            init_strings.append(astor.to_source(statement).rstrip() + ";")
 
     init_string = '\n        '.join(init_strings)
     verilog_source += f"""
@@ -254,8 +261,8 @@ module {module_name} ({io_string}, input CLK);
     verilog_source = verilog_source.replace("False", "0")
     # cfg.render()
 
-    # print(module.to_verilog())
-    # print(verilog_source)
+    print(module.to_verilog())
+    print(verilog_source)
 
     # with open(file_name, "w") as f:
     #     f.write(verilog_source)
