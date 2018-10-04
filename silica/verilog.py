@@ -69,38 +69,6 @@ class TempVarPromoter(ast.NodeTransformer):
 tab = "    "
 
 
-def compile_state_by_path(state, index, _tab, one_state, width_table):
-    offset = ""
-    verilog_source = ""
-    if state.conds or not one_state:
-        offset = tab
-        cond = ""
-        if state.conds:
-            cond += " & ".join(astor.to_source(process_statement(cond)).rstrip() for cond in state.conds)
-        if not one_state:
-            if cond:
-                cond += " & "
-            cond += f"(yield_state == {state.start_yield_id})"
-        if index == 0:
-            if_str = "if"
-        else:
-            if_str = "else if"
-        verilog_source += f"\n{_tab}{if_str} ({cond}) begin"
-    # temp_var_promoter = TempVarPromoter(width_table)
-    for statement in state.statements:
-        process_statement(statement)
-        # temp_var_promoter.visit(statement)
-        verilog_source += f"\n{_tab + offset}" + astor.to_source(statement).rstrip().replace(" = ", " = ") + ";"
-    temp_var_source = ""
-    # for width, assign in temp_var_promoter.assigns:
-    #     width_str = get_width_str(width)
-    #     temp_var_source += f"    wire {width_str}" + astor.to_source(assign).rstrip() + ";\n"
-    if not one_state:
-        verilog_source += f"\n{_tab + offset}yield_state = {state.end_yield_id};"
-    if state.conds or not one_state:
-        verilog_source += f"\n{_tab}end"
-    return verilog_source, temp_var_source
-
 def get_by_name(module, name):
     return module.get_ports().get(name, module.get_vars().get(name))
 
@@ -219,15 +187,7 @@ def compile_states(module, states, one_state, width_table, strategy="by_statemen
 """
     tab = "    "
     temp_var_source = ""
-    if strategy == "by_path":
-        raise NotImplementedError("by_path is not implemented.")
-        # TODO: do this
-        for i, state in enumerate(states):
-            always_inside, temp_vars = compile_state_by_path(state, i, tab * 3, one_state, width_table)
-            always_source += always_inside
-            temp_var_source += temp_vars
-    elif strategy == "by_statement":
-        # TODO: do this
+    if strategy == "by_statement":
         statements = []
         for state in states:
             index = len(statements)
