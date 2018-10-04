@@ -17,6 +17,8 @@ def TFF(init=0):
 def test_TFF():
     tff = TFF()
     si_tff = silica.compile(tff, file_name="tests/build/si_tff.v")
+    # si_tff = m.DefineFromVerilogFile("tests/build/si_tff.v",
+    #                                  type_map={"CLK": m.In(m.Clock)})[0]
     tester = fault.Tester(si_tff, si_tff.CLK)
     # Should toggle
     for i in range(5):

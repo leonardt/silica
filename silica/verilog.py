@@ -239,19 +239,43 @@ def compile_states(ctx, states, one_state, width_table, strategy="by_statement")
                 else:
                     if_stmt = seq.Elif(cond)
 
+                output_stmts = []
+                for output, var in state.path[-1].output_map.items():
+                    output_stmts.append(ctx.assign(ctx.get_by_name(output), ctx.get_by_name(var)))
+
                 stmts = []
                 stmts.append(ctx.assign(ctx.get_by_name('yield_state'), state.end_yield_id))
-                for output, var in state.path[-1].output_map.items():
-                    stmts.append(ctx.assign(ctx.get_by_name(output), ctx.get_by_name(var)))
                 for stmt in state.path[-1].array_stores_to_process:
                     stmts.append(ctx.translate(process_statement(stmt)))
 
                 if_stmt(stmts)
+                comb_cond = reduce(vg.Land, conds, get_by_name(module, 'yield_state') == state.end_yield_id)
+                if i == 0:
+                    comb_body.append(vg.If(comb_cond)(output_stmts))
+                else:
+                    comb_body[-1] = comb_body[-1].Elif(comb_cond)(output_stmts)
 
         else:
             for output, var in states[0].path[-1].output_map.items():
-                seq(
-                    ctx.assign(ctx.get_by_name(output), ctx.get_by_name(var))
-                )
+                comb_body.append(vg.Subst(ctx.get_by_name(output),
+                                          ctx.get_by_name(var), 1))
     else:
         raise NotImplementedError(strategy)
+
+    ctx.module.Always(vg.SensitiveAll())(
+        comb_body
+    )
+
+    # rewrite (a if cond else b) to cond ? a : b
+    new_always_source = ""
+    for line in always_source.split("\n"):
+        if "if" in line and "else" in line and not "else if" in line:
+            assign, rest = line.split(" = ")
+            true, rest = rest.split("if")
+            cond, false = rest.split("else")
+            new_always_source += f"{assign} ={cond}? {true}:{false}" + "\n"
+        else:
+            new_always_source += line + "\n"
+
+    return new_always_source, temp_var_source
+>>>>>>> master

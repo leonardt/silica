@@ -102,6 +102,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
         for i in range(cfg.replacer.id_counter[var] + 1):
             width_table[f"{var}_{i}"] = width
     liveness_analysis(cfg)
+    # render_paths_between_yields(cfg.paths)
 
     if output == 'magma':
         # NOTE: This is currently not maintained
@@ -207,7 +208,6 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     waddrs = {}
     wdatas = {}
     wens = {}
-    # render_paths_between_yields(cfg.paths)
     if initial_basic_block:
         states = states[1:]
     verilog.compile_states(ctx, states, cfg.curr_yield_id == 1, width_table, strategy)
