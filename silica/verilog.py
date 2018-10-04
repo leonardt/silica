@@ -6,9 +6,6 @@ from functools import *
 from .ast_utils import *
 import magma
 
-def get_width_str(width):
-    return f"[{width-1}:0] " if width is not None else ""
-
 class Context:
     def __init__(self, name):
         self.module = vg.Module(name)
@@ -216,6 +213,7 @@ def compile_statements(ctx, seq, states, one_state, width_table, statements):
 def compile_states(ctx, states, one_state, width_table, strategy="by_statement"):
     module = ctx.module
     seq = vg.TmpSeq(module, module.get_ports()["CLK"])
+    comb_body = []
 
     if strategy == "by_statement":
         statements = []
@@ -249,7 +247,7 @@ def compile_states(ctx, states, one_state, width_table, strategy="by_statement")
                     stmts.append(ctx.translate(process_statement(stmt)))
 
                 if_stmt(stmts)
-                comb_cond = reduce(vg.Land, conds, get_by_name(module, 'yield_state') == state.end_yield_id)
+                comb_cond = reduce(vg.Land, conds, ctx.get_by_name('yield_state') == state.end_yield_id)
                 if i == 0:
                     comb_body.append(vg.If(comb_cond)(output_stmts))
                 else:
@@ -265,17 +263,3 @@ def compile_states(ctx, states, one_state, width_table, strategy="by_statement")
     ctx.module.Always(vg.SensitiveAll())(
         comb_body
     )
-
-    # rewrite (a if cond else b) to cond ? a : b
-    new_always_source = ""
-    for line in always_source.split("\n"):
-        if "if" in line and "else" in line and not "else if" in line:
-            assign, rest = line.split(" = ")
-            true, rest = rest.split("if")
-            cond, false = rest.split("else")
-            new_always_source += f"{assign} ={cond}? {true}:{false}" + "\n"
-        else:
-            new_always_source += line + "\n"
-
-    return new_always_source, temp_var_source
->>>>>>> master

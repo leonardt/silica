@@ -16,7 +16,6 @@ from silica.transformations import specialize_constants, replace_symbols, \
     constant_fold, desugar_for_loops, specialize_evals, inline_yield_from_functions
 from silica.visitors import collect_names
 import silica.verilog as verilog
-from .verilog import get_width_str
 from .width import get_width
 from .memory import MemoryType
 from silica.transformations.specialize_arguments import specialize_arguments
