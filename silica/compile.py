@@ -209,7 +209,6 @@ module {module_name} ({io_string}, input CLK);
             width_table[var] = width
 
     # declare regs
-    print(registers)
     for register in registers:
         width = width_table[register]
         if isinstance(width, MemoryType):
