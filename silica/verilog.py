@@ -32,7 +32,8 @@ class Context:
         self.module.Reg(name, width, height)
 
     def assign(self, lhs, rhs):
-        return vg.Subst(lhs, rhs, self.is_reg(lhs))
+        # return vg.Subst(lhs, rhs, not self.is_reg(lhs))
+        return vg.Subst(lhs, rhs, 1)
 
     def initial(self, body=[]):
         return self.module.Initial(body)
@@ -60,7 +61,8 @@ class Context:
             return vg.Subst(
                 target,
                 self.translate(stmt.value),
-                not self.is_reg(target)
+                # not self.is_reg(target)
+                1
             )
         elif is_bin_op(stmt):
             return self.translate(stmt.op)(
@@ -79,6 +81,11 @@ class Context:
             )
         elif is_eq(stmt):
             return vg.Eq
+        elif is_if(stmt):
+            body = [self.translate(stmt) for stmt in stmt.body]
+            return vg.If(
+                self.translate(stmt.test),
+            )(body)
         elif is_if_exp(stmt):
             return vg.Cond(
                 self.translate(stmt.test),
@@ -158,19 +165,22 @@ class ListToVerilog(ast.NodeTransformer):
         node = ast.Set(node.elts)
         return node
 
+# TODO: this is a hack because it needs to return a list of expanded tuple assignments, might be able to use ast.Module instead with the body
 class TupleAssignToVerilog(ast.NodeTransformer):
     def visit_Assign(self, node):
         if is_tuple(node.targets[0]):
             body = [ast.Assign([node.targets[0].elts[n]], node.value.elts[n])
                     for n in range(len(node.value.elts))]
-            return ast.Module(body)
+            return ast.If(ast.NameConstant(True), body, [])
         return node
 
 def process_statement(stmt):
+    print(astor.to_source(stmt))
     RemoveMagmaFuncs().visit(stmt)
     SwapSlices().visit(stmt)
     stmt = ExpandLists().visit(stmt)
     stmt = TupleAssignToVerilog().visit(stmt)
+    print(astor.to_source(stmt))
     return stmt
 
 class TempVarPromoter(ast.NodeTransformer):
@@ -228,7 +238,8 @@ def compile_statements(ctx, seq, states, one_state, width_table, statements):
             if conds:
                 cond = reduce(vg.Lor, conds)
                 seq.If(cond)(
-                    vg.Subst(ctx.translate(statement.targets[0]), ctx.translate(statement.value), 1)
+                    ctx.translate(process_statement(statement))
+                    # vg.Subst(ctx.translate(statement.targets[0]), ctx.translate(statement.value), 1)
                 )
             else:
                 seq(

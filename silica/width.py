@@ -88,4 +88,7 @@ def get_width(node, width_table):
                 upper = node.slice.upper.n
                 width = width_table[node.value.id]
                 return MemoryType(upper - lower + 1, width.width)
+    elif isinstance(node, ast.Num):
+        return node.n.bit_length()
+
     raise NotImplementedError(ast.dump(node))

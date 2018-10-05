@@ -60,7 +60,7 @@ def desugar_for_loops(tree, type_table):
                 else:
                     raise NotImplementedError("keyword iterators are not yet supported")
 
-                bit_width = stop.n.bit_length()
+                bit_width = eval(astor.to_source(stop).rstrip() + "-" + astor.to_source(start).rstrip()).bit_length()
                 self.loopvars.add((node.target.id, bit_width))
 
                 return [

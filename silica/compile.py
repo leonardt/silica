@@ -85,6 +85,8 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     tree, list_lens = propagate_types(tree)
     tree, loopvars = desugar_for_loops(tree, list_lens)
 
+    ast_utils.print_ast(tree)
+
     width_table = {}
     if coroutine._inputs:
         for input_, type_ in coroutine._inputs.items():
@@ -102,6 +104,8 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     CollectInitialWidthsAndTypes(width_table, type_table).visit(tree)
     PromoteWidths(width_table, type_table).visit(tree)
     tree, loopvars = aaaaaaaaaaaaaaaaaaaaaaaaaaaaa(tree, width_table, func_locals, func_globals)
+
+    ast_utils.print_ast(tree)
 
     for name,width in loopvars.items():
         width_table[name] = width
