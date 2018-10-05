@@ -6,8 +6,6 @@ from .replace_symbols import replace_symbols
 from .constant_fold import constant_fold
 from silica.memory import MemoryType
 from copy import deepcopy
-
-# TODO: should probably delete
 import astor
 
 counter = itertools.count()
@@ -17,7 +15,6 @@ def get_call_func(node):
         return node.func.id
     # Should handle nested expressions/alternate types
     raise NotImplementedError(type(node.value.func))  # pragma: no cover
-
 
 
 def desugar_for_loops(tree, type_table):
@@ -35,8 +32,6 @@ def desugar_for_loops(tree, type_table):
                 else:
                     new_body.append(result)
             node.body = new_body
-
-            
 
             # range() iterator
             if is_call(node.iter) and is_name(node.iter.func) and \
@@ -91,7 +86,6 @@ def desugar_for_loops(tree, type_table):
                 # TODO: currently just assumes that this is a list
                 # TODO: maybe this should just reshape the for-loop to use a range()
                 #       iterator and then just call the previous branch
-                # TODO: index should be an unused identifier
                 index = '__silica_count_' + str(next(counter))
                 start = ast.Num(0)
                 stop  = ast.Num(type_table[node.iter.id][1])
@@ -136,8 +130,8 @@ def propagate_types(tree):
     propagator.visit(tree)
     return tree, propagator.loopvars
 
-def aaaaaaaaaaaaaaaaaaaaaaaaaaaaa(tree, width_table, globals, locals):
-    class AAAAAA(ast.NodeTransformer):
+def get_final_widths(tree, width_table, globals, locals):
+    class WidthCalculator(ast.NodeTransformer):
         def __init__(self):
             super().__init__()
             self.loopvars = {}
@@ -158,6 +152,6 @@ def aaaaaaaaaaaaaaaaaaaaaaaaaaaaa(tree, width_table, globals, locals):
 
             return node
 
-    aaaa = AAAAAA()
-    aaaa.visit(tree)
-    return tree, aaaa.loopvars
+    wc = WidthCalculator()
+    wc.visit(tree)
+    return tree, wc.loopvars

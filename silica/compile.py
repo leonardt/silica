@@ -22,7 +22,7 @@ from silica.transformations.specialize_arguments import specialize_arguments
 from silica.type_check import TypeChecker
 from silica.analysis import CollectInitialWidthsAndTypes
 from silica.transformations.promote_widths import PromoteWidths
-from silica.transformations.desugar_for_loops import propagate_types, aaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+from silica.transformations.desugar_for_loops import propagate_types, get_final_widths
 
 import veriloggen as vg
 
@@ -103,7 +103,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
 
     CollectInitialWidthsAndTypes(width_table, type_table).visit(tree)
     PromoteWidths(width_table, type_table).visit(tree)
-    tree, loopvars = aaaaaaaaaaaaaaaaaaaaaaaaaaaaa(tree, width_table, func_locals, func_globals)
+    tree, loopvars = get_final_widths(tree, width_table, func_locals, func_globals)
 
     ast_utils.print_ast(tree)
 
