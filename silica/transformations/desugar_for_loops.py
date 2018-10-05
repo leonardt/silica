@@ -36,9 +36,24 @@ def desugar_for_loops(tree, type_table):
                     new_body.append(result)
             node.body = new_body
 
+            
+
             # range() iterator
             if is_call(node.iter) and is_name(node.iter.func) and \
                node.iter.func.id == "range":
+                try:
+                    range_object = eval(astor.to_source(node.iter))
+                    body = []
+                    for i in range_object:
+                        symbol_table = {node.target.id: ast.Num(i)}
+                        for child in node.body:
+                            body.append(
+                                constant_fold(replace_symbols(deepcopy(child), symbol_table))
+                            )
+                    return body
+                except Exception as e:
+                    pass
+
                 if len(node.iter.args) > 0:
                     if not len(node.iter.args) < 4:
                         raise TypeError("range expected at most 3 arguments, got {}"
