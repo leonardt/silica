@@ -1,4 +1,4 @@
-from silica.transformations.desugar_for_loops import desugar_for_loops, propagate_types
+from silica.transformations.desugar_for_loops import desugar_for_loops
 import astor
 import ast
 
@@ -14,6 +14,7 @@ while x < 15:
     x = x + 1
 """
     assert expected == astor.to_source(tree)
+    assert loopvars == {("x", (15).bit_length())}
 
 def test_range_two_args():
     tree = ast.parse("""
@@ -27,6 +28,7 @@ while x < 15:
     x = x + 1
 """
     assert expected == astor.to_source(tree)
+    assert loopvars == {("x", (15).bit_length())}
 
 def test_range_three_args():
     tree = ast.parse("""
@@ -40,6 +42,7 @@ while x < 15:
     x = x + 4
 """
     assert expected == astor.to_source(tree)
+    assert loopvars == {("x", (15).bit_length())}
 
 def test_nested_loops():
     tree = ast.parse("""
@@ -57,3 +60,4 @@ while x < 15:
     x = x + 1
 """
     assert expected == astor.to_source(tree)
+    assert loopvars == {("x", (15).bit_length()), ("y", (15).bit_length())}
