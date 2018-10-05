@@ -9,7 +9,7 @@ class PromoteWidths(ast.NodeTransformer):
 
     def check_valid(self, int_length, expected_length):
         if int_length > expected_length:
-            raise TypeError("Cannot promote integer with greated width than other operand")
+            raise TypeError("Cannot promote integer with greater width than other operand")
 
     def make(self, value, width, type_):
         return ast.parse(f"{type_}({value}, {width})").body[0].value
