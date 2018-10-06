@@ -1,5 +1,6 @@
 import ast
 import silica.cfg.types as cfg_types
+import silica.ast_utils as ast_utils
 
 class Analyzer(ast.NodeVisitor):
     def __init__(self):
@@ -8,6 +9,9 @@ class Analyzer(ast.NodeVisitor):
         # self.return_values = set()
 
     def visit_Call(self, node):
+        if ast_utils.is_name(node.func) and node.func.id == "phi":
+            # skip 
+            return
         # Ignore function calls
         for arg in node.args:
             self.visit(arg)
@@ -23,6 +27,8 @@ class Analyzer(ast.NodeVisitor):
                 self.gen.add(node.id)
         else:
             self.kill.add(node.id)
+            if node.id in self.gen:
+                self.gen.remove(node.id)
 
 #     def visit_Return(self, node):
 #         if isinstance(node, ast.Tuple):
@@ -37,10 +43,10 @@ def analyze(node):
     if isinstance(node, cfg_types.Yield):
         analyzer.visit(node.value)
         analyzer.gen = set(value for value in node.output_map.values())
-        if not node.terminal:  # We only use assigments
-            analyzer.gen = set()
-        else:
-            analyzer.kill = set()
+        # if not node.terminal:  # We only use assigments
+        #     analyzer.gen = set()
+        # else:
+        # analyzer.kill = set()
     elif isinstance(node, cfg_types.HeadBlock):
         for statement in node.initial_statements:
             analyzer.visit(statement)
@@ -53,12 +59,23 @@ def analyze(node):
             analyzer.visit(statement)
     return analyzer.gen, analyzer.kill
 
+def do_analysis(block):
+    block.gen, block.kill = analyze(block)
+    if not isinstance(block, cfg_types.Yield):
+        if isinstance(block, cfg_types.Branch):
+            true_live_ins = do_analysis(block.true_edge)
+            false_live_ins = do_analysis(block.false_edge)
+            block.live_outs = true_live_ins | false_live_ins
+        else:
+            block.live_outs = do_analysis(block.outgoing_edge[0])
+    still_live = block.live_outs - block.kill
+    block.live_ins = block.gen | still_live
+    return block.live_ins
+
 def liveness_analysis(cfg):
-    for path in cfg.paths_between_yields:
-        path[-1].live_outs = set()
-        for node in reversed(path):
-            node.gen, node.kill = analyze(node)
-            if node.next is not None:
-                node.live_outs = node.next.live_ins
-            still_live = node.live_outs - node.kill
-            node.live_ins = node.gen | still_live
+    for block in cfg.blocks:
+        if isinstance(block, (cfg_types.HeadBlock, cfg_types.Yield)):
+            block.live_outs = do_analysis(block.outgoing_edge[0])
+            block.gen, block.kill = analyze(block)
+            still_live = block.live_outs - block.kill
+            block.live_ins = still_live

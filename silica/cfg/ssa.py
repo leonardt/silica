@@ -80,4 +80,4 @@ class SSAReplacer(ast.NodeTransformer):
             #     self.increment_id(node.id)
             #     self.seen.add(node.id)
             store_offset = self.load_store_offset.get(node.id, 0)
-            return ast.Name(f"{node.id}_{self.id_counter[node.id] + store_offset}", ast.Store)
+            return ast.Name(f"{node.id}_{self.id_counter[node.id] + store_offset}", ast.Store())

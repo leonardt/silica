@@ -13,9 +13,10 @@ import magma
 
 import silica
 from silica.transformations import specialize_constants, replace_symbols, constant_fold
-from silica.visitors import collect_names, collect_stores
+from silica.visitors import collect_names, collect_stores, collect_loads
 from silica.cfg.types import BasicBlock, Yield, Branch, HeadBlock, State
 from silica.cfg.ssa import SSAReplacer
+from silica.liveness import liveness_analysis
 
 def get_constant(node):
     if isinstance(node, ast.Num) and len(stmt.targets) == 1:
@@ -207,8 +208,8 @@ class ControlFlowGraph:
         inputs, outputs = get_io(tree)
         self.build(tree)
         self.bypass_conds()
-        replacer = SSAReplacer()
-        var_counter = {}
+        # replacer = SSAReplacer()
+        # var_counter = {}
         # for block in self.blocks:
             # if isinstance(block, (HeadBlock, BasicBlock)):
             #     replacer.process_block(block)
@@ -226,10 +227,38 @@ class ControlFlowGraph:
             self.render()
             raise error
         # self.paths = promote_live_variables(self.paths)
+        liveness_analysis(self)
         self.states, self.state_vars = build_state_info(self.paths, outputs, inputs)
 
-        # self.render()
+
+        self.registers = set()
+        for path in self.paths:
+            for block in path:
+                if isinstance(block, (HeadBlock, Yield)):
+                    loads = self.collect_loads_before_yield(block.outgoing_edge[0])
+                    for load in loads:
+                        if load in block.live_ins:
+                            prefix = "_".join(load.split("_")[:-1])
+                            self.registers.add(prefix)
+                            block.loads[load] = prefix
+
         # render_paths_between_yields(self.paths)
+        for path in self.paths:
+            for block in path:
+                if isinstance(block, Yield):
+                    stores = set()
+                    for edge, _ in block.incoming_edges:
+                        stores |= self.collect_stores_after_yield(edge)
+                    for live_in in block.live_ins:
+                        prefix = "_".join(live_in.split("_")[:-1])
+                        if live_in in block.live_outs:
+                            store_id = -1
+                            for store in stores:
+                                if prefix in store:
+                                    store_id = max(int(store.split("_")[-1]), store_id)
+                            block.stores[prefix + "_" + str(store_id)] = prefix
+
+        self.render()
         # render_fsm(self.states)
         # exit()
 
@@ -271,12 +300,12 @@ class ControlFlowGraph:
                 initial_block.initial_yield = block
                 return [path for path in self.find_paths(block.outgoing_edge[0], initial_block)]
             else:
-                return [[copy(block)]]
+                return [[(block)]]
         elif isinstance(block, BasicBlock):
-            return [[copy(block)] + path for path in self.find_paths(block.outgoing_edge[0], initial_block)]
+            return [[(block)] + path for path in self.find_paths(block.outgoing_edge[0], initial_block)]
         elif isinstance(block, Branch):
-            true_paths = [[copy(block)] + path for path in self.find_paths(block.true_edge, initial_block)]
-            false_paths = [[copy(block)] + path for path in self.find_paths(block.false_edge, initial_block)]
+            true_paths = [[(block)] + path for path in self.find_paths(block.true_edge, initial_block)]
+            false_paths = [[(block)] + path for path in self.find_paths(block.false_edge, initial_block)]
             for path in true_paths:
                 path[0].true_edge = path[1]
             for path in false_paths:
@@ -308,7 +337,7 @@ class ControlFlowGraph:
             if isinstance(block, (Yield, HeadBlock)):
                 if isinstance(block, Yield) and block.is_initial_yield:
                        continue  # Skip initial yield
-                paths.extend([deepcopy(block)] + path for path in self.find_paths(block.outgoing_edge[0], block))
+                paths.extend([block] + path for path in self.find_paths(block.outgoing_edge[0], block))
         for path in paths:
             for i in range(len(path) - 1):
                 path[i].next = path[i + 1]
@@ -426,9 +455,12 @@ class ControlFlowGraph:
                 phi_vars[var][0] = f"{var}_{self.replacer.id_counter[var]}"
         if isinstance(stmt, ast.While):
             for base_var, (true_var, false_var) in phi_vars.items():
-                self.curr_block.statements.append(
-                    # ast.parse(f"{orig_var} = phi({true_var}, {orig_var}, cond={astor.to_source(stmt.test)})").body[0])
-                    ast.parse(f"{false_var} = {true_var} if {astor.to_source(stmt.test).rstrip()} else {false_var}").body[0])
+                if not (isinstance(stmt.test, ast.NameConstant) and stmt.test.value == True):
+                    self.replacer.id_counter[base_var] += 1
+                    next_var = f"{base_var}_{self.replacer.id_counter[base_var]}"
+                    self.curr_block.statements.append(
+                        # ast.parse(f"{orig_var} = phi({true_var}, {orig_var}, cond={astor.to_source(stmt.test)})").body[0])
+                        ast.parse(f"{next_var} = phi({true_var} if {astor.to_source(stmt.test).rstrip()} else {false_var})").body[0])
             for (name, index), value in self.replacer.array_stores.items():
                 index_hash = "_".join(ast.dump(i) for i in index)
                 count = self.replacer.index_map[index_hash]
@@ -484,13 +516,11 @@ class ControlFlowGraph:
                 end_else_block = self.curr_block
             self.curr_block = self.gen_new_block()
             for base_var, (true_var, false_var) in phi_vars.items():
-                if stmt.orelse:
-                    target = false_var
-                else:
-                    target = true_var
+                self.replacer.id_counter[base_var] += 1
+                next_var = f"{base_var}_{self.replacer.id_counter[base_var]}"
                 self.curr_block.statements.append(
                     # 0, ast.parse(f"{last_var} = phi({true_var}, {false_var}, cond={astor.to_source(stmt.test)})").body[0])
-                    ast.parse(f"{target} = {true_var} if {astor.to_source(stmt.test).rstrip()} else {false_var}").body[0])
+                    ast.parse(f"{next_var} = phi({true_var} if {astor.to_source(stmt.test).rstrip()} else {false_var})").body[0])
             for (name, index), value in self.replacer.array_stores.items():
                 index_hash = "_".join(ast.dump(i) for i in index)
                 count = self.replacer.index_map[index_hash]
@@ -568,6 +598,8 @@ class ControlFlowGraph:
                 array_stores_to_process.append(
                     ast.parse(f"{name}{index_str} = {true_var}").body[0])
             self.add_new_yield(stmt, output_map, array_stores_to_process)
+            for var in self.replacer.id_counter:
+                self.replacer.id_counter[var] += 1
         else:
             self.replacer.visit(stmt)
             self.curr_block.add(stmt)
@@ -698,6 +730,33 @@ class ControlFlowGraph:
             lambda block : isinstance(block, BasicBlock) and \
                            isinstance(block.outgoing_edge[0], Branch)
         return filter(is_basicblock_followed_by_branch, self.blocks)
+
+
+    def collect_loads_before_yield(self, block):
+        if isinstance(block, Yield):
+            return set()
+        loads = set()
+        if isinstance(block, BasicBlock):
+            for stmt in block.statements:
+                loads |= collect_loads(stmt)
+        elif isinstance(block, Branch):
+            loads |= collect_loads(block.cond)
+        for edge, _ in block.outgoing_edges:
+            loads |= self.collect_loads_before_yield(edge)
+        return loads
+
+
+    def collect_stores_after_yield(self, block):
+        if isinstance(block, (Yield, HeadBlock)):
+            return set()
+        stores = set()
+        if isinstance(block, BasicBlock):
+            for stmt in block.statements:
+                stores |= collect_stores(stmt)
+        for edge, _ in block.incoming_edges:
+            stores |= self.collect_stores_after_yield(edge)
+        return stores
+
 
 def render_fsm(states):
     from graphviz import Digraph

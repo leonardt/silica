@@ -24,7 +24,6 @@ from common import evaluate_circuit
 
 @silica.coroutine(inputs={"data": silica.Bits(8), "valid": silica.Bit})
 def uart_transmitter():
-    message = bits(0, 8)
     data, valid = yield
     while True:
         if valid:
@@ -54,7 +53,9 @@ def uart_transmitter():
 
 def test_UART():
     uart = uart_transmitter()
-    si_uart = silica.compile(uart, "tests/build/uart.v")
+    si_uart = silica.compile(uart, "tests/build/si_uart.v")
+    # si_uart = m.DefineFromVerilogFile("tests/build/si_uart.v",
+    #                                  type_map={"CLK": m.In(m.Clock)})[0]
     tester = fault.Tester(si_uart, si_uart.CLK)
     tester.step(2)
     for message in [0xDE, 0xAD]:
@@ -88,7 +89,7 @@ def test_UART():
                                    flags=['-Wno-fatal'])
     if __name__ == '__main__':
         print("===== BEGIN : SILICA RESULTS =====")
-        evaluate_circuit("uart", "uart_transmitter")
+        evaluate_circuit("si_uart", "uart_transmitter")
         print("===== END   : SILICA RESULTS =====")
         import shutil
         shutil.copy('verilog/uart.v', 'tests/build/verilog_uart.v')

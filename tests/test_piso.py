@@ -46,8 +46,10 @@ def inputs_generator(message):
 
 def test_PISO():
     piso = DefinePISO(10)()
-    piso_magma = silica.compile(piso, "tests/build/piso_si.v")
-    tester = fault.Tester(piso_magma, piso_magma.CLK)
+    si_piso = silica.compile(piso, "tests/build/si_piso.v")
+    # si_piso = m.DefineFromVerilogFile("tests/build/si_piso.v",
+    #                                  type_map={"CLK": m.In(m.Clock)})[0]
+    tester = fault.Tester(si_piso, si_piso.CLK)
     message = [0xDE, 0xAD, 0xBE, 0xEF]
     inputs = inputs_generator(message)
     for i in range(len(message)):
@@ -55,21 +57,22 @@ def test_PISO():
         expected_state = inputs.PI[:]
         piso.send((inputs.PI, inputs.SI, inputs.LOAD))
         # print(f"PI={inputs.PI}, SI={inputs.SI}, LOAD={inputs.LOAD}, O={piso.O}, values={piso.values}")
-        tester.poke(piso_magma.PI  , BitVector(inputs.PI))
-        tester.poke(piso_magma.SI  , BitVector(inputs.SI))
-        tester.poke(piso_magma.LOAD, BitVector(inputs.LOAD))
+        tester.poke(si_piso.PI  , BitVector(inputs.PI))
+        tester.poke(si_piso.SI  , BitVector(inputs.SI))
+        tester.poke(si_piso.LOAD, BitVector(inputs.LOAD))
         next(inputs)
         tester.step(2)
         actual_outputs = []
         for i in range(10):
             expected_state = [inputs.SI] + expected_state[:-1]
-            tester.poke(piso_magma.PI  , BitVector(inputs.PI))
-            tester.poke(piso_magma.SI  , BitVector(inputs.SI))
-            tester.poke(piso_magma.LOAD, BitVector(inputs.LOAD))
+            tester.poke(si_piso.PI  , BitVector(inputs.PI))
+            tester.poke(si_piso.SI  , BitVector(inputs.SI))
+            tester.poke(si_piso.LOAD, BitVector(inputs.LOAD))
             actual_outputs.insert(0, piso.O)
             piso.send((inputs.PI, inputs.SI, inputs.LOAD))
             tester.step(2)
-            tester.expect(piso_magma.O, piso.O)
+            tester.print(si_piso.O)
+            tester.expect(si_piso.O, piso.O)
             assert piso.values == expected_state
             next(inputs)
         assert actual_outputs == expected_outputs

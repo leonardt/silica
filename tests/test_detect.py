@@ -9,15 +9,15 @@ from common import evaluate_circuit
 @silica.coroutine(inputs={"I" : Bit})
 def SIDetect111():
     cnt = uint(0, 2)
-    O = bit(0)
+    I = yield
     while True:
-        I = yield O
         if (I):
             if (cnt<3):
                 cnt = cnt+1
         else:
             cnt = 0
         O = (cnt == 3)
+        I = yield O
 
 @silica.coroutine
 def inputs_generator(inputs):
@@ -26,19 +26,20 @@ def inputs_generator(inputs):
             I = i
             yield I
 
-inputs =  list(map(bool, [1,1,0,1,1,1,0,1,0,1,1,1,1,1,1]))
 def test_detect111():
     detect = SIDetect111()
+    inputs =  list(map(bool, [1,1,0,1,1,1,0,1,0,1,1,1,1,1,1]))
     outputs = list(map(bool, [0,0,0,0,0,1,0,0,0,0,0,1,1,1,1]))
-    si_detect = silica.compile(detect, file_name="tests/build/si_detect.v")
-    # si_detect = m.DefineFromVerilogFile("tests/build/si_detect.v",
-    #                             type_map={"CLK": m.In(m.Clock)})[0]
+    # si_detect = silica.compile(detect, file_name="tests/build/si_detect.v")
+    si_detect = m.DefineFromVerilogFile("tests/build/si_detect.v",
+                                type_map={"CLK": m.In(m.Clock)})[0]
     tester = fault.Tester(si_detect, si_detect.CLK)
     for i, o in zip(inputs, outputs):
         tester.poke(si_detect.I, i)
-        tester.step(2)
+        tester.eval()
         tester.expect(si_detect.O, o)
         assert o == detect.send(i)
+        tester.step(2)
     tester.compile_and_run(target="verilator", directory="tests/build",
                            flags=['-Wno-fatal'],
                            include_verilog_libraries=['../cells_sim.v'])
