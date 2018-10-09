@@ -445,12 +445,11 @@ class ControlFlowGraph:
         orig_bb = self.curr_block
         true_stores = set()
         for sub_stmt in stmt.body:
-            # true_stores |= collect_stores(sub_stmt)
-            true_stores |= collect_names(sub_stmt, ast.Store)
+            true_stores |= collect_stores(sub_stmt)
         phi_vars = {}
         for var in true_stores:
             if var in self.replacer.id_counter:
-                phi_vars[var] = [None, f"{var}_{self.replacer.id_counter[var]}"]
+                phi_vars[var] = [None, None]
         # stmt.body holds the True path for both If and While nodes
         orig_id_counter = copy(self.replacer.id_counter)
         for sub_stmt in stmt.body:
@@ -463,6 +462,10 @@ class ControlFlowGraph:
             for base_var, (true_var, false_var) in phi_vars.items():
                 if not (isinstance(stmt.test, ast.NameConstant) and stmt.test.value == True):
                     self.replacer.id_counter[base_var] += 1
+                    if false_var is None:
+                        false_var = f"{base_var}_{self.replacer.id_counter[base_var]}"
+                        self.replacer.id_counter[base_var] += 1
+
                     next_var = f"{base_var}_{self.replacer.id_counter[base_var]}"
                     self.curr_block.statements.append(
                         # ast.parse(f"{orig_var} = phi({true_var}, {orig_var}, cond={astor.to_source(stmt.test)})").body[0])
@@ -543,6 +546,9 @@ class ControlFlowGraph:
             self.curr_block = self.gen_new_block()
             for base_var, (true_var, false_var) in phi_vars.items():
                 self.replacer.id_counter[base_var] += 1
+                if false_var is None:
+                    false_var = f"{base_var}_{self.replacer.id_counter[base_var]}"
+                    self.replacer.id_counter[base_var] += 1
                 next_var = f"{base_var}_{self.replacer.id_counter[base_var]}"
                 self.curr_block.statements.append(
                     # 0, ast.parse(f"{last_var} = phi({true_var}, {false_var}, cond={astor.to_source(stmt.test)})").body[0])

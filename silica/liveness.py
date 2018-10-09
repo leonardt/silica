@@ -9,9 +9,9 @@ class Analyzer(ast.NodeVisitor):
         # self.return_values = set()
 
     def visit_Call(self, node):
-        if ast_utils.is_name(node.func) and node.func.id == "phi":
-            # skip 
-            return
+        # if ast_utils.is_name(node.func) and node.func.id == "phi":
+        #     # skip 
+        #     return
         # Ignore function calls
         for arg in node.args:
             self.visit(arg)
