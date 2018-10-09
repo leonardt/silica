@@ -47,9 +47,9 @@ def inputs_generator(message):
 
 def test_PISO():
     piso = DefinePISO(10)()
-    # si_piso = silica.compile(piso, "tests/build/si_piso.v")
-    si_piso = m.DefineFromVerilogFile("tests/build/si_piso.v",
-                                     type_map={"CLK": m.In(m.Clock)})[0]
+    si_piso = silica.compile(piso, "tests/build/si_piso.v")
+    # si_piso = m.DefineFromVerilogFile("tests/build/si_piso.v",
+    #                                  type_map={"CLK": m.In(m.Clock)})[0]
     tester = fault.Tester(si_piso, si_piso.CLK)
     message = [0xDE, 0xAD, 0xBE, 0xEF]
     inputs = inputs_generator(message)
