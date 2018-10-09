@@ -8,10 +8,12 @@ from common import evaluate_circuit
 
 @silica.coroutine(inputs={"I": silica.Bit})
 def TFF(init=0):
-    O = bit(init)
+    state = bit(init)
+    I = yield
     while True:
+        O = state
+        state = I ^ state
         I = yield O
-        O = I ^ O
 
 
 def test_TFF():
@@ -22,8 +24,8 @@ def test_TFF():
     tester = fault.Tester(si_tff, si_tff.CLK)
     # Should toggle
     for i in range(5):
-        assert tff.O == i % 2
         tff.send(True)
+        assert tff.O == i % 2
         tester.poke(si_tff.I, 1)
         tester.expect(si_tff.O, i % 2)
         tester.step(2)

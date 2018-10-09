@@ -11,7 +11,6 @@ from silica.coroutine import Coroutine
 from silica.cfg import ControlFlowGraph, BasicBlock, HeadBlock
 from silica.cfg.control_flow_graph import render_paths_between_yields, build_state_info, render_fsm, get_constant
 import silica.ast_utils as ast_utils
-from silica.liveness import liveness_analysis
 from silica.transformations import specialize_constants, replace_symbols, \
     constant_fold, desugar_for_loops, specialize_evals, inline_yield_from_functions
 from silica.visitors import collect_names
@@ -114,12 +113,8 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     type_table = {}
     TypeChecker(width_table, type_table).check(tree)
     # DesugarArrays().run(tree)
-    cfg = ControlFlowGraph(tree)
-    for var in cfg.replacer.id_counter:
-        width = width_table[var]
-        for i in range(cfg.replacer.id_counter[var] + 1):
-            width_table[f"{var}_{i}"] = width
-    liveness_analysis(cfg)
+    cfg = ControlFlowGraph(tree, width_table, func_locals)
+    # cfg.render()
     # render_paths_between_yields(cfg.paths)
 
     if output == 'magma':
@@ -127,10 +122,12 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
         return compile_magma(coroutine, file_name, mux_strategy, output)
 
     registers = set()
+    registers |= cfg.registers
     outputs = tuple()
     for path in cfg.paths:
-        registers |= path[0].live_ins  # Union
+        registers |= set(path[0].loads.values())  # Union
         outputs += (collect_names(path[-1].value, ctx=ast.Load), )
+
     assert all(outputs[1] == output for output in outputs[1:]), "Yield statements must all have the same outputs except for the first"
     outputs = outputs[1]
     states = cfg.states
@@ -185,9 +182,12 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
         width = width_table[var]
         for i in range(cfg.replacer.id_counter[var] + 1):
             if f"{var}_{i}" not in registers:
-                ctx.declare_wire(f"{var}_{i}", width)
+                if isinstance(width, MemoryType):
+                    ctx.declare_wire(f"{var}_{i}", width.width, width.height)
+                else:
+                    ctx.declare_wire(f"{var}_{i}", width)
 
-    for (name, index), value in cfg.replacer.array_stores.items():
+    for (name, index), (value, orig_value) in cfg.replacer.array_stores.items():
         width = width_table[name]
         if isinstance(width, MemoryType):
             width = width.width
@@ -197,8 +197,10 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
         index_hash = "_".join(ast.dump(i) for i in index)
         count = cfg.replacer.index_map[index_hash]
         for i in range(count + 1):
-            var = name + f"_{value}_i{count}"
-            width_table[var] = width
+            var = name + f"_si_tmp_val_{value}_i{i}"
+            if var not in width_table:
+                width_table[var] = width
+                ctx.declare_wire(var, width)
 
     # declare regs
     for register in registers:
@@ -211,12 +213,14 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     init_body = [ctx.assign(ctx.get_by_name(key), value) for key,value in initial_values.items() if value is not None]
 
     if cfg.curr_yield_id > 1:
-        ctx.declare_reg("yield_state", (cfg.curr_yield_id - 1).bit_length())
+        yield_state_width = (cfg.curr_yield_id - 1).bit_length()
+        ctx.declare_reg("yield_state", yield_state_width)
+        ctx.declare_wire(f"yield_state_next", yield_state_width)
         init_body.append(ctx.assign(ctx.get_by_name("yield_state"), 0))
 
-    if initial_basic_block:
-        for statement in states[0].statements:
-            verilog.process_statement(statement)
+    # if initial_basic_block:
+    #     for statement in states[0].statements:
+    #         verilog.process_statement(statement)
             # init_body.append(ctx.translate(statement)) # TODO: redefinition bug?
             # temp_var_promoter.visit(statement)
 
@@ -226,9 +230,9 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     waddrs = {}
     wdatas = {}
     wens = {}
-    if initial_basic_block:
-        states = states[1:]
-    verilog.compile_states(ctx, states, cfg.curr_yield_id == 1, width_table, strategy)
+    # if initial_basic_block:
+    #     states = states[1:]
+    verilog.compile_states(ctx, states, cfg.curr_yield_id == 1, width_table, registers, strategy)
     # cfg.render()
 
     with open(file_name, "w") as f:

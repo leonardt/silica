@@ -12,19 +12,17 @@ def SilicaFifo():
     buffer = memory(4, 4)
     raddr = uint(0, 3)
     waddr = uint(0, 3)
-    rdata = buffer[raddr]
-    full = bit(0)
-    empty = bit(1)
+    wdata, wen, ren = yield
     while True:
-        wdata, wen, ren = yield rdata, empty, full
+        full = (waddr[:2] == raddr[:2]) & (waddr[2] != raddr[2])
+        empty = waddr == raddr
+        rdata = buffer[raddr[:2]]
         if wen & ~full:
             buffer[waddr[:2]] = wdata
             waddr = waddr + uint(1, 3)
         if ren & ~empty:
             raddr = raddr + uint(1, 3)
-        rdata = buffer[raddr[:2]]
-        full = (waddr[:2] == raddr[:2]) & (waddr[2] != raddr[2])
-        empty = waddr == raddr
+        wdata, wen, ren = yield rdata, empty, full
 
     # buffer = memory(4, 4)
     # raddr = uint(0, 3)
@@ -58,20 +56,20 @@ expected_trace = [
     # {'wdata': 13, 'wen': 0, 'ren': 1, 'rdata': 10, 'full': False, 'empty': False, 'buffer': [9, 10, 11, 12], 'raddr': 1, 'waddr': 0},
     # {'wdata': 14, 'wen': 1, 'ren': 1, 'rdata': 11, 'full': False, 'empty': False, 'buffer': [14, 10, 11, 12], 'raddr': 2, 'waddr': 1},
     {'wdata': 1, 'wen': 0, 'ren': 1, 'rdata': 0, 'full': False, 'empty': True, 'buffer': [0, 0, 0, 0], 'raddr': 0, 'waddr': 0},
-    {'wdata': 2, 'wen': 1, 'ren': 0, 'rdata': 2, 'full': False, 'empty': False, 'buffer': [2, 0, 0, 0], 'raddr': 0, 'waddr': 1},
-    {'wdata': 3, 'wen': 1, 'ren': 1, 'rdata': 3, 'full': False, 'empty': False, 'buffer': [2, 3, 0, 0], 'raddr': 1, 'waddr': 2},
+    {'wdata': 2, 'wen': 1, 'ren': 0, 'rdata': 0, 'full': False, 'empty': True, 'buffer': [2, 0, 0, 0], 'raddr': 0, 'waddr': 1},
+    {'wdata': 3, 'wen': 1, 'ren': 1, 'rdata': 2, 'full': False, 'empty': False, 'buffer': [2, 3, 0, 0], 'raddr': 1, 'waddr': 2},
     {'wdata': 4, 'wen': 1, 'ren': 0, 'rdata': 3, 'full': False, 'empty': False, 'buffer': [2, 3, 4, 0], 'raddr': 1, 'waddr': 3},
-    {'wdata': 5, 'wen': 0, 'ren': 1, 'rdata': 4, 'full': False, 'empty': False, 'buffer': [2, 3, 4, 0], 'raddr': 2, 'waddr': 3},
-    {'wdata': 6, 'wen': 0, 'ren': 1, 'rdata': 0, 'full': False, 'empty': True, 'buffer': [2, 3, 4, 0], 'raddr': 3, 'waddr': 3},
-    {'wdata': 7, 'wen': 1, 'ren': 0, 'rdata': 7, 'full': False, 'empty': False, 'buffer': [2, 3, 4, 7], 'raddr': 3, 'waddr': 4},
-    {'wdata': 8, 'wen': 0, 'ren': 1, 'rdata': 2, 'full': False, 'empty': True, 'buffer': [2, 3, 4, 7], 'raddr': 4, 'waddr': 4},
-    {'wdata': 9, 'wen': 1, 'ren': 1, 'rdata': 9, 'full': False, 'empty': False, 'buffer': [9, 3, 4, 7], 'raddr': 4, 'waddr': 5},
+    {'wdata': 5, 'wen': 0, 'ren': 1, 'rdata': 3, 'full': False, 'empty': False, 'buffer': [2, 3, 4, 0], 'raddr': 2, 'waddr': 3},
+    {'wdata': 6, 'wen': 0, 'ren': 1, 'rdata': 4, 'full': False, 'empty': False, 'buffer': [2, 3, 4, 0], 'raddr': 3, 'waddr': 3},
+    {'wdata': 7, 'wen': 1, 'ren': 0, 'rdata': 0, 'full': False, 'empty': True, 'buffer': [2, 3, 4, 7], 'raddr': 3, 'waddr': 4},
+    {'wdata': 8, 'wen': 0, 'ren': 1, 'rdata': 7, 'full': False, 'empty': False, 'buffer': [2, 3, 4, 7], 'raddr': 4, 'waddr': 4},
+    {'wdata': 9, 'wen': 1, 'ren': 1, 'rdata': 2, 'full': False, 'empty': True, 'buffer': [9, 3, 4, 7], 'raddr': 4, 'waddr': 5},
     {'wdata': 10, 'wen': 1, 'ren': 0, 'rdata': 9, 'full': False, 'empty': False, 'buffer': [9, 10, 4, 7], 'raddr': 4, 'waddr': 6},
     {'wdata': 11, 'wen': 1, 'ren': 0, 'rdata': 9, 'full': False, 'empty': False, 'buffer': [9, 10, 11, 7], 'raddr': 4, 'waddr': 7},
-    {'wdata': 12, 'wen': 1, 'ren': 0, 'rdata': 9, 'full': True, 'empty': False, 'buffer': [9, 10, 11, 12], 'raddr': 4, 'waddr': 0},
+    {'wdata': 12, 'wen': 1, 'ren': 0, 'rdata': 9, 'full': False, 'empty': False, 'buffer': [9, 10, 11, 12], 'raddr': 4, 'waddr': 0},
     {'wdata': 13, 'wen': 1, 'ren': 0, 'rdata': 9, 'full': True, 'empty': False, 'buffer': [9, 10, 11, 12], 'raddr': 4, 'waddr': 0},
-    {'wdata': 13, 'wen': 0, 'ren': 1, 'rdata': 10, 'full': False, 'empty': False, 'buffer': [9, 10, 11, 12], 'raddr': 5, 'waddr': 0},
-    {'wdata': 14, 'wen': 1, 'ren': 1, 'rdata': 11, 'full': False, 'empty': False, 'buffer': [14, 10, 11, 12], 'raddr': 6, 'waddr': 1},
+    {'wdata': 13, 'wen': 0, 'ren': 1, 'rdata': 9, 'full': True, 'empty': False, 'buffer': [9, 10, 11, 12], 'raddr': 5, 'waddr': 0},
+    {'wdata': 14, 'wen': 1, 'ren': 1, 'rdata': 10, 'full': False, 'empty': False, 'buffer': [14, 10, 11, 12], 'raddr': 6, 'waddr': 1},
 ]
 
 @si.coroutine
@@ -100,11 +98,12 @@ def test_fifo():
             tester.poke(si_fifo.interface.ports[input_], trace[input_])
             tester.print(si_fifo.interface.ports[input_])
         fifo.send(args)
-        tester.step(2)
+        tester.step(1)
         for output in outputs:
             assert getattr(fifo, output) == trace[output], (i, output, getattr(fifo, output), trace[output])
             tester.expect(si_fifo.interface.ports[output], trace[output])
             tester.print(si_fifo.interface.ports[output])
+        tester.step(1)
         for state in states:
             assert getattr(fifo, state) == trace[state], (i, state, getattr(fifo, state), trace[state])
 
