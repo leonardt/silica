@@ -31,24 +31,24 @@ inputs = [[4,5,6,7],[10,16,8,3]]
 
 def test_ser4():
     ser = Serializer4()
-    serializer_si = si.compile(ser, "tests/build/serializer_si.v")
-    # serializer_si = m.DefineFromVerilogFile("tests/build/serializer_si.v",
-    #                             type_map={"CLK": m.In(m.Clock)})[0]
-    tester = fault.Tester(serializer_si, serializer_si.CLK)
+    # serializer2_si = si.compile(ser, "tests/build/serializer2_si.v")
+    serializer2_si = m.DefineFromVerilogFile("tests/build/serializer2_si.v",
+                                type_map={"CLK": m.In(m.Clock)})[0]
+    tester = fault.Tester(serializer2_si, serializer2_si.CLK)
     for I in inputs:
         for j in range(len(I)):
-            tester.poke(getattr(serializer_si, f"I{j}"), I[j])
+            tester.poke(getattr(serializer2_si, f"I{j}"), I[j])
         tester.step(2)
         ser.send(I)
         assert ser.O == I[0]
-        tester.expect(serializer_si.O, I[0])
+        tester.expect(serializer2_si.O, I[0])
         for i in range(3):
             for j in range(len(I)):
-                tester.poke(getattr(serializer_si, f"I{j}"), I[j])
+                tester.poke(getattr(serializer2_si, f"I{j}"), I[j])
             tester.step(2)
             ser.send([0,0,0,0])
             assert ser.O == I[i + 1]
-            tester.expect(serializer_si.O, I[i + 1])
+            tester.expect(serializer2_si.O, I[i + 1])
     tester.compile_and_run(target="verilator", directory="tests/build",
                            flags=['-Wno-fatal'])
 
@@ -63,7 +63,7 @@ def test_ser4():
 
     if __name__ == '__main__':
         print("===== BEGIN : SILICA RESULTS =====")
-        evaluate_circuit("serializer_si", "Serializer4")
+        evaluate_circuit("serializer2_si", "Serializer4")
         print("===== END   : SILICA RESULTS =====")
 
         print("===== BEGIN : VERILOG RESULTS =====")
