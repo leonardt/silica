@@ -30,9 +30,9 @@ def test_detect111():
     detect = SIDetect111()
     inputs =  list(map(bool, [1,1,0,1,1,1,0,1,0,1,1,1,1,1,1]))
     outputs = list(map(bool, [0,0,0,0,0,1,0,0,0,0,0,1,1,1,1]))
-    # si_detect = silica.compile(detect, file_name="tests/build/si_detect.v")
-    si_detect = m.DefineFromVerilogFile("tests/build/si_detect.v",
-                                type_map={"CLK": m.In(m.Clock)})[0]
+    si_detect = silica.compile(detect, file_name="tests/build/si_detect.v")
+    # si_detect = m.DefineFromVerilogFile("tests/build/si_detect.v",
+    #                             type_map={"CLK": m.In(m.Clock)})[0]
     tester = fault.Tester(si_detect, si_detect.CLK)
     for i, o in zip(inputs, outputs):
         tester.poke(si_detect.I, i)
