@@ -4,7 +4,6 @@ from .width import get_width
 import veriloggen as vg
 from functools import *
 from .ast_utils import *
-import pyverilog.vparser.ast as vast
 import magma
 
 class Context:
@@ -65,6 +64,17 @@ class Context:
                 1
             )
         elif is_bin_op(stmt):
+            if is_list(stmt.left) or is_list(stmt.right):
+                if is_add(stmt.op): # list concatenation
+                    return vg.Cat(
+                        self.translate(stmt.left),
+                        self.translate(stmt.right)
+                    )
+                elif is_mult(stmt.op): # list replication
+                    var = self.translate(stmt.left) if is_list(stmt.left) else self.translate(stmt.right)
+                    times = self.translate(stmt.right) if is_list(stmt.left) else self.translate(stmt.left)
+                    return vg.Repeat(var, times)
+
             return self.translate(stmt.op)(
                 self.translate(stmt.left),
                 self.translate(stmt.right)
@@ -95,8 +105,7 @@ class Context:
         elif is_invert(stmt):
             return vg.Unot
         elif is_list(stmt):
-            print(astor.dump_tree(stmt))
-            print(vast.Concat(tuple(self.translate(elt) for elt in stmt.elts)))
+            return vg.Cat(*[self.translate(elt) for elt in stmt.elts])
         elif is_lt(stmt):
             return vg.LessThan
         elif is_name(stmt):
