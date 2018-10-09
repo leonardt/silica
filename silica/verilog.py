@@ -72,6 +72,8 @@ class Context:
             return vg.And
         elif is_bit_xor(stmt):
             return vg.Xor
+        elif is_bit_or(stmt):
+            return vg.Or
         elif is_compare(stmt):
             assert(len(stmt.ops) == len(stmt.comparators) == 1)
             return self.translate(stmt.ops[0])(

@@ -64,10 +64,10 @@ def DrainingState(lbmem_width, depth, lbmem, raddr, waddr, wdata, wen):
 def SILbMem(depth=64, lbmem_width=8):
     lbmem = memory(depth, lbmem_width)
     waddr = uint(0, eval(math.ceil(math.log2(depth))))
-    count = uint(0, 4)
+    count = uint(0, 3)
     wdata, wen = yield
     while True:
-        while count < 7:
+        while (count < uint(7, 3)) | ~wen:
             rdata = lbmem[waddr - uint(count, 6)]
             valid = bit(0)
             if wen:
@@ -75,14 +75,12 @@ def SILbMem(depth=64, lbmem_width=8):
                 count = count + 1
                 waddr = waddr + 1
             wdata, wen = yield rdata, valid
-        rdata = lbmem[waddr - uint(count, 6)]
-        valid = bit(1)
-        wdata, wen = yield rdata, valid
+        lbmem[waddr] = wdata
         while count > 0:
             valid = bit(1)
+            rdata = lbmem[waddr - uint(count, 6)]
             if ~wen:
                 count = count - 1
-            rdata = lbmem[waddr - uint(count, 6)]
             if wen:
                 lbmem[waddr] = wdata
                 waddr = waddr + 1
