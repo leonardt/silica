@@ -90,6 +90,8 @@ class Context:
             return vg.Unot
         elif is_lt(stmt):
             return vg.LessThan
+        elif is_gt(stmt):
+            return vg.GreaterThan
         elif is_name(stmt):
             return self.get_by_name(stmt.id)
         elif is_name_constant(stmt):

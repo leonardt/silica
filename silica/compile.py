@@ -95,11 +95,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     type_table = {}
     TypeChecker(width_table, type_table).check(tree)
     # DesugarArrays().run(tree)
-    cfg = ControlFlowGraph(tree)
-    for var in cfg.replacer.id_counter:
-        width = width_table[var]
-        for i in range(cfg.replacer.id_counter[var] + 1):
-            width_table[f"{var}_{i}"] = width
+    cfg = ControlFlowGraph(tree, width_table, func_locals)
     # cfg.render()
     # render_paths_between_yields(cfg.paths)
 

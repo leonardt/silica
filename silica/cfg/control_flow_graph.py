@@ -10,6 +10,7 @@ from copy import deepcopy, copy
 import ast
 import astor
 import magma
+import constraint
 
 import silica
 from silica.transformations import specialize_constants, replace_symbols, constant_fold
@@ -198,15 +199,21 @@ class ControlFlowGraph:
         * ``self.curr_block`` - the current block used by the construction
           algorithm
     """
-    def __init__(self, tree):
+    def __init__(self, tree, width_table, func_locals):
         self.blocks = []
         self.curr_block = None
         self.curr_yield_id = 0
         self.local_vars = set()
+        self.width_table = width_table
+        self.func_locals = func_locals
 
         # inputs, outputs = parse_arguments(tree.args.args)
         inputs, outputs = get_io(tree)
         self.build(tree)
+        for var in self.replacer.id_counter:
+            width = self.width_table[var]
+            for i in range(self.replacer.id_counter[var] + 1):
+                self.width_table[f"{var}_{i}"] = width
         self.bypass_conds()
         # replacer = SSAReplacer()
         # var_counter = {}
@@ -235,7 +242,7 @@ class ControlFlowGraph:
         for path in self.paths:
             for block in path:
                 if isinstance(block, (HeadBlock, Yield)):
-                    loads = self.collect_loads_before_yield(block.outgoing_edge[0])
+                    loads = self.collect_loads_before_yield(block.outgoing_edge[0], set())
                     for load in loads:
                         if load in block.live_ins and "_si_tmp_val_" not in load:
                             prefix = "_".join(load.split("_")[:-1])
@@ -248,7 +255,7 @@ class ControlFlowGraph:
                 if isinstance(block, Yield):
                     stores = set()
                     for edge, _ in block.incoming_edges:
-                        stores |= self.collect_stores_after_yield(edge)
+                        stores |= self.collect_stores_after_yield(edge, set())
                     for store in stores:
                         prefix = "_".join(store.split("_")[:-1])
                         for path2 in self.paths:
@@ -296,7 +303,7 @@ class ControlFlowGraph:
         self.remove_if_trues()
 
 
-    def find_paths(self, block, initial_block):
+    def find_paths(self, block, initial_block, conds=[]):
         """
         Given a block, recursively build paths to yields
         """
@@ -304,14 +311,58 @@ class ControlFlowGraph:
             if isinstance(block.value, ast.Yield) and block.value.value is None or \
                isinstance(block.value, ast.Assign) and block.value.value.value is None:
                 initial_block.initial_yield = block
-                return [path for path in self.find_paths(block.outgoing_edge[0], initial_block)]
+                return [path for path in self.find_paths(block.outgoing_edge[0], initial_block, conds)]
             else:
                 return [[(block)]]
         elif isinstance(block, BasicBlock):
-            return [[(block)] + path for path in self.find_paths(block.outgoing_edge[0], initial_block)]
+            return [[(block)] + path for path in self.find_paths(block.outgoing_edge[0], initial_block, conds)]
         elif isinstance(block, Branch):
-            true_paths = [[(block)] + path for path in self.find_paths(block.true_edge, initial_block)]
-            false_paths = [[(block)] + path for path in self.find_paths(block.false_edge, initial_block)]
+            true_paths = []
+            false_paths = []
+            # print("begin", block)
+            for value, paths, edge in [(True, true_paths, block.true_edge),
+                                       (False, false_paths, block.false_edge)]:
+                _conds = conds[:] + [(block.cond, value)]
+                problem = constraint.Problem()
+                variables = {}
+                constraints = []
+                # print("===========")
+                seen = set()
+                for cond, result in _conds:
+                    args = collect_names(cond)
+                    if "uint" in args:
+                        args.remove("uint")
+                    for arg in args:
+                        if arg in seen:
+                            continue
+                        seen.add(arg)
+                        base_arg = "_".join(arg.split("_")[:-1])
+                        width = self.width_table[arg]
+                        if width is None:
+                            width = 1
+                        # -1 hack to work around ~0 == -1 in Python
+                        problem.addVariable(arg, list(range(-1, 1 << width)))
+                        if base_arg not in variables:
+                            variables[base_arg] = []
+                        variables[base_arg].append(arg)
+                    check = "!=" if result else "=="
+                    _constraint = f"lambda {', '.join(args)}: {astor.to_source(cond).rstrip()} {check} 0"
+                    # print(_constraint)
+                    problem.addConstraint(
+                        eval(_constraint, self.func_locals),
+                        tuple(args))
+                for same in variables.values():
+                    if len(same) > 1:
+                        _constraint = f"lambda {', '.join(same)}: { ' == '.join(same) }"
+                        # print(_constraint)
+                        problem.addConstraint(
+                            eval(_constraint, self.func_locals),
+                            tuple(same))
+                # print(problem.getSolution(), value, edge)
+                # print("===========")
+                if problem.getSolution():
+                    paths += [[(block)] + path for path in
+                              self.find_paths(edge, initial_block, _conds)]
             for path in true_paths:
                 path[0].true_edge = path[1]
             for path in false_paths:
@@ -343,13 +394,14 @@ class ControlFlowGraph:
             if isinstance(block, (Yield, HeadBlock)):
                 if isinstance(block, Yield) and block.is_initial_yield:
                        continue  # Skip initial yield
-                paths.extend([block] + path for path in self.find_paths(block.outgoing_edge[0], block))
+                paths.extend([block] + path for path in self.find_paths(block.outgoing_edge[0], block, []))
         for path in paths:
             for i in range(len(path) - 1):
                 path[i].next = path[i + 1]
             path[-1].next = None
             path[-1].terminal = True
             path[0].terminal = False
+        # render_paths_between_yields(paths)
         return paths
 
     def bypass_conds(self):
@@ -459,17 +511,17 @@ class ControlFlowGraph:
             if var in self.replacer.id_counter and var in phi_vars:
                 phi_vars[var][0] = f"{var}_{self.replacer.id_counter[var]}"
         if isinstance(stmt, ast.While):
-            for base_var, (true_var, false_var) in phi_vars.items():
-                if not (isinstance(stmt.test, ast.NameConstant) and stmt.test.value == True):
-                    self.replacer.id_counter[base_var] += 1
-                    if false_var is None:
-                        false_var = f"{base_var}_{self.replacer.id_counter[base_var]}"
-                        self.replacer.id_counter[base_var] += 1
+            # for base_var, (true_var, false_var) in phi_vars.items():
+            #     if not (isinstance(stmt.test, ast.NameConstant) and stmt.test.value == True):
+            #         self.replacer.id_counter[base_var] += 1
+            #         if false_var is None:
+            #             false_var = f"{base_var}_{self.replacer.id_counter[base_var]}"
+            #             self.replacer.id_counter[base_var] += 1
 
-                    next_var = f"{base_var}_{self.replacer.id_counter[base_var]}"
-                    self.curr_block.statements.append(
-                        # ast.parse(f"{orig_var} = phi({true_var}, {orig_var}, cond={astor.to_source(stmt.test)})").body[0])
-                        ast.parse(f"{next_var} = phi({true_var} if {astor.to_source(stmt.test).rstrip()} else {false_var})").body[0])
+            #         next_var = f"{base_var}_{self.replacer.id_counter[base_var]}"
+            #         self.curr_block.statements.append(
+            #             # ast.parse(f"{orig_var} = phi({true_var}, {orig_var}, cond={astor.to_source(stmt.test)})").body[0])
+            #             ast.parse(f"{next_var} = phi({true_var} if {astor.to_source(stmt.test).rstrip()} else {false_var})").body[0])
             seen = set()
             for (name, index), (value, orig_value) in self.replacer.array_stores.items():
                 index_hash = "_".join(ast.dump(i) for i in index)
@@ -743,9 +795,12 @@ class ControlFlowGraph:
         return filter(is_basicblock_followed_by_branch, self.blocks)
 
 
-    def collect_loads_before_yield(self, block):
+    def collect_loads_before_yield(self, block, seen):
         if isinstance(block, Yield):
             return set()
+        if block in seen:
+            return set()
+        seen.add(block)
         loads = set()
         if isinstance(block, BasicBlock):
             for stmt in block.statements:
@@ -753,19 +808,22 @@ class ControlFlowGraph:
         elif isinstance(block, Branch):
             loads |= collect_loads(block.cond)
         for edge, _ in block.outgoing_edges:
-            loads |= self.collect_loads_before_yield(edge)
+            loads |= self.collect_loads_before_yield(edge, seen)
         return loads
 
 
-    def collect_stores_after_yield(self, block):
+    def collect_stores_after_yield(self, block, seen):
         if isinstance(block, (Yield, HeadBlock)):
             return set()
+        if block in seen:
+            return set()
+        seen.add(block)
         stores = set()
         if isinstance(block, BasicBlock):
             for stmt in block.statements:
                 stores |= collect_stores(stmt)
         for edge, _ in block.incoming_edges:
-            stores |= self.collect_stores_after_yield(edge)
+            stores |= self.collect_stores_after_yield(edge, seen)
         return stores
 
 

@@ -59,15 +59,18 @@ def analyze(node):
             analyzer.visit(statement)
     return analyzer.gen, analyzer.kill
 
-def do_analysis(block):
+def do_analysis(block, seen=set()):
+    if block in seen:
+        return block.live_ins
+    seen.add(block)
     block.gen, block.kill = analyze(block)
     if not isinstance(block, cfg_types.Yield):
         if isinstance(block, cfg_types.Branch):
-            true_live_ins = do_analysis(block.true_edge)
-            false_live_ins = do_analysis(block.false_edge)
+            true_live_ins = do_analysis(block.true_edge, seen)
+            false_live_ins = do_analysis(block.false_edge, seen)
             block.live_outs = true_live_ins | false_live_ins
         else:
-            block.live_outs = do_analysis(block.outgoing_edge[0])
+            block.live_outs = do_analysis(block.outgoing_edge[0], seen)
     still_live = block.live_outs - block.kill
     block.live_ins = block.gen | still_live
     return block.live_ins

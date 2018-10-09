@@ -63,12 +63,34 @@ def DrainingState(lbmem_width, depth, lbmem, raddr, waddr, wdata, wen):
 @si.coroutine(inputs={"wdata": si.Bits(8), "wen": si.Bit})
 def SILbMem(depth=64, lbmem_width=8):
     lbmem = memory(depth, lbmem_width)
-    raddr = uint(0, eval(math.ceil(math.log2(depth))))
     waddr = uint(0, eval(math.ceil(math.log2(depth))))
+    count = uint(0, 4)
     wdata, wen = yield
     while True:
-        waddr = yield from FillingState(lbmem_width, depth, lbmem, raddr, waddr, wdata, wen)
-        waddr, raddr = yield from DrainingState(lbmem_width, depth, lbmem, raddr, waddr, wdata, wen)
+        while count < 7:
+            rdata = lbmem[waddr - uint(count, 6)]
+            valid = bit(0)
+            if wen:
+                lbmem[waddr] = wdata
+                count = count + 1
+                waddr = waddr + 1
+            wdata, wen = yield rdata, valid
+        rdata = lbmem[waddr - uint(count, 6)]
+        valid = bit(1)
+        wdata, wen = yield rdata, valid
+        while count > 0:
+            valid = bit(1)
+            if ~wen:
+                count = count - 1
+            rdata = lbmem[waddr - uint(count, 6)]
+            if wen:
+                lbmem[waddr] = wdata
+                waddr = waddr + 1
+            wdata, wen = yield rdata, valid
+
+    # while True:
+    #     waddr = yield from FillingState(lbmem_width, depth, lbmem, raddr, waddr, wdata, wen)
+    #     waddr, raddr = yield from DrainingState(lbmem_width, depth, lbmem, raddr, waddr, wdata, wen)
 
 @si.coroutine
 def inputs_generator(inputs):
@@ -92,17 +114,19 @@ def test_lbmem():
         tester.poke(si_lbmem.wdata, i)
         tester.poke(si_lbmem.wen, 1)
         lbmem.send((i, BitVector(1)))
-        tester.step(2)
+        tester.step(1)
         assert lbmem.valid == (i == 7)
         # tester.print(si_lbmem.valid)
         tester.expect(si_lbmem.valid, i == 7), "Valid only on last write"
         assert lbmem.rdata == 0, "should be 0, even on first read"
         tester.expect(si_lbmem.rdata, 0)
+        tester.step(1)
     for i in range(0, 8):
         tester.poke(si_lbmem.wdata, 0)
         tester.poke(si_lbmem.wen, 0)
         lbmem.send((0, BitVector(0)))
-        tester.step(2)
+        # print(lbmem.lbmem)
+        tester.step(1)
         # i + 1  because 0 was read on the final write, 7 when i == 7 because
         # there's nothing left to drain
         rdata = i + 1 if i < 7 else 0
@@ -112,7 +136,7 @@ def test_lbmem():
         tester.expect(si_lbmem.rdata, rdata)
         # tester.print(si_lbmem.valid)
         tester.expect(si_lbmem.valid, valid)
-    tester.eval()
+        tester.step(1)
 
         # print(f"inputs={inputs}, rdata={lbmem.rdata}, valid={lbmem.valid}")
         # wen = inputs[1]
