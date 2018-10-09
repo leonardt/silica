@@ -265,8 +265,11 @@ class ControlFlowGraph:
                                     if prefix in block2.loads.values():
                                         store_id = -1
                                         for store in stores:
-                                            if prefix in store and "_si_tmp_val_" not in store:
-                                                store_id = max(int(store.split("_")[-1]), store_id)
+                                            try:
+                                                if prefix in store and "_si_tmp_val_" not in store:
+                                                    store_id = max(int(store.split("_")[-1]), store_id)
+                                            except ValueError:
+                                                pass
                                         if store_id < 0:
                                             store_id = 0
                                         block.stores[prefix + "_" + str(store_id)] = prefix
@@ -532,14 +535,14 @@ class ControlFlowGraph:
                         orig_index_map[index_hash] < count:
                     if (name, index, value, count) in self.replacer.array_store_processed:
                         continue
-                    if name not in seen:
-                        seen.add(name)
-                        width = self.width_table[name]
-                        if isinstance(width, MemoryType):
-                            for i in range(width.height):
-                                self.curr_block.append(ast.parse(f"{name}[{i}] = {orig_value}[{i}]").body[0])
-                        else:
-                            self.curr_block.append(ast.parse(f"{name} = {orig_value}").body[0])
+                    # if name not in seen:
+                    #     seen.add(name)
+                    #     width = self.width_table[name]
+                    #     if isinstance(width, MemoryType):
+                    #         for i in range(width.height):
+                    #             self.curr_block.append(ast.parse(f"{name}[{i}] = {orig_value}[{i}]").body[0])
+                    #     else:
+                    #         self.curr_block.append(ast.parse(f"{name} = {orig_value}").body[0])
                     self.replacer.array_store_processed.add((name, index, value, count))
                     index_str = ""
                     for i in index:
@@ -594,14 +597,14 @@ class ControlFlowGraph:
                         orig_index_map[index_hash] < count:
                     if (name, index, value, count) in self.replacer.array_store_processed:
                         continue
-                    if name not in seen:
-                        seen.add(name)
-                        width = self.width_table[name]
-                        if isinstance(width, MemoryType):
-                            for i in range(width.height):
-                                self.curr_block.append(ast.parse(f"{name}[{i}] = {orig_value}[{i}]").body[0])
-                        else:
-                            self.curr_block.append(ast.parse(f"{name} = {orig_value}").body[0])
+                    # if name not in seen:
+                    #     seen.add(name)
+                    #     width = self.width_table[name]
+                    #     if isinstance(width, MemoryType):
+                    #         for i in range(width.height):
+                    #             self.curr_block.append(ast.parse(f"{name}[{i}] = {orig_value}[{i}]").body[0])
+                    #     else:
+                    #         self.curr_block.append(ast.parse(f"{name} = {orig_value}").body[0])
                     self.replacer.array_store_processed.add((name, index, value, count))
                     index_str = ""
                     for i in index:
@@ -671,14 +674,14 @@ class ControlFlowGraph:
                 count = self.replacer.index_map[index_hash]
                 if (name, index, value, count) in self.replacer.array_store_processed:
                     continue
-                if name not in seen:
-                    seen.add(name)
-                    width = self.width_table[name]
-                    if isinstance(width, MemoryType):
-                        for i in range(width.height):
-                            self.curr_block.append(ast.parse(f"{name}[{i}] = {orig_value}[{i}]").body[0])
-                    else:
-                        self.curr_block.append(ast.parse(f"{name} = {orig_value}").body[0])
+                # if name not in seen:
+                #     seen.add(name)
+                #     width = self.width_table[name]
+                #     if isinstance(width, MemoryType):
+                #         for i in range(width.height):
+                #             self.curr_block.append(ast.parse(f"{name}[{i}] = {orig_value}[{i}]").body[0])
+                #     else:
+                #         self.curr_block.append(ast.parse(f"{name} = {orig_value}").body[0])
                 index_str = ""
                 for i in index:
                     index_str = f"[{astor.to_source(i).rstrip()}]" + index_str
@@ -686,7 +689,7 @@ class ControlFlowGraph:
                 true_var = name + f"_si_tmp_val_{value}_i{count}"
                 array_stores_to_process.append(
                     ast.parse(f"{name}{index_str} = {true_var}").body[0])
-            self.add_new_yield(stmt, output_map, array_stores_to_process)
+            self.add_new_yield(stmt, output_map)
             for var in self.replacer.id_counter:
                 self.replacer.id_counter[var] += 1
                 self.width_table[f"{var}_{self.replacer.id_counter[var]}"] = self.width_table[var]
