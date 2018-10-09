@@ -86,7 +86,7 @@ def desugar_for_loops(tree, type_table):
                 # TODO: currently just assumes that this is a list
                 # TODO: maybe this should just reshape the for-loop to use a range()
                 #       iterator and then just call the previous branch
-                index = '__silica_count_' + str(next(counter))
+                index = 'silica_count_' + str(next(counter))
                 start = ast.Num(0)
                 stop  = ast.Num(type_table[node.iter.id][1])
                 step  = ast.Num(1)
