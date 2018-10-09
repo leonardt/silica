@@ -18,6 +18,7 @@ from silica.visitors import collect_names, collect_stores, collect_loads
 from silica.cfg.types import BasicBlock, Yield, Branch, HeadBlock, State
 from silica.cfg.ssa import SSAReplacer
 from silica.liveness import liveness_analysis
+from ..memory import MemoryType
 
 def get_constant(node):
     if isinstance(node, ast.Num) and len(stmt.targets) == 1:
@@ -210,10 +211,10 @@ class ControlFlowGraph:
         # inputs, outputs = parse_arguments(tree.args.args)
         inputs, outputs = get_io(tree)
         self.build(tree)
-        for var in self.replacer.id_counter:
-            width = self.width_table[var]
-            for i in range(self.replacer.id_counter[var] + 1):
-                self.width_table[f"{var}_{i}"] = width
+        # for var in self.replacer.id_counter:
+        #     width = self.width_table[var]
+        #     for i in range(self.replacer.id_counter[var] + 1):
+        #         self.width_table[f"{var}_{i}"] = width
         self.bypass_conds()
         # replacer = SSAReplacer()
         # var_counter = {}
@@ -295,7 +296,7 @@ class ControlFlowGraph:
         #     else:
         #         raise NotImplementedError()
         # assert isinstance(func_def.body[-1], ast.While), "FSMs should end with a ``while True:``"
-        self.replacer = SSAReplacer()
+        self.replacer = SSAReplacer(self.width_table)
         for statement in func_def.body:
             self.process_stmt(statement)
         # self.process_stmt(func_def.body[-1])
@@ -533,7 +534,12 @@ class ControlFlowGraph:
                         continue
                     if name not in seen:
                         seen.add(name)
-                        self.curr_block.append(ast.parse(f"{name} = {orig_value}").body[0])
+                        width = self.width_table[name]
+                        if isinstance(width, MemoryType):
+                            for i in range(width.height):
+                                self.curr_block.append(ast.parse(f"{name}[{i}] = {orig_value}[{i}]").body[0])
+                        else:
+                            self.curr_block.append(ast.parse(f"{name} = {orig_value}").body[0])
                     self.replacer.array_store_processed.add((name, index, value, count))
                     index_str = ""
                     for i in index:
@@ -574,6 +580,7 @@ class ControlFlowGraph:
                 for var, diff in load_store_offset.items():
                     if var in false_stores:
                         self.replacer.id_counter[var] += diff
+                        self.width_table[f"{var}_{self.replacer.id_counter[var]}"] = self.width_table[var]
                 self.replacer.load_store_offset = {}
                 for var in false_stores:
                     if var in self.replacer.id_counter and var in phi_vars:
@@ -589,7 +596,12 @@ class ControlFlowGraph:
                         continue
                     if name not in seen:
                         seen.add(name)
-                        self.curr_block.append(ast.parse(f"{name} = {orig_value}").body[0])
+                        width = self.width_table[name]
+                        if isinstance(width, MemoryType):
+                            for i in range(width.height):
+                                self.curr_block.append(ast.parse(f"{name}[{i}] = {orig_value}[{i}]").body[0])
+                        else:
+                            self.curr_block.append(ast.parse(f"{name} = {orig_value}").body[0])
                     self.replacer.array_store_processed.add((name, index, value, count))
                     index_str = ""
                     for i in index:
@@ -602,10 +614,18 @@ class ControlFlowGraph:
                 if false_var is None:
                     false_var = f"{base_var}_{self.replacer.id_counter[base_var]}"
                     self.replacer.id_counter[base_var] += 1
+                    self.width_table[false_var] = self.width_table[base_var]
                 next_var = f"{base_var}_{self.replacer.id_counter[base_var]}"
-                self.curr_block.statements.append(
-                    # 0, ast.parse(f"{last_var} = phi({true_var}, {false_var}, cond={astor.to_source(stmt.test)})").body[0])
-                    ast.parse(f"{next_var} = phi({true_var} if {astor.to_source(stmt.test).rstrip()} else {false_var})").body[0])
+                self.width_table[next_var] = self.width_table[base_var]
+                width = self.width_table[base_var]
+                if isinstance(width, MemoryType):
+                    for i in range(width.height):
+                        self.curr_block.append(
+                            ast.parse(f"{next_var}[{i}] = phi({true_var}[{i}] if {astor.to_source(stmt.test).rstrip()} else {false_var}[{i}])").body[0]
+                        )
+                else:
+                    self.curr_block.statements.append(
+                        ast.parse(f"{next_var} = phi({true_var} if {astor.to_source(stmt.test).rstrip()} else {false_var})").body[0])
 
             add_edge(end_then_block, self.curr_block)
             if stmt.orelse:
@@ -653,7 +673,12 @@ class ControlFlowGraph:
                     continue
                 if name not in seen:
                     seen.add(name)
-                    self.curr_block.append(ast.parse(f"{name} = {orig_value}").body[0])
+                    width = self.width_table[name]
+                    if isinstance(width, MemoryType):
+                        for i in range(width.height):
+                            self.curr_block.append(ast.parse(f"{name}[{i}] = {orig_value}[{i}]").body[0])
+                    else:
+                        self.curr_block.append(ast.parse(f"{name} = {orig_value}").body[0])
                 index_str = ""
                 for i in index:
                     index_str = f"[{astor.to_source(i).rstrip()}]" + index_str
@@ -664,6 +689,7 @@ class ControlFlowGraph:
             self.add_new_yield(stmt, output_map, array_stores_to_process)
             for var in self.replacer.id_counter:
                 self.replacer.id_counter[var] += 1
+                self.width_table[f"{var}_{self.replacer.id_counter[var]}"] = self.width_table[var]
         else:
             self.replacer.visit(stmt)
             self.curr_block.add(stmt)

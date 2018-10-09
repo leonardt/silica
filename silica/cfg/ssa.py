@@ -3,7 +3,8 @@ import astor
 
 
 class SSAReplacer(ast.NodeTransformer):
-    def __init__(self):
+    def __init__(self, width_table):
+        self.width_table = width_table
         self.id_counter = {}
         self.phi_vars = {}
         self.load_store_offset = {}
@@ -85,4 +86,5 @@ class SSAReplacer(ast.NodeTransformer):
             #     self.increment_id(node.id)
             #     self.seen.add(node.id)
             store_offset = self.load_store_offset.get(node.id, 0)
+            self.width_table[f"{node.id}_{self.id_counter[node.id]}"] = self.width_table[node.id]
             return ast.Name(f"{node.id}_{self.id_counter[node.id] + store_offset}", ast.Store())

@@ -7,6 +7,7 @@ from .ast_utils import *
 import magma
 from .visitors.collect_stores import collect_stores
 from .cfg.types import HeadBlock
+from .memory import MemoryType
 
 class Context:
     def __init__(self, name):
@@ -247,19 +248,47 @@ def compile_states(ctx, states, one_state, width_table, registers,
                 for target, value in state.path[0].loads.items():
                     if (target, value) not in seen:
                         seen.add((target, value))
-                        comb_body.append(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
-                        comb_body[-1].blk = 1
+                        width = width_table[value]
+                        if isinstance(width, MemoryType):
+                            for i in range(width.height):
+                                comb_body.append(
+                                    ctx.assign(vg.Pointer(ctx.get_by_name(target), i),
+                                               vg.Pointer(ctx.get_by_name(value), i)))
+                                comb_body[-1].blk = 1
+                        else:
+                            comb_body.append(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
+                            comb_body[-1].blk = 1
                 for value, target in state.path[0].stores.items():
                     if (target, value) not in seen:
                         seen.add((target, value))
+                        width = width_table[value]
                         if target in registers:
                             if not one_state:
                                 cond = ctx.get_by_name('yield_state_next') == state.start_yield_id
-                                seq.If(cond)(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
+                                if isinstance(width, MemoryType):
+                                    if_body = []
+                                    for i in range(width.height):
+                                        if_body.append(ctx.assign(vg.Pointer(ctx.get_by_name(target), i),
+                                                                  vg.Pointer(ctx.get_by_name(value), i)))
+                                    seq.If(cond)(if_body)
+                                else:
+                                    seq.If(cond)(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
                             else:
-                                seq(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
+                                if isinstance(width, MemoryType):
+                                    for i in range(width.height):
+                                        seq(ctx.assign(vg.Pointer(ctx.get_by_name(target), i),
+                                                       vg.Pointer(ctx.get_by_name(value), i)))
+                                else:
+                                    seq(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
                         else:
-                            comb_body.append(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
+                            if isinstance(width, MemoryType):
+                                for i in range(width.height):
+                                    comb_body.append(ctx.assign(
+                                        vg.Pointer(ctx.get_by_name(target), i),
+                                        vg.Pointer(ctx.get_by_name(value), i))
+                                    )
+                            else:
+                                comb_body.append(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
         statements = []
         for state in states:
             index = len(statements)
