@@ -6,6 +6,7 @@ A language for constructing hardware finite state machines using coroutines.
 
 # Setup
 ```
+pip install -r requirements.txt
 pip install -e .
 ```
 

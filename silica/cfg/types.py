@@ -28,6 +28,7 @@ class HeadBlock(Block):
     def __init__(self):
         super().__init__()
         self.initial_statements = []
+        self.loads = {}
 
     def add(self, stmt):
         self.initial_statements.append(stmt)
@@ -42,6 +43,9 @@ class BasicBlock(Block):
         self.statements = []
 
     def add(self, stmt):
+        self.statements.append(stmt)
+
+    def append(self, stmt):
         self.statements.append(stmt)
 
     def __iter__(self):
@@ -69,6 +73,8 @@ class Yield(Block):
         self.value = value
         self.output_map = output_map
         self.array_stores_to_process = array_stores_to_process
+        self.loads = {}
+        self.stores = {}
 
     @property
     def is_initial_yield(self):
