@@ -14,9 +14,8 @@ def Serializer4():
     data1 = bits(0, 16)
     data2 = bits(0, 16)
     # I0, I1, I2, I3 = yield
-    O = bits(0, 16)
+    I0, I1, I2, I3 = yield
     while True:
-        I0, I1, I2, I3 = yield O
         O = I0
         # data = I[1:]
         data0 = I1
@@ -28,6 +27,7 @@ def Serializer4():
         O = data1
         I0, I1, I2, I3 = yield O
         O = data2
+        I0, I1, I2, I3 = yield O
         # for i in range(3):
         #     O = data[i]
         #     I0, I1, I2, I3 = yield O
@@ -54,18 +54,20 @@ def test_ser4():
     for I in inputs:
         for j in range(len(I)):
             tester.poke(getattr(serializer_si, f"I{j}"), I[j])
-        tester.step(2)
+        tester.step(1)
         ser.send(I)
         assert ser.O == I[0]
         tester.print(serializer_si.O)
         tester.expect(serializer_si.O, I[0])
+        tester.step(1)
         for i in range(3):
             for j in range(len(I)):
-                tester.poke(getattr(serializer_si, f"I{j}"), I[j])
-            tester.step(2)
+                tester.poke(getattr(serializer_si, f"I{j}"), 0)
+            tester.step(1)
             ser.send([0,0,0,0])
             assert ser.O == I[i + 1]
             tester.expect(serializer_si.O, I[i + 1])
+            tester.step(1)
     tester.compile_and_run(target="verilator", directory="tests/build",
                            flags=['-Wno-fatal'])
 

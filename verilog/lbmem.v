@@ -20,7 +20,7 @@ module lbmem(
       cnt <= cnt + {3'h0,wen};
     end
     else begin
-       cnt <= wen ? cnt : cnt-1;
+      cnt <= wen ? cnt : cnt-1;
     end
   end
 
@@ -32,11 +32,11 @@ module lbmem(
       state <= (cnt!=1 | wen);
     end
   end
-  assign valid = state; 
+  assign valid = (state & (cnt!=1 | wen)) | (cnt == 7 & wen); 
 
   reg [5:0] waddr = 0;
   wire [5:0] raddr;
-  assign raddr = waddr - {2'h0,cnt};
+  assign raddr = waddr - {2'h0, wen ? cnt : cnt-1};
 
   always @(posedge CLK) begin
     if (wen) begin
