@@ -131,6 +131,8 @@ class Context:
                     self.translate(stmt.slice.lower),
                     self.translate(stmt.slice.upper)
                 )
+        elif is_tuple(stmt):
+            return vg.Cat(*[self.translate(elt) for elt in stmt.elts])
         elif is_unary_op(stmt):
             return self.translate(stmt.op)(self.translate(stmt.operand))
 
