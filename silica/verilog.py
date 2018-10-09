@@ -183,10 +183,8 @@ def compile_statements(ctx, seq, comb_body, states, one_state, width_table,
         conds = []
         yields = set()
         contained = [state for state in states if statement in state.statements]
-        print(ast.dump(statement))
         stores = collect_stores(statement)
         has_reg = any(x in registers for x in stores)
-        print(has_reg, stores, contained == states)
         if contained != states:
             for state in states:
                 if statement in state.statements:
@@ -251,7 +249,11 @@ def compile_states(ctx, states, one_state, width_table, registers,
                     if (target, value) not in seen:
                         seen.add((target, value))
                         if target in registers:
-                            seq(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
+                            if not one_state:
+                                cond = ctx.get_by_name('yield_state_next') == state.start_yield_id
+                                seq.If(cond)(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
+                            else:
+                                seq(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
                         else:
                             comb_body.append(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
         statements = []
@@ -299,6 +301,7 @@ def compile_states(ctx, states, one_state, width_table, registers,
                     comb_body.append(vg.If(comb_cond)(output_stmts))
                 else:
                     comb_body[-1] = comb_body[-1].Elif(comb_cond)(output_stmts)
+            comb_body.insert(0, next_state)
 
         else:
             for output, var in states[0].path[-1].output_map.items():
@@ -308,8 +311,9 @@ def compile_states(ctx, states, one_state, width_table, registers,
         raise NotImplementedError(strategy)
 
     ctx.module.Always(vg.SensitiveAll())(
-        [next_state] + comb_body
+        comb_body
     )
-    seq(
-        ctx.assign(ctx.get_by_name('yield_state'), ctx.get_by_name('yield_state_next'))
-    )
+    if not one_state:
+        seq(
+            ctx.assign(ctx.get_by_name('yield_state'), ctx.get_by_name('yield_state_next'))
+        )

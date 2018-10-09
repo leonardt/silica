@@ -59,25 +59,26 @@ def test_UART():
     tester = fault.Tester(si_uart, si_uart.CLK)
     tester.step(2)
     for message in [0xDE, 0xAD]:
+        tester.step(1)
         tester.expect(si_uart.ready, 1)
         tester.poke(si_uart.data, message)
         tester.poke(si_uart.valid, 1)
         tester.step(2)
+        tester.expect(si_uart.tx, 0)
         tester.poke(si_uart.data, 0xFF)
         tester.poke(si_uart.valid, 0)
         tester.expect(si_uart.ready, 0)
+        tester.step(1)
 
         # start bit
-        tester.expect(si_uart.tx, 0)
         for i in range(8):
-            tester.step(2)
+            tester.print(si_uart.CLK)
             tester.expect(si_uart.tx, (message >> (7-i)) & 1)
-        tester.step(2)
+            tester.step(2)
         # end bit
         tester.expect(si_uart.tx, 1)
         tester.step(2)
         tester.expect(si_uart.ready, 1)
-        tester.eval()
 
     tester.compile_and_run(target="verilator", directory="tests/build",
                            flags=['-Wno-fatal'])

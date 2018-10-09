@@ -237,7 +237,7 @@ class ControlFlowGraph:
                 if isinstance(block, (HeadBlock, Yield)):
                     loads = self.collect_loads_before_yield(block.outgoing_edge[0])
                     for load in loads:
-                        if load in block.live_ins:
+                        if load in block.live_ins and "_si_tmp_val_" not in load:
                             prefix = "_".join(load.split("_")[:-1])
                             self.registers.add(prefix)
                             block.loads[load] = prefix
@@ -249,16 +249,22 @@ class ControlFlowGraph:
                     stores = set()
                     for edge, _ in block.incoming_edges:
                         stores |= self.collect_stores_after_yield(edge)
-                    for live_in in block.live_ins:
-                        prefix = "_".join(live_in.split("_")[:-1])
-                        if live_in in block.live_outs:
-                            store_id = -1
-                            for store in stores:
-                                if prefix in store:
-                                    store_id = max(int(store.split("_")[-1]), store_id)
-                            block.stores[prefix + "_" + str(store_id)] = prefix
+                    for store in stores:
+                        prefix = "_".join(store.split("_")[:-1])
+                        for path2 in self.paths:
+                            for block2 in path2:
+                                if isinstance(block2, Yield):
+                                    if prefix in block2.loads.values():
+                                        store_id = -1
+                                        for store in stores:
+                                            if prefix in store and "_si_tmp_val_" not in store:
+                                                store_id = max(int(store.split("_")[-1]), store_id)
+                                        if store_id < 0:
+                                            store_id = 0
+                                        block.stores[prefix + "_" + str(store_id)] = prefix
+                                        break
 
-        self.render()
+        # self.render()
         # render_fsm(self.states)
         # exit()
 
@@ -461,20 +467,23 @@ class ControlFlowGraph:
                     self.curr_block.statements.append(
                         # ast.parse(f"{orig_var} = phi({true_var}, {orig_var}, cond={astor.to_source(stmt.test)})").body[0])
                         ast.parse(f"{next_var} = phi({true_var} if {astor.to_source(stmt.test).rstrip()} else {false_var})").body[0])
-            for (name, index), value in self.replacer.array_stores.items():
+            seen = set()
+            for (name, index), (value, orig_value) in self.replacer.array_stores.items():
                 index_hash = "_".join(ast.dump(i) for i in index)
                 count = self.replacer.index_map[index_hash]
                 if not (name, index) in orig_array_stores or \
                         orig_index_map[index_hash] < count:
                     if (name, index, value, count) in self.replacer.array_store_processed:
                         continue
+                    if name not in seen:
+                        seen.add(name)
+                        self.curr_block.append(ast.parse(f"{name} = {orig_value}").body[0])
                     self.replacer.array_store_processed.add((name, index, value, count))
                     index_str = ""
                     for i in index:
                         index_str = f"[{astor.to_source(i).rstrip()}]" + index_str
-                    false_var = name + index_str
-                    true_var = name + f"_{value}_i{count}"
-                    self.curr_block.statements.append( ast.parse(f"{name}{index_str} = {true_var} if {astor.to_source(stmt.test).rstrip()} else {false_var}").body[0])
+                    true_var = name + f"_si_tmp_val_{value}_i{count}"
+                    self.curr_block.statements.append(ast.parse(f"{name}{index_str} = {true_var}").body[0])
             # Exit the current basic block by looping back to the branch
             # node
             add_edge(self.curr_block, branch)
@@ -485,15 +494,15 @@ class ControlFlowGraph:
         elif isinstance(stmt, (ast.If,)):
             end_then_block = self.curr_block
             true_counts = {}
-            for (name, index), value in self.replacer.array_stores.items():
+            for (name, index), (value, orig_value) in self.replacer.array_stores.items():
                 index_hash = "_".join(ast.dump(i) for i in index)
                 count = self.replacer.index_map[index_hash]
                 true_counts[name, index] = count
             if stmt.orelse:
                 false_stores = set()
                 for sub_stmt in stmt.orelse:
-                    # false_stores |= collect_stores(sub_stmt)
-                    false_stores |= collect_names(sub_stmt, ast.Store)
+                    false_stores |= collect_stores(sub_stmt)
+                    # false_stores |= collect_names(sub_stmt, ast.Store)
                 self.curr_block = self.gen_new_block()
                 add_false_edge(branch, self.curr_block)
                 load_store_offset = {}
@@ -514,6 +523,23 @@ class ControlFlowGraph:
                     if var in self.replacer.id_counter and var in phi_vars:
                         phi_vars[var][1] = f"{var}_{self.replacer.id_counter[var]}"
                 end_else_block = self.curr_block
+            seen = set()
+            for (name, index), (value, orig_value) in self.replacer.array_stores.items():
+                index_hash = "_".join(ast.dump(i) for i in index)
+                count = self.replacer.index_map[index_hash]
+                if not (name, index) in orig_array_stores or \
+                        orig_index_map[index_hash] < count:
+                    if (name, index, value, count) in self.replacer.array_store_processed:
+                        continue
+                    if name not in seen:
+                        seen.add(name)
+                        self.curr_block.append(ast.parse(f"{name} = {orig_value}").body[0])
+                    self.replacer.array_store_processed.add((name, index, value, count))
+                    index_str = ""
+                    for i in index:
+                        index_str = f"[{astor.to_source(i).rstrip()}]" + index_str
+                    true_var = name + f"_si_tmp_val_{value}_i{count}"
+                    self.curr_block.statements.append(ast.parse(f"{name}{index_str} = {true_var}").body[0])
             self.curr_block = self.gen_new_block()
             for base_var, (true_var, false_var) in phi_vars.items():
                 self.replacer.id_counter[base_var] += 1
@@ -521,31 +547,6 @@ class ControlFlowGraph:
                 self.curr_block.statements.append(
                     # 0, ast.parse(f"{last_var} = phi({true_var}, {false_var}, cond={astor.to_source(stmt.test)})").body[0])
                     ast.parse(f"{next_var} = phi({true_var} if {astor.to_source(stmt.test).rstrip()} else {false_var})").body[0])
-            for (name, index), value in self.replacer.array_stores.items():
-                index_hash = "_".join(ast.dump(i) for i in index)
-                count = self.replacer.index_map[index_hash]
-                if not (name, index) in orig_array_stores or \
-                        orig_index_map[index_hash] < count:
-                    if (name, index, value, count) in self.replacer.array_store_processed:
-                        continue
-                    self.replacer.array_store_processed.add((name, index, value, count))
-                    index_str = ""
-                    for i in index:
-                        index_str = f"[{astor.to_source(i).rstrip()}]" + index_str
-                    false_var = name + index_str
-                    if stmt.orelse:
-                        if (name, index) not in true_counts:
-                            true_var = name + index_str
-                            false_var = name + f"_{value}_i{count}"
-                        elif true_counts[name, index] == count:
-                            true_var = name + f"_{value}_i{count}"
-                        else:
-                            true_var = name + f"_{value}_i{count - 1}"
-                            false_var = name + f"_{value}_i{count}"
-                    else:
-                        true_var = name + f"_{value}_i{count}"
-                    self.curr_block.statements.insert(
-                        0, ast.parse(f"{name}{index_str} = {true_var} if {astor.to_source(stmt.test).rstrip()} else {false_var}").body[0])
 
             add_edge(end_then_block, self.curr_block)
             if stmt.orelse:
@@ -585,16 +586,20 @@ class ControlFlowGraph:
                 else:
                     raise NotImplementedError(stmt.value.value)
             array_stores_to_process = []
-            for (name, index), value in self.replacer.array_stores.items():
+            seen = set()
+            for (name, index), (value, orig_value) in self.replacer.array_stores.items():
                 index_hash = "_".join(ast.dump(i) for i in index)
                 count = self.replacer.index_map[index_hash]
                 if (name, index, value, count) in self.replacer.array_store_processed:
                     continue
+                if name not in seen:
+                    seen.add(name)
+                    self.curr_block.append(ast.parse(f"{name} = {orig_value}").body[0])
                 index_str = ""
                 for i in index:
                     index_str = f"[{astor.to_source(i).rstrip()}]" + index_str
                 self.replacer.array_store_processed.add((name, index, value, count))
-                true_var = name + f"_{value}_i{count}"
+                true_var = name + f"_si_tmp_val_{value}_i{count}"
                 array_stores_to_process.append(
                     ast.parse(f"{name}{index_str} = {true_var}").body[0])
             self.add_new_yield(stmt, output_map, array_stores_to_process)

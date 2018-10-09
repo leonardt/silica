@@ -45,6 +45,9 @@ class BasicBlock(Block):
     def add(self, stmt):
         self.statements.append(stmt)
 
+    def append(self, stmt):
+        self.statements.append(stmt)
+
     def __iter__(self):
         return iter(self.statements)
 

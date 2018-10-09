@@ -168,9 +168,12 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
         width = width_table[var]
         for i in range(cfg.replacer.id_counter[var] + 1):
             if f"{var}_{i}" not in registers:
-                ctx.declare_wire(f"{var}_{i}", width)
+                if isinstance(width, MemoryType):
+                    ctx.declare_wire(f"{var}_{i}", width.width, width.height)
+                else:
+                    ctx.declare_wire(f"{var}_{i}", width)
 
-    for (name, index), value in cfg.replacer.array_stores.items():
+    for (name, index), (value, orig_value) in cfg.replacer.array_stores.items():
         width = width_table[name]
         if isinstance(width, MemoryType):
             width = width.width
@@ -180,8 +183,10 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
         index_hash = "_".join(ast.dump(i) for i in index)
         count = cfg.replacer.index_map[index_hash]
         for i in range(count + 1):
-            var = name + f"_{value}_i{count}"
-            width_table[var] = width
+            var = name + f"_si_tmp_val_{value}_i{i}"
+            if var not in width_table:
+                width_table[var] = width
+                ctx.declare_wire(var, width)
 
     # declare regs
     for register in registers:
