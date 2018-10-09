@@ -11,7 +11,6 @@ from silica.coroutine import Coroutine
 from silica.cfg import ControlFlowGraph, BasicBlock, HeadBlock
 from silica.cfg.control_flow_graph import render_paths_between_yields, build_state_info, render_fsm, get_constant
 import silica.ast_utils as ast_utils
-from silica.liveness import liveness_analysis
 from silica.transformations import specialize_constants, replace_symbols, \
     constant_fold, desugar_for_loops, specialize_evals, inline_yield_from_functions
 from silica.visitors import collect_names

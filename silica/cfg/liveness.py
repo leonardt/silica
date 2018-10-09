@@ -1,5 +1,5 @@
 import ast
-import silica.cfg.types as cfg_types
+import silica.cfg.types as types
 import silica.ast_utils as ast_utils
 
 class Analyzer(ast.NodeVisitor):
@@ -40,19 +40,19 @@ class Analyzer(ast.NodeVisitor):
 
 def analyze(node):
     analyzer = Analyzer()
-    if isinstance(node, cfg_types.Yield):
+    if isinstance(node, types.Yield):
         analyzer.visit(node.value)
         analyzer.gen = set(value for value in node.output_map.values())
         # if not node.terminal:  # We only use assigments
         #     analyzer.gen = set()
         # else:
         # analyzer.kill = set()
-    elif isinstance(node, cfg_types.HeadBlock):
+    elif isinstance(node, types.HeadBlock):
         for statement in node.initial_statements:
             analyzer.visit(statement)
         if hasattr(node, "initial_yield"):
             analyzer.visit(node.initial_yield.value)
-    elif isinstance(node, cfg_types.Branch):
+    elif isinstance(node, types.Branch):
         analyzer.visit(node.cond)
     else:
         for statement in node.statements:
@@ -64,8 +64,8 @@ def do_analysis(block, seen=set()):
         return block.live_ins
     seen.add(block)
     block.gen, block.kill = analyze(block)
-    if not isinstance(block, cfg_types.Yield):
-        if isinstance(block, cfg_types.Branch):
+    if not isinstance(block, types.Yield):
+        if isinstance(block, types.Branch):
             true_live_ins = do_analysis(block.true_edge, seen)
             false_live_ins = do_analysis(block.false_edge, seen)
             block.live_outs = true_live_ins | false_live_ins
@@ -77,7 +77,7 @@ def do_analysis(block, seen=set()):
 
 def liveness_analysis(cfg):
     for block in cfg.blocks:
-        if isinstance(block, (cfg_types.HeadBlock, cfg_types.Yield)):
+        if isinstance(block, (types.HeadBlock, types.Yield)):
             block.live_outs = do_analysis(block.outgoing_edge[0])
             block.gen, block.kill = analyze(block)
             still_live = block.live_outs - block.kill

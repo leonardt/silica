@@ -17,7 +17,7 @@ from silica.transformations import specialize_constants, replace_symbols, consta
 from silica.visitors import collect_names, collect_stores, collect_loads
 from silica.cfg.types import BasicBlock, Yield, Branch, HeadBlock, State
 from silica.cfg.ssa import SSAReplacer
-from silica.liveness import liveness_analysis
+from .liveness import liveness_analysis
 from ..memory import MemoryType
 
 def get_constant(node):
