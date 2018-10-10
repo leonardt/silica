@@ -8,10 +8,11 @@ from common import evaluate_circuit
 
 @silica.coroutine
 def SilicaCounter(width, init=0, incr=1):
-    O = bits(init, width)
+    count = bits(init, width)
     while True:
+        O = count
+        count = count + bits(incr, width)
         yield O
-        O = O + bits(incr, width)
 
 def test_counter():
     N = 3

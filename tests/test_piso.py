@@ -1,3 +1,4 @@
+from magma import *
 import silica
 import magma as m
 m.set_mantle_target("ice40")
@@ -15,9 +16,8 @@ def DefinePISO(n):
     def SIPISO():
         values = bits(0, n)
         # O = values[-1]
-        O = values[n-1]
+        PI, SI, LOAD = yield
         while True:
-            PI, SI, LOAD = yield O
             if LOAD:
                 values = PI
             else:
@@ -26,6 +26,7 @@ def DefinePISO(n):
                     values[i] = values[i - 1]
                 values[0] = SI
             O = values[n-1]
+            PI, SI, LOAD = yield O
     SIPISO._name = f"SIPISO{n}"
     return SIPISO
 
@@ -46,46 +47,76 @@ def inputs_generator(message):
 
 def test_PISO():
     piso = DefinePISO(10)()
-    piso_magma = silica.compile(piso, "tests/build/piso_si.v")
-    tester = fault.Tester(piso_magma, piso_magma.CLK)
+    si_piso = silica.compile(piso, "tests/build/si_piso.v")
+    # si_piso = m.DefineFromVerilogFile("tests/build/si_piso.v",
+    #                                  type_map={"CLK": m.In(m.Clock)})[0]
+    tester = fault.Tester(si_piso, si_piso.CLK)
     message = [0xDE, 0xAD, 0xBE, 0xEF]
     inputs = inputs_generator(message)
     for i in range(len(message)):
-        expected_outputs = inputs.PI[:]
+        actual_outputs = []
+        expected_outputs = [False] + inputs.PI[:]
         expected_state = inputs.PI[:]
         piso.send((inputs.PI, inputs.SI, inputs.LOAD))
+        actual_outputs.insert(0, piso.O)
         # print(f"PI={inputs.PI}, SI={inputs.SI}, LOAD={inputs.LOAD}, O={piso.O}, values={piso.values}")
-        tester.poke(piso_magma.PI  , BitVector(inputs.PI))
-        tester.poke(piso_magma.SI  , BitVector(inputs.SI))
-        tester.poke(piso_magma.LOAD, BitVector(inputs.LOAD))
+        tester.poke(si_piso.PI  , BitVector(inputs.PI))
+        tester.poke(si_piso.SI  , BitVector(inputs.SI))
+        tester.poke(si_piso.LOAD, BitVector(inputs.LOAD))
         next(inputs)
         tester.step(2)
-        actual_outputs = []
-        for i in range(10):
-            expected_state = [inputs.SI] + expected_state[:-1]
-            tester.poke(piso_magma.PI  , BitVector(inputs.PI))
-            tester.poke(piso_magma.SI  , BitVector(inputs.SI))
-            tester.poke(piso_magma.LOAD, BitVector(inputs.LOAD))
-            actual_outputs.insert(0, piso.O)
+        tester.expect(si_piso.O, piso.O)
+        for j in range(10):
+            tester.poke(si_piso.PI  , BitVector(inputs.PI))
+            tester.poke(si_piso.SI  , BitVector(inputs.SI))
+            tester.poke(si_piso.LOAD, BitVector(inputs.LOAD))
+            assert piso.values == expected_state, (i, j)
             piso.send((inputs.PI, inputs.SI, inputs.LOAD))
-            tester.step(2)
-            tester.expect(piso_magma.O, piso.O)
-            assert piso.values == expected_state
+            actual_outputs.insert(0, piso.O)
+            expected_state = [inputs.SI] + expected_state[:-1]
+            tester.step(1)
+            tester.expect(si_piso.O, piso.O)
+            tester.step(1)
             next(inputs)
         assert actual_outputs == expected_outputs
 
     tester.compile_and_run(target="verilator", directory="tests/build", flags=['-Wno-fatal'])
     # check that they are the same
-    mantle_PISO = mantle.DefinePISO(10)
-    mantle_tester = tester.retarget(mantle_PISO, clock=mantle_PISO.CLK)
-    m.compile("tests/build/mantle_piso", mantle_PISO)
+
+    # mantle_PISO = mantle.DefinePISO(10)
+    from mantle import Mux
+    from mantle.common.register import _RegisterName, Register, FFs
+    T = Bits(10)
+    n = 10
+    init = 0
+    has_ce = False
+    has_reset = False
+    class _PISO(Circuit):
+        name = _RegisterName('PISO', n, init, has_ce, has_reset)
+        IO = ['SI', In(Bit), 'PI', In(T), 'LOAD', In(Bit),
+              'O', Out(Bit)] + ClockInterface(has_ce,has_reset)
+        @classmethod
+        def definition(piso):
+            def mux2(y):
+                return curry(Mux(2), prefix='I')
+
+            mux = braid(col(mux2, n), forkargs=['S'])
+            reg = Register(n - 1, init, has_ce=has_ce, has_reset=has_reset)
+
+            si = concat(array(piso.SI),reg.O[0:n-1])
+            mux(si, piso.PI, piso.LOAD)
+            reg(mux.O[:-1])
+            wire(mux.O[-1], piso.O)
+            wireclock(piso, reg)
+    mantle_tester = tester.retarget(_PISO, clock=_PISO.CLK)
+    m.compile("tests/build/mantle_piso", _PISO)
     mantle_tester.compile_and_run(target="verilator", directory="tests/build",
                                   include_verilog_libraries=['../cells_sim.v'])
     if __name__ == '__main__':
 
 
         print("===== BEGIN : SILICA RESULTS =====")
-        evaluate_circuit("piso_si", "SIPISO10")
+        evaluate_circuit("si_piso", "SIPISO10")
         print("===== END   : SILICA RESULTS =====")
         print("===== BEGIN : MANTLE RESULTS =====")
         evaluate_circuit("mantle_piso", "PISO10")

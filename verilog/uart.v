@@ -27,6 +27,9 @@ module uart_tx(input CLK, input [7:0] data, input valid, output tx, output ready
                     state <= 0;
                 end
         endcase
+        $display("valid=%d", valid);
+        $display("tx=%d", tx);
+        $display("send_cnt=%d", send_cnt);
     end
-    assign ready = state == 0;
+    assign ready = state == 0 & ~valid;
 endmodule
