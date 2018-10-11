@@ -31,9 +31,9 @@ inputs = [[4,5,6,7],[10,16,8,3]]
 
 def test_ser4():
     ser = Serializer4()
-    # serializer2_si = si.compile(ser, "tests/build/serializer2_si.v")
-    serializer2_si = m.DefineFromVerilogFile("tests/build/serializer2_si.v",
-                                type_map={"CLK": m.In(m.Clock)})[0]
+    serializer2_si = si.compile(ser, "tests/build/serializer2_si.v")
+    # serializer2_si = m.DefineFromVerilogFile("tests/build/serializer2_si.v",
+    #                             type_map={"CLK": m.In(m.Clock)})[0]
     tester = fault.Tester(serializer2_si, serializer2_si.CLK)
     for I in inputs:
         for j in range(len(I)):

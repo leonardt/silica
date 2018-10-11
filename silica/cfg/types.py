@@ -2,6 +2,7 @@
 Class definitions for nodes in the CFG
 """
 import ast
+import astor
 
 class Block:
     def __init__(self):
@@ -28,10 +29,15 @@ class HeadBlock(Block):
     def __init__(self):
         super().__init__()
         self.initial_statements = []
+        self.statements = self.initial_statements
         self.loads = {}
 
     def add(self, stmt):
         self.initial_statements.append(stmt)
+
+    def print_statements(self):
+        print(self)
+        print("    " + "\n    ".join(astor.to_source(statement).strip() for statement in self.statements))
 
     def __iter__(self):
         return iter(self.initial_statements)
@@ -47,6 +53,10 @@ class BasicBlock(Block):
 
     def append(self, stmt):
         self.statements.append(stmt)
+
+    def print_statements(self):
+        print(self)
+        print("    " + "\n    ".join(astor.to_source(statement).strip() for statement in self.statements))
 
     def __iter__(self):
         return iter(self.statements)

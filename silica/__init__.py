@@ -5,7 +5,7 @@ config = Config()
 
 import magma as m
 from magma import Bit, zext, concat, Array, Bits, UInt
-from magma.bit_vector import BitVector
+from bit_vector import BitVector
 import operator
 
 

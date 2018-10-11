@@ -1,6 +1,9 @@
 import ast
 import astor
 
+from collections import defaultdict
+from silica.cfg.types import BasicBlock, Yield, Branch, HeadBlock, State
+
 
 class SSAReplacer(ast.NodeTransformer):
     def __init__(self, width_table):
@@ -88,3 +91,73 @@ class SSAReplacer(ast.NodeTransformer):
             store_offset = self.load_store_offset.get(node.id, 0)
             self.width_table[f"{node.id}_{self.id_counter[node.id]}"] = self.width_table[node.id]
             return ast.Name(f"{node.id}_{self.id_counter[node.id] + store_offset}", ast.Store())
+
+
+class Replacer(ast.NodeTransformer):
+    def __init__(self, var_to_curr_id_map):
+        super().__init__()
+        self.var_to_curr_id_map = var_to_curr_id_map
+        self.stores = set()
+
+
+    def visit_Assign(self, node):
+        node.value = self.visit(node.value)
+        node.targets = [self.visit(target) for target in node.targets]
+        return node
+
+    def visit_Name(self, node):
+        if isinstance(node.ctx, ast.Store):
+            self.var_to_curr_id_map[node.id] += 1
+        node.id += f"_{self.var_to_curr_id_map[node.id]}"
+        return node
+
+
+def convert_to_ssa(cfg):
+    replacer = SSAReplacer(cfg.width_table)
+    yield_to_paths_map = defaultdict(lambda: [])
+    for path in cfg.paths:
+        yield_to_paths_map[path[-1]].append(path)
+
+    processed = set()
+    var_to_curr_id_map = defaultdict(lambda: 0)
+    for end_yield, paths in yield_to_paths_map.items():
+        blocks_to_process = []
+        for path in paths:
+            if isinstance(path[0], HeadBlock):
+                blocks_to_process.append(path[0])
+            elif all(isinstance(edge, Yield) or edge in processed for edge, _ in path[1].incoming_edges):
+                blocks_to_process.append(path[1])
+        while blocks_to_process:
+            block = blocks_to_process.pop(0)
+            processed.add(block)
+            print(block)
+            print(block.incoming_edges)
+            if isinstance(block, BasicBlock):
+                block.print_statements()
+            if len(block.incoming_edges) == 1:
+                predecessor, _ = next(iter(block.incoming_edges))
+                if isinstance(predecessor, Yield):
+                    loads = []
+                    for var in block.live_ins:
+                        loads.append(ast.parse(f"{var}_{var_to_curr_id_map[var]} = {var}"))
+                        var_to_curr_id_map[var] += 1
+            replacer = Replacer(var_to_curr_id_map)
+            if isinstance(block, BasicBlock):
+                for statement in block.statements:
+                    replacer.visit(statement)
+                block.statements = loads + block.statements
+            elif isinstance(block, Branch):
+                block.cond = replacer.visit(block.cond)
+
+            for successor, _ in block.outgoing_edges:
+                if successor in processed:
+                    continue
+                if all(isinstance(edge, Yield) or edge in processed for edge, _ in successor.incoming_edges):
+                    blocks_to_process.append(successor)
+
+
+
+
+    cfg.render()
+    exit()
+
