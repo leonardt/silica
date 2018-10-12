@@ -1,3 +1,47 @@
+"""
+For each yield, find all paths from other yields that lead into it.
+
+    For each path,
+        Create a queue of blocks to process, where a block is in the queue only if
+        all blocks leading into it have been processed, or the block leading into it
+        is a Yield
+
+        Initialize the queue with the blocks following the start yields (that
+        is, the blocks following the yields that start a path ending in the
+        current end yield).
+            Note: there could be a block that immediately follows a yield, but
+                  also has a path from another block, that may itself, come
+                  from another yield. In this case, the block should only be
+                  added to queue *after* the block leading into it has been
+                  processed, so even though it's an immediate successor of a
+                  yield, it may not go in the initial queue.
+
+        For each block, if a variable is read, check its predecessor:
+            If the predecessor is a yield, perform a load from any live
+            variables coming into the path into a fresh temporary variable,
+            e.g. `a_3 = a`.
+
+            If the predecessor is a basic block, get the latest ssa values of
+            assigned variables, use this to set the current state of the ssa
+            variable replacer.
+
+            If it has multiple predecessors, insert a phi node to select the
+            correct predecessor.  The condition of the phi node (mux) are,
+            select this value if the start yield was one of the yields starting
+            a path leading into the predecssor and the result of branches match
+            the edges along the path in the control flow graph from the start
+            yields.
+
+                for each predecessor:
+                    conds = []
+                    for each path leading into predecessor:
+                        conds.append(yield_state == start_yield_id &
+                                     (cond_1 == T) & (cond_2 == F) & ...)
+                    take predecessor variables if any(reduce(|, conds))
+
+        Once we reach the end yield, perform a store with the latest assigned
+        temporary variables for each live out.
+"""
 import ast
 import astor
 

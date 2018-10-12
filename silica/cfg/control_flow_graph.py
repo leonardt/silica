@@ -416,7 +416,6 @@ class ControlFlowGraph:
         Initially used for the ``if True:`` branch node emitted by
         the top-level ``while True:`` found in FSM definitions.
         """
-        self.render()
         for block in self.get_basic_blocks_followed_by_branches():
             constants = collect_constant_assigns(block.statements)
             branch = block.outgoing_edge[0]
@@ -425,24 +424,12 @@ class ControlFlowGraph:
             try:
                 if eval(astor.to_source(cond), silica.operators):
                     # FIXME: Interface violation, need a remove method from blocks
-                    print("____")
-                    print(block.incoming_edges)
-                    print(block, branch)
-                    print("____")
-                    branch.false_edge.incoming_edges.remove((branch, "F"))
-                    # branch.true_edge.incoming_edges.remove((branch, "T"))
                     branch.true_edge.incoming_edges.add((block, ""))
-                    print(branch.true_edge)
                     block.outgoing_edges = {(branch.true_edge, "")}
-                    print("____")
-                    print(block.incoming_edges)
-                    print(block, branch)
-                    print("____")
                 else:
-                    branch.false_edge.incoming_edges.remove((branch, "F"))
-                    # branch.true_edge.incoming_edges.remove((branch, "T"))
                     branch.false_edge.incoming_edges.add((block, ""))
                     block.outgoing_edges = {(branch.false_edge, "")}
+                branch.incoming_edges.remove((block, ""))
             except NameError as e:
                 # print(e)
                 pass
