@@ -22,8 +22,8 @@ from common import evaluate_circuit
 #             tx = 1
 #             yield
 
-@silica.coroutine(inputs={"data": silica.Bits(8), "valid": silica.Bit})
-def uart_transmitter():
+@silica.coroutine
+def uart_transmitter(data : silica.Bits(8), valid : silica.Bit):
     data, valid = yield
     while True:
         if valid:

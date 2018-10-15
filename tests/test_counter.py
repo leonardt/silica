@@ -6,13 +6,15 @@ import fault
 from common import evaluate_circuit
 
 
-@silica.coroutine
 def SilicaCounter(width, init=0, incr=1):
-    count = bits(init, width)
-    while True:
-        O = count
-        count = count + bits(incr, width)
-        yield O
+    @silica.coroutine
+    def counter():
+        count = bits(init, width)
+        while True:
+            O = count
+            count = count + bits(incr, width)
+            yield O
+    return counter()
 
 def test_counter():
     N = 3

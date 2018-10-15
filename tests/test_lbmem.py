@@ -60,41 +60,45 @@ def DrainingState(lbmem_width, depth, lbmem, raddr, waddr, wdata, wen):
     valid = bit(0)
     return waddr, raddr
 
-@si.coroutine(inputs={"wdata": si.Bits(8), "wen": si.Bit})
 def SILbMem(depth=64, lbmem_width=8):
-    lbmem = memory(depth, lbmem_width)
-    waddr = uint(0, eval(math.ceil(math.log2(depth))))
-    count = uint(0, 3)
-    wdata, wen = yield
-    while True:
-        while (count < uint(7, 3)) | ~wen:
-            rdata = lbmem[waddr - uint(count, 6)]
-            valid = bit(0)
-            if wen:
-                lbmem[waddr] = wdata
-                count = count + 1
-                waddr = waddr + 1
-            wdata, wen = yield rdata, valid
-        lbmem[waddr] = wdata
-        while count > 0:
-            valid = bit(1)
-            rdata = lbmem[waddr - uint(count, 6)]
-            if ~wen:
-                count = count - 1
-            if wen:
-                lbmem[waddr] = wdata
-                waddr = waddr + 1
-            wdata, wen = yield rdata, valid
+    @si.coroutine
+    def mem(wdata : si.Bits(8), wen : si.Bit):
+        lbmem = memory(depth, lbmem_width)
+        waddr = uint(0, eval(math.ceil(math.log2(depth))))
+        count = uint(0, 3)
+        wdata, wen = yield
+        while True:
+            while (count < uint(7, 3)) | ~wen:
+                rdata = lbmem[waddr - uint(count, 6)]
+                valid = bit(0)
+                if wen:
+                    lbmem[waddr] = wdata
+                    count = count + 1
+                    waddr = waddr + 1
+                wdata, wen = yield rdata, valid
+            lbmem[waddr] = wdata
+            while count > 0:
+                valid = bit(1)
+                rdata = lbmem[waddr - uint(count, 6)]
+                if ~wen:
+                    count = count - 1
+                if wen:
+                    lbmem[waddr] = wdata
+                    waddr = waddr + 1
+                wdata, wen = yield rdata, valid
 
-    # while True:
-    #     waddr = yield from FillingState(lbmem_width, depth, lbmem, raddr, waddr, wdata, wen)
-    #     waddr, raddr = yield from DrainingState(lbmem_width, depth, lbmem, raddr, waddr, wdata, wen)
+        # while True:
+        #     waddr = yield from FillingState(lbmem_width, depth, lbmem, raddr, waddr, wdata, wen)
+        #     waddr, raddr = yield from DrainingState(lbmem_width, depth, lbmem, raddr, waddr, wdata, wen)
+    return mem()
 
-@si.coroutine
 def inputs_generator(inputs):
-    while True:
-        for wdata, wen in inputs:
-            yield wdata, wen
+    @si.coroutine
+    def gen():
+        while True:
+            for wdata, wen in inputs:
+                yield wdata, wen
+    return gen()
 
 def test_lbmem():
     lbmem = SILbMem()

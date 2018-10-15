@@ -1,6 +1,5 @@
 import inspect
 
-
 class Coroutine:
     """
     Makes the initial call to __next__ upon construction to immediately
@@ -48,22 +47,19 @@ class Coroutine:
 def coroutine(func=None, inputs=None):
     stack = inspect.stack()
     defn_locals = stack[1].frame.f_locals
-    if inputs is not None:
-        def wrapper(func):
-            class _Coroutine(Coroutine):
-                _definition = func
-                _inputs = inputs
-                _defn_locals = defn_locals
-                _name = func.__name__
-            return _Coroutine
-        return wrapper
-    else:
+
+    inputs = inspect.getfullargspec(func).annotations
+    args = [ inputs[arg] for arg in inspect.getfullargspec(func).args ]
+    kwargs = { arg : inputs[arg] for arg in inspect.getfullargspec(func).kwonlyargs }
+
+    def wrapper():
         class _Coroutine(Coroutine):
             _definition = func
-            _inputs = {}
+            _inputs = inputs
             _defn_locals = defn_locals
             _name = func.__name__
-        return _Coroutine
+        return _Coroutine(*args, **kwargs)
+    return wrapper
 
 
 class Generator(Coroutine):

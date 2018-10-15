@@ -6,8 +6,8 @@ import shutil
 import magma as m
 from common import evaluate_circuit
 
-@silica.coroutine(inputs={"I" : Bit})
-def SIDetect111():
+@silica.coroutine
+def SIDetect111(I : Bit):
     cnt = uint(0, 2)
     I = yield
     while True:
@@ -19,12 +19,14 @@ def SIDetect111():
         O = (cnt == 3)
         I = yield O
 
-@silica.coroutine
 def inputs_generator(inputs):
-    while True:
-        for i in inputs:
-            I = i
-            yield I
+    @silica.coroutine
+    def gen():
+        while True:
+            for i in inputs:
+                I = i
+                yield I
+    return gen()
 
 def test_detect111():
     detect = SIDetect111()
