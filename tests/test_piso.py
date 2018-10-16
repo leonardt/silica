@@ -12,8 +12,8 @@ from common import evaluate_circuit
 
 
 def DefinePISO(n):
-    @silica.coroutine(inputs={"PI": silica.Bits(n), "SI": silica.Bit, "LOAD": silica.Bit})
-    def SIPISO():
+    @silica.coroutine
+    def SIPISO(PI: silica.Bits(n), SI: silica.Bit, LOAD: silica.Bit):
         values = bits(0, n)
         # O = values[-1]
         PI, SI, LOAD = yield
@@ -31,18 +31,20 @@ def DefinePISO(n):
     return SIPISO
 
 
-@silica.coroutine
 def inputs_generator(message):
-    while True:
-        for byte in message:
-            PI = [bool(x) for x in [0] + int2seq(byte) + [1]]
-            SI = False
-            LOAD = True
-            yield PI, SI, LOAD
-            for i in range(10):
-                LOAD = False
-                PI = [bool(x) for x in int2seq(0xFF, 10)]
+    @silica.coroutine
+    def gen():
+        while True:
+            for byte in message:
+                PI = [bool(x) for x in [0] + int2seq(byte) + [1]]
+                SI = False
+                LOAD = True
                 yield PI, SI, LOAD
+                for i in range(10):
+                    LOAD = False
+                    PI = [bool(x) for x in int2seq(0xFF, 10)]
+                    yield PI, SI, LOAD
+    return gen()
 
 
 def test_PISO():
