@@ -16,7 +16,7 @@ import silica
 from silica.transformations import specialize_constants, replace_symbols, constant_fold
 from silica.visitors import collect_names, collect_stores, collect_loads
 from silica.cfg.types import BasicBlock, Yield, Branch, HeadBlock, State
-from silica.cfg.ssa import SSAReplacer
+from silica.cfg.ssa import SSAReplacer, convert_to_ssa, parse_expr
 from .liveness import liveness_analysis
 from ..memory import MemoryType
 
@@ -236,44 +236,47 @@ class ControlFlowGraph:
             raise error
         # self.paths = promote_live_variables(self.paths)
         liveness_analysis(self)
+        # render_paths_between_yields(self.paths)
+        # self.render()
+        self.ssa_var_to_curr_id_map = convert_to_ssa(self)
+        # self.render()
         self.states, self.state_vars = build_state_info(self.paths, outputs, inputs)
 
 
-        self.registers = set()
-        for path in self.paths:
-            for block in path:
-                if isinstance(block, (HeadBlock, Yield)):
-                    loads = self.collect_loads_before_yield(block.outgoing_edge[0], set())
-                    for load in loads:
-                        if load in block.live_ins and "_si_tmp_val_" not in load:
-                            prefix = "_".join(load.split("_")[:-1])
-                            self.registers.add(prefix)
-                            block.loads[load] = prefix
+        # self.registers = set()
+        # for path in self.paths:
+        #     for block in path:
+        #         if isinstance(block, (HeadBlock, Yield)):
+        #             loads = self.collect_loads_before_yield(block.outgoing_edge[0], set())
+        #             for load in loads:
+        #                 if load in block.live_ins and "_si_tmp_val_" not in load:
+        #                     prefix = "_".join(load.split("_")[:-1])
+        #                     self.registers.add(prefix)
+        #                     block.loads[load] = prefix
 
-        # render_paths_between_yields(self.paths)
-        for path in self.paths:
-            for block in path:
-                if isinstance(block, Yield):
-                    stores = set()
-                    for edge, _ in block.incoming_edges:
-                        stores |= self.collect_stores_after_yield(edge, set())
-                    for store in stores:
-                        prefix = "_".join(store.split("_")[:-1])
-                        for path2 in self.paths:
-                            for block2 in path2:
-                                if isinstance(block2, Yield):
-                                    if prefix in block2.loads.values():
-                                        store_id = -1
-                                        for store in stores:
-                                            try:
-                                                if prefix in store and "_si_tmp_val_" not in store:
-                                                    store_id = max(int(store.split("_")[-1]), store_id)
-                                            except ValueError:
-                                                pass
-                                        if store_id < 0:
-                                            store_id = 0
-                                        block.stores[prefix + "_" + str(store_id)] = prefix
-                                        break
+        # for path in self.paths:
+        #     for block in path:
+        #         if isinstance(block, Yield):
+        #             stores = set()
+        #             for edge, _ in block.incoming_edges:
+        #                 stores |= self.collect_stores_after_yield(edge, set())
+        #             for store in stores:
+        #                 prefix = "_".join(store.split("_")[:-1])
+        #                 for path2 in self.paths:
+        #                     for block2 in path2:
+        #                         if isinstance(block2, Yield):
+        #                             if prefix in block2.loads.values():
+        #                                 store_id = -1
+        #                                 for store in stores:
+        #                                     try:
+        #                                         if prefix in store and "_si_tmp_val_" not in store:
+        #                                             store_id = max(int(store.split("_")[-1]), store_id)
+        #                                     except ValueError:
+        #                                         pass
+        #                                 if store_id < 0:
+        #                                     store_id = 0
+        #                                 block.stores[prefix + "_" + str(store_id)] = prefix
+        #                                 break
 
         # self.render()
         # render_fsm(self.states)
@@ -323,7 +326,6 @@ class ControlFlowGraph:
         elif isinstance(block, Branch):
             true_paths = []
             false_paths = []
-            # print("begin", block)
             for value, paths, edge in [(True, true_paths, block.true_edge),
                                        (False, false_paths, block.false_edge)]:
                 _conds = conds[:] + [(block.cond, value)]
@@ -341,17 +343,25 @@ class ControlFlowGraph:
                         if arg in seen:
                             continue
                         seen.add(arg)
-                        base_arg = "_".join(arg.split("_")[:-1])
                         width = self.width_table[arg]
                         if width is None:
                             width = 1
-                        # -1 hack to work around ~0 == -1 in Python
-                        problem.addVariable(arg, list(range(-1, 1 << width)))
-                        if base_arg not in variables:
-                            variables[base_arg] = []
-                        variables[base_arg].append(arg)
-                    check = "!=" if result else "=="
-                    _constraint = f"lambda {', '.join(args)}: {astor.to_source(cond).rstrip()} {check} 0"
+                        problem.addVariable(arg, range(0, 1 << width))
+                        if arg not in variables:
+                            variables[arg] = []
+                        variables[arg].append(arg)
+
+                        class Wrapper(ast.NodeTransformer):
+                            def __init__(self):
+                                super().__init__()
+
+                            def visit_Name(self, node):
+                                if node.id == arg:
+                                    return parse_expr(f"uint({node.id}, {width})")
+                                return node
+
+                        cond = Wrapper().visit(deepcopy(cond))
+                    _constraint = f"lambda {', '.join(args)}: ({astor.to_source(cond).rstrip()}) == BitVector({result}, 1)"
                     # print(_constraint)
                     problem.addConstraint(
                         eval(_constraint, self.func_locals),
@@ -366,12 +376,13 @@ class ControlFlowGraph:
                 # print(problem.getSolution(), value, edge)
                 # print("===========")
                 if problem.getSolution():
+                    # print(edge)
                     paths += [[(block)] + path for path in
                               self.find_paths(edge, initial_block, _conds)]
-            for path in true_paths:
-                path[0].true_edge = path[1]
-            for path in false_paths:
-                path[0].false_edge = path[1]
+            # for path in true_paths:
+            #     path[0].true_edge = path[1]
+            # for path in false_paths:
+            #     path[0].false_edge = path[1]
             return true_paths + false_paths
         else:
             raise NotImplementedError(type(block))
@@ -397,8 +408,8 @@ class ControlFlowGraph:
         paths = []
         for block in self.blocks:
             if isinstance(block, (Yield, HeadBlock)):
-                if isinstance(block, Yield) and block.is_initial_yield:
-                       continue  # Skip initial yield
+                # if isinstance(block, Yield) and block.is_initial_yield:
+                #        continue  # Skip initial yield
                 paths.extend([block] + path for path in self.find_paths(block.outgoing_edge[0], block, []))
         for path in paths:
             for i in range(len(path) - 1):
@@ -423,9 +434,12 @@ class ControlFlowGraph:
             try:
                 if eval(astor.to_source(cond), silica.operators):
                     # FIXME: Interface violation, need a remove method from blocks
+                    branch.true_edge.incoming_edges.add((block, ""))
                     block.outgoing_edges = {(branch.true_edge, "")}
                 else:
+                    branch.false_edge.incoming_edges.add((block, ""))
                     block.outgoing_edges = {(branch.false_edge, "")}
+                branch.incoming_edges.remove((block, ""))
             except NameError as e:
                 # print(e)
                 pass
@@ -494,27 +508,27 @@ class ControlFlowGraph:
         return branch
 
     def process_branch(self, stmt):
-        orig_array_stores = copy(self.replacer.array_stores)
-        orig_index_map = copy(self.replacer.index_map)
+        # orig_array_stores = copy(self.replacer.array_stores)
+        # orig_index_map = copy(self.replacer.index_map)
         # Emit new blocks for the branching instruction
-        self.replacer.visit(stmt.test)
+        # self.replacer.visit(stmt.test)
         branch = self.add_new_branch(stmt.test)
         orig_bb = self.curr_block
-        true_stores = set()
-        for sub_stmt in stmt.body:
-            true_stores |= collect_stores(sub_stmt)
-        phi_vars = {}
-        for var in true_stores:
-            if var in self.replacer.id_counter:
-                phi_vars[var] = [None, None]
+        # true_stores = set()
+        # for sub_stmt in stmt.body:
+        #     true_stores |= collect_stores(sub_stmt)
+        # phi_vars = {}
+        # for var in true_stores:
+        #     if var in self.replacer.id_counter:
+        #         phi_vars[var] = [None, None]
         # stmt.body holds the True path for both If and While nodes
-        orig_id_counter = copy(self.replacer.id_counter)
+        # orig_id_counter = copy(self.replacer.id_counter)
         for sub_stmt in stmt.body:
             self.process_stmt(sub_stmt)
-        true_id_counter = copy(self.replacer.id_counter)
-        for var in true_stores:
-            if var in self.replacer.id_counter and var in phi_vars:
-                phi_vars[var][0] = f"{var}_{self.replacer.id_counter[var]}"
+        # true_id_counter = copy(self.replacer.id_counter)
+        # for var in true_stores:
+        #     if var in self.replacer.id_counter and var in phi_vars:
+        #         phi_vars[var][0] = f"{var}_{self.replacer.id_counter[var]}"
         if isinstance(stmt, ast.While):
             # for base_var, (true_var, false_var) in phi_vars.items():
             #     if not (isinstance(stmt.test, ast.NameConstant) and stmt.test.value == True):
@@ -527,28 +541,28 @@ class ControlFlowGraph:
             #         self.curr_block.statements.append(
             #             # ast.parse(f"{orig_var} = phi({true_var}, {orig_var}, cond={astor.to_source(stmt.test)})").body[0])
             #             ast.parse(f"{next_var} = phi({true_var} if {astor.to_source(stmt.test).rstrip()} else {false_var})").body[0])
-            seen = set()
-            for (name, index), (value, orig_value) in self.replacer.array_stores.items():
-                index_hash = "_".join(ast.dump(i) for i in index)
-                count = self.replacer.index_map[index_hash]
-                if not (name, index) in orig_array_stores or \
-                        orig_index_map[index_hash] < count:
-                    if (name, index, value, count) in self.replacer.array_store_processed:
-                        continue
-                    # if name not in seen:
-                    #     seen.add(name)
-                    #     width = self.width_table[name]
-                    #     if isinstance(width, MemoryType):
-                    #         for i in range(width.height):
-                    #             self.curr_block.append(ast.parse(f"{name}[{i}] = {orig_value}[{i}]").body[0])
-                    #     else:
-                    #         self.curr_block.append(ast.parse(f"{name} = {orig_value}").body[0])
-                    self.replacer.array_store_processed.add((name, index, value, count))
-                    index_str = ""
-                    for i in index:
-                        index_str = f"[{astor.to_source(i).rstrip()}]" + index_str
-                    true_var = name + f"_si_tmp_val_{value}_i{count}"
-                    self.curr_block.statements.append(ast.parse(f"{name}{index_str} = {true_var}").body[0])
+            # seen = set()
+            # for (name, index), (value, orig_value) in self.replacer.array_stores.items():
+            #     index_hash = "_".join(ast.dump(i) for i in index)
+            #     count = self.replacer.index_map[index_hash]
+            #     if not (name, index) in orig_array_stores or \
+            #             orig_index_map[index_hash] < count:
+            #         if (name, index, value, count) in self.replacer.array_store_processed:
+            #             continue
+            #         # if name not in seen:
+            #         #     seen.add(name)
+            #         #     width = self.width_table[name]
+            #         #     if isinstance(width, MemoryType):
+            #         #         for i in range(width.height):
+            #         #             self.curr_block.append(ast.parse(f"{name}[{i}] = {orig_value}[{i}]").body[0])
+            #         #     else:
+            #         #         self.curr_block.append(ast.parse(f"{name} = {orig_value}").body[0])
+            #         self.replacer.array_store_processed.add((name, index, value, count))
+            #         index_str = ""
+            #         for i in index:
+            #             index_str = f"[{astor.to_source(i).rstrip()}]" + index_str
+            #         true_var = name + f"_si_tmp_val_{value}_i{count}"
+            #         self.curr_block.statements.append(ast.parse(f"{name}{index_str} = {true_var}").body[0])
             # Exit the current basic block by looping back to the branch
             # node
             add_edge(self.curr_block, branch)
@@ -558,77 +572,78 @@ class ControlFlowGraph:
             add_false_edge(branch, self.curr_block)
         elif isinstance(stmt, (ast.If,)):
             end_then_block = self.curr_block
-            true_counts = {}
-            for (name, index), (value, orig_value) in self.replacer.array_stores.items():
-                index_hash = "_".join(ast.dump(i) for i in index)
-                count = self.replacer.index_map[index_hash]
-                true_counts[name, index] = count
+            # true_counts = {}
+            # for (name, index), (value, orig_value) in self.replacer.array_stores.items():
+            #     index_hash = "_".join(ast.dump(i) for i in index)
+            #     count = self.replacer.index_map[index_hash]
+            #     true_counts[name, index] = count
             if stmt.orelse:
-                false_stores = set()
-                for sub_stmt in stmt.orelse:
-                    false_stores |= collect_stores(sub_stmt)
-                    # false_stores |= collect_names(sub_stmt, ast.Store)
+                # false_stores = set()
+                # for sub_stmt in stmt.orelse:
+                #     false_stores |= collect_stores(sub_stmt)
+                #     # false_stores |= collect_names(sub_stmt, ast.Store)
                 self.curr_block = self.gen_new_block()
                 add_false_edge(branch, self.curr_block)
-                load_store_offset = {}
-                for var, value in true_id_counter.items():
-                    if var in orig_id_counter:
-                        diff = value - orig_id_counter[var]
-                        if diff:
-                            load_store_offset[var] = diff
-                self.replacer.load_store_offset = load_store_offset
+                # load_store_offset = {}
+                # for var, value in true_id_counter.items():
+                #     if var in orig_id_counter:
+                #         diff = value - orig_id_counter[var]
+                #         if diff:
+                #             load_store_offset[var] = diff
+                # self.replacer.load_store_offset = load_store_offset
                 for sub_stmt in stmt.orelse:
                     self.process_stmt(sub_stmt)
-                false_id_counter = self.replacer.id_counter
-                for var, diff in load_store_offset.items():
-                    if var in false_stores:
-                        self.replacer.id_counter[var] += diff
-                        self.width_table[f"{var}_{self.replacer.id_counter[var]}"] = self.width_table[var]
-                self.replacer.load_store_offset = {}
-                for var in false_stores:
-                    if var in self.replacer.id_counter and var in phi_vars:
-                        phi_vars[var][1] = f"{var}_{self.replacer.id_counter[var]}"
+                # false_id_counter = self.replacer.id_counter
+                # for var, diff in load_store_offset.items():
+                #     if var in false_stores:
+                #         self.replacer.id_counter[var] += diff
+                #         self.width_table[f"{var}_{self.replacer.id_counter[var]}"] = self.width_table[var]
+                # self.replacer.load_store_offset = {}
+                # for var in false_stores:
+                #     if var in self.replacer.id_counter and var in phi_vars:
+                #         phi_vars[var][1] = f"{var}_{self.replacer.id_counter[var]}"
                 end_else_block = self.curr_block
-            seen = set()
-            for (name, index), (value, orig_value) in self.replacer.array_stores.items():
-                index_hash = "_".join(ast.dump(i) for i in index)
-                count = self.replacer.index_map[index_hash]
-                if not (name, index) in orig_array_stores or \
-                        orig_index_map[index_hash] < count:
-                    if (name, index, value, count) in self.replacer.array_store_processed:
-                        continue
-                    # if name not in seen:
-                    #     seen.add(name)
-                    #     width = self.width_table[name]
-                    #     if isinstance(width, MemoryType):
-                    #         for i in range(width.height):
-                    #             self.curr_block.append(ast.parse(f"{name}[{i}] = {orig_value}[{i}]").body[0])
-                    #     else:
-                    #         self.curr_block.append(ast.parse(f"{name} = {orig_value}").body[0])
-                    self.replacer.array_store_processed.add((name, index, value, count))
-                    index_str = ""
-                    for i in index:
-                        index_str = f"[{astor.to_source(i).rstrip()}]" + index_str
-                    true_var = name + f"_si_tmp_val_{value}_i{count}"
-                    self.curr_block.statements.append(ast.parse(f"{name}{index_str} = {true_var}").body[0])
+            # seen = set()
+            # for (name, index), (value, orig_value) in self.replacer.array_stores.items():
+            #     index_hash = "_".join(ast.dump(i) for i in index)
+            #     count = self.replacer.index_map[index_hash]
+            #     if not (name, index) in orig_array_stores or \
+            #             orig_index_map[index_hash] < count:
+            #         if (name, index, value, count) in self.replacer.array_store_processed:
+            #             continue
+            #         # if name not in seen:
+            #         #     seen.add(name)
+            #         #     width = self.width_table[name]
+            #         #     if isinstance(width, MemoryType):
+            #         #         for i in range(width.height):
+            #         #             self.curr_block.append(ast.parse(f"{name}[{i}] = {orig_value}[{i}]").body[0])
+            #         #     else:
+            #         #         self.curr_block.append(ast.parse(f"{name} = {orig_value}").body[0])
+            #         self.replacer.array_store_processed.add((name, index, value, count))
+            #         index_str = ""
+            #         for i in index:
+            #             index_str = f"[{astor.to_source(i).rstrip()}]" + index_str
+            #         true_var = name + f"_si_tmp_val_{value}_i{count}"
+            #         self.curr_block.statements.append(ast.parse(f"{name}{index_str} = {true_var}").body[0])
             self.curr_block = self.gen_new_block()
-            for base_var, (true_var, false_var) in phi_vars.items():
-                self.replacer.id_counter[base_var] += 1
-                if false_var is None:
-                    false_var = f"{base_var}_{self.replacer.id_counter[base_var]}"
-                    self.replacer.id_counter[base_var] += 1
-                    self.width_table[false_var] = self.width_table[base_var]
-                next_var = f"{base_var}_{self.replacer.id_counter[base_var]}"
-                self.width_table[next_var] = self.width_table[base_var]
-                width = self.width_table[base_var]
-                if isinstance(width, MemoryType):
-                    for i in range(width.height):
-                        self.curr_block.append(
-                            ast.parse(f"{next_var}[{i}] = phi({true_var}[{i}] if {astor.to_source(stmt.test).rstrip()} else {false_var}[{i}])").body[0]
-                        )
-                else:
-                    self.curr_block.statements.append(
-                        ast.parse(f"{next_var} = phi({true_var} if {astor.to_source(stmt.test).rstrip()} else {false_var})").body[0])
+            # for base_var, (true_var, false_var) in phi_vars.items():
+            #     self.replacer.id_counter[base_var] += 1
+            #     if false_var is None:
+            #         false_var = f"{base_var}_{self.replacer.id_counter[base_var]}"
+            #         self.replacer.id_counter[base_var] += 1
+            #         self.width_table[false_var] = self.width_table[base_var]
+            #     next_var = f"{base_var}_{self.replacer.id_counter[base_var]}"
+            #     print(next_var)
+            #     self.width_table[next_var] = self.width_table[base_var]
+            #     width = self.width_table[base_var]
+            #     if isinstance(width, MemoryType):
+            #         for i in range(width.height):
+            #             self.curr_block.append(
+            #                 ast.parse(f"{next_var}[{i}] = phi({true_var}[{i}] if {astor.to_source(stmt.test).rstrip()} else {false_var}[{i}])").body[0]
+            #             )
+            #     else:
+            #         self.curr_block.statements.append(
+            #             ast.parse(f"{next_var} = phi({true_var} if {astor.to_source(stmt.test).rstrip()} else {false_var})").body[0])
 
             add_edge(end_then_block, self.curr_block)
             if stmt.orelse:
@@ -639,34 +654,35 @@ class ControlFlowGraph:
     def process_expr(self, stmt):
         if isinstance(stmt.value, ast.Yield):
             # replacer.visit(stmt.value)
-            if stmt.value is not None:
-                output = stmt.value.value.id
-                # self.curr_block.statements.append(ast.parse(f"{output} = {output}_{self.replacer.id_counter[output]}"))
-                output_map = {output: f"{output}_{self.replacer.id_counter[output]}"}
-            self.add_new_yield(stmt.value, output_map)
+            # if stmt.value is not None:
+            #     output = stmt.value.value.id
+            #     # self.curr_block.statements.append(ast.parse(f"{output} = {output}_{self.replacer.id_counter[output]}"))
+            #     output_map = {output: f"{output}_{self.replacer.id_counter[output]}"}
+            # self.add_new_yield(stmt.value, output_map)
+            self.add_new_yield(stmt.value)
         elif isinstance(stmt.value, ast.Str):
             # Docstring, ignore
             pass
         else:  # pragma: no cover
-            self.replacer.visit(stmt)
+            # self.replacer.visit(stmt)
             self.curr_block.add(stmt)
             # raise NotImplementedError(stmt.value)
 
     def process_assign(self, stmt):
         if isinstance(stmt.value, ast.Yield):
-            output_map = {}
-            if stmt.value.value is not None:
-                if isinstance(stmt.value.value, ast.Name):
-                    output = stmt.value.value.id
-                    output_map[output] = f"{output}_{self.replacer.id_counter[output]}"
-                    # self.curr_block.statements.append(ast.parse(f"{output} = {output}_{self.replacer.id_counter[output]}"))
-                elif isinstance(stmt.value.value, ast.Tuple):
-                    for element in stmt.value.value.elts:
-                        output = element.id
-                        # self.curr_block.statements.append(ast.parse(f"{output} = {output}_{self.replacer.id_counter[output]}"))
-                        output_map[output] = f"{output}_{self.replacer.id_counter[output]}"
-                else:
-                    raise NotImplementedError(stmt.value.value)
+            # output_map = {}
+            # if stmt.value.value is not None:
+            #     if isinstance(stmt.value.value, ast.Name):
+            #         output = stmt.value.value.id
+            #         output_map[output] = f"{output}_{self.replacer.id_counter[output]}"
+            #         # self.curr_block.statements.append(ast.parse(f"{output} = {output}_{self.replacer.id_counter[output]}"))
+            #     elif isinstance(stmt.value.value, ast.Tuple):
+            #         for element in stmt.value.value.elts:
+            #             output = element.id
+            #             # self.curr_block.statements.append(ast.parse(f"{output} = {output}_{self.replacer.id_counter[output]}"))
+            #             output_map[output] = f"{output}_{self.replacer.id_counter[output]}"
+            #     else:
+            #         raise NotImplementedError(stmt.value.value)
             array_stores_to_process = []
             seen = set()
             for (name, index), (value, orig_value) in self.replacer.array_stores.items():
@@ -689,12 +705,12 @@ class ControlFlowGraph:
                 true_var = name + f"_si_tmp_val_{value}_i{count}"
                 array_stores_to_process.append(
                     ast.parse(f"{name}{index_str} = {true_var}").body[0])
-            self.add_new_yield(stmt, output_map)
+            self.add_new_yield(stmt) #, output_map)
             for var in self.replacer.id_counter:
                 self.replacer.id_counter[var] += 1
                 self.width_table[f"{var}_{self.replacer.id_counter[var]}"] = self.width_table[var]
         else:
-            self.replacer.visit(stmt)
+            # self.replacer.visit(stmt)
             self.curr_block.add(stmt)
 
     def process_stmt(self, stmt):
@@ -712,7 +728,7 @@ class ControlFlowGraph:
         elif isinstance(stmt, ast.Assign):
             self.process_assign(stmt)
         else:
-            self.replacer.visit(stmt)
+            # self.replacer.visit(stmt)
             # Append a normal statement to the current block
             self.curr_block.add(stmt)
 
@@ -1016,6 +1032,8 @@ def build_state_info(paths, outputs, inputs):
                 if path[i + 1] is block.false_edge:
                     # cond = ast.Call(ast.Name("not_", ast.Load()), [cond], [])
                     cond = ast.UnaryOp(ast.Invert(), cond)
+                else:
+                    assert path[i + 1] is block.true_edge
                 names = collect_names(cond)
                 for name in names:
                     if outputs and name not in outputs and \
