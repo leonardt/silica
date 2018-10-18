@@ -263,6 +263,8 @@ def convert_to_ssa(cfg):
                     blocks_to_process.append(path[1])
         while blocks_to_process:
             block = blocks_to_process.pop(0)
+            if block in processed:
+                continue
             processed.add(block)
             loads = []
 

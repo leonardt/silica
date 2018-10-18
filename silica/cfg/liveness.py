@@ -1,6 +1,8 @@
 import ast
 from .types import Yield, HeadBlock, Branch
 import silica.ast_utils as ast_utils
+import copy
+
 
 class Analyzer(ast.NodeVisitor):
     def __init__(self):
@@ -68,24 +70,22 @@ def do_analysis(block):
         if isinstance(block, Branch):
             true_live_ins = do_analysis(block.true_edge)
             false_live_ins = do_analysis(block.false_edge)
-            block.live_outs = true_live_ins | false_live_ins
+            block.live_outs |= true_live_ins | false_live_ins
         else:
-            block.live_outs = do_analysis(block.outgoing_edge[0])
+            block.live_outs |= do_analysis(block.outgoing_edge[0])
     still_live = block.live_outs - block.kill
     block.live_ins = block.gen | still_live
     return block.live_ins
 
 def liveness_analysis(cfg):
-    for block in cfg.blocks:
-        if isinstance(block, (HeadBlock, Yield)):
-            block.live_outs = do_analysis(block.outgoing_edge[0])
-            block.gen, block.kill = analyze(block)
-            still_live = block.live_outs - block.kill
-            block.live_ins = block.gen | still_live
-    for block in cfg.blocks:
-        if isinstance(block, (HeadBlock, Yield)):
-            block.live_outs = do_analysis(block.outgoing_edge[0])
-            block.gen, block.kill = analyze(block)
-            block.live_outs |= block.kill
-            still_live = block.live_outs - block.kill
-            block.live_ins = block.gen | still_live
+    last_live_outs = None
+    curr_live_outs = [copy.copy(block.live_outs) for block in cfg.blocks]
+    while last_live_outs != curr_live_outs:
+        for block in cfg.blocks:
+            if isinstance(block, (HeadBlock, Yield)):
+                block.live_outs = do_analysis(block.outgoing_edge[0])
+                block.gen, block.kill = analyze(block)
+                still_live = block.live_outs - block.kill
+                block.live_ins = block.gen | still_live
+        last_live_outs = curr_live_outs
+        curr_live_outs = [copy.copy(block.live_outs) for block in cfg.blocks]

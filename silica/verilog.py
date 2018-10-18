@@ -327,34 +327,37 @@ def compile_states(ctx, states, one_state, width_table, registers,
                     if (target, value) not in seen:
                         seen.add((target, value))
                         width = width_table[value]
-                        if target in registers:
-                            if not one_state:
-                                cond = ctx.get_by_name('yield_state_next') == state.start_yield_id
-                                if isinstance(width, MemoryType):
-                                    if_body = []
-                                    for i in range(width.height):
-                                        if_body.append(ctx.assign(vg.Pointer(ctx.get_by_name(target), i),
-                                                                  vg.Pointer(ctx.get_by_name(value), i)))
-                                    if if_body:
+                        if not one_state:
+                            cond = ctx.get_by_name('yield_state_next') == state.start_yield_id
+                            if isinstance(width, MemoryType):
+                                if_body = []
+                                for i in range(width.height):
+                                    if_body.append(ctx.assign(vg.Pointer(ctx.get_by_name(target), i),
+                                                              vg.Pointer(ctx.get_by_name(value), i)))
+                                if if_body:
+                                    if target in registers:
                                         seq.If(cond)(if_body)
-                                else:
-                                    seq.If(cond)(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
+                                    else:
+                                        comb_body.append(vg.If(cond)(if_body))
                             else:
-                                if isinstance(width, MemoryType):
-                                    for i in range(width.height):
-                                        seq(ctx.assign(vg.Pointer(ctx.get_by_name(target), i),
-                                                       vg.Pointer(ctx.get_by_name(value), i)))
+                                if target in registers:
+                                    seq.If(cond)(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
                                 else:
-                                    seq(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
+                                    comb_body.append(vg.If(cond)(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value))))
                         else:
                             if isinstance(width, MemoryType):
                                 for i in range(width.height):
-                                    comb_body.append(ctx.assign(
-                                        vg.Pointer(ctx.get_by_name(target), i),
-                                        vg.Pointer(ctx.get_by_name(value), i))
-                                    )
+                                    if target in registers:
+                                        seq(ctx.assign(vg.Pointer(ctx.get_by_name(target), i),
+                                                       vg.Pointer(ctx.get_by_name(value), i)))
+                                    else:
+                                        comb_body.append(ctx.assign(vg.Pointer(ctx.get_by_name(target), i),
+                                                                    vg.Pointer(ctx.get_by_name(value), i)))
                             else:
-                                comb_body.append(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
+                                if target in registers:
+                                    seq(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
+                                else:
+                                    comb_body.append(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
         statements = []
         for state in states:
             index = len(statements)
