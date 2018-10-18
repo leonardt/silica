@@ -5,14 +5,16 @@ module tap(
   output TDO,
  
   output reg [3:0] IR, //Instruction Register
-  output reg [4:0] regA, //Register at IR=5, which is 5 bits wide
-  output reg [6:0] regB, //Register at IR=7, which is 7 bits wide
+  output reg [4:0] regA, //Register at IR=2, which is 5 bits wide
+  output reg [6:0] regB, //Register at IR=14, which is 7 bits wide
   output update_dr,
   output update_ir,
-  output [3:0] cs,
-  output [3:0] ns,
-  output shift_ir,
-  output shift_dr
+
+  //Debug signals.
+  output [3:0] cs, 
+  output [3:0] ns, 
+  output shift_ir, 
+  output shift_dr 
 );
 
   localparam TEST_LOGIC_RESET = 4'd0 ,
