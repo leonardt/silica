@@ -2,7 +2,6 @@ import ast
 import astor
 from .memory import MemoryType
 
-
 def get_width(node, width_table):
     if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and \
        node.func.id in {"bits", "uint", "BitVector"}:
@@ -63,7 +62,7 @@ def get_width(node, width_table):
     elif isinstance(node, ast.List):
         widths = [get_width(arg, width_table) for arg in node.elts]
         assert all(widths[0] == width for width in widths)
-        return (len(node.elts), widths[0])
+        return MemoryType(len(node.elts), widths[0])
     elif isinstance(node, ast.Subscript):
         if isinstance(node.slice, ast.Index):
             width = get_width(node.value, width_table)
@@ -78,4 +77,18 @@ def get_width(node, width_table):
                 if node.slice.step is not None:
                     raise NotImplementedError()
                 return node.slice.upper.n
+            elif node.slice.upper is None:
+                lower = 0
+                if isinstance(node.slice.lower, ast.Num):
+                    lower = node.slice.lower.n
+                width = width_table[node.value.id]
+                return MemoryType(width.height - lower, width.width)
+            elif isinstance(node.slice.upper, ast.Num):
+                lower = node.slice.lower.n
+                upper = node.slice.upper.n
+                width = width_table[node.value.id]
+                return MemoryType(upper - lower + 1, width.width)
+    elif isinstance(node, ast.Num):
+        return node.n.bit_length()
+
     raise NotImplementedError(ast.dump(node))

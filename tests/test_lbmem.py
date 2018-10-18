@@ -77,6 +77,10 @@ def SILbMem(depth=64, lbmem_width=8):
                     waddr = waddr + 1
                 wdata, wen = yield rdata, valid
             lbmem[waddr] = wdata
+            rdata = lbmem[waddr - uint(count, 6)]
+            waddr = waddr + 1
+            valid = bit(1)
+            wdata, wen = yield rdata, valid
             while count > 0:
                 valid = bit(1)
                 rdata = lbmem[waddr - uint(count, 6)]
@@ -87,9 +91,9 @@ def SILbMem(depth=64, lbmem_width=8):
                     waddr = waddr + 1
                 wdata, wen = yield rdata, valid
 
-        # while True:
-        #     waddr = yield from FillingState(lbmem_width, depth, lbmem, raddr, waddr, wdata, wen)
-        #     waddr, raddr = yield from DrainingState(lbmem_width, depth, lbmem, raddr, waddr, wdata, wen)
+            # while True:
+            #     waddr = yield from FillingState(lbmem_width, depth, lbmem, raddr, waddr, wdata, wen)
+            #     waddr, raddr = yield from DrainingState(lbmem_width, depth, lbmem, raddr, waddr, wdata, wen)
     return mem()
 
 def inputs_generator(inputs):

@@ -34,7 +34,8 @@ class Context:
         self.module.Reg(name, width, height)
 
     def assign(self, lhs, rhs):
-        return vg.Subst(lhs, rhs, not self.is_reg(lhs))
+        # return vg.Subst(lhs, rhs, not self.is_reg(lhs))
+        return vg.Subst(lhs, rhs, 1)
 
     def initial(self, body=[]):
         return self.module.Initial(body)
@@ -62,9 +63,21 @@ class Context:
             return vg.Subst(
                 target,
                 self.translate(stmt.value),
-                not self.is_reg(target)
+                # not self.is_reg(target)
+                1
             )
         elif is_bin_op(stmt):
+            if is_list(stmt.left) or is_list(stmt.right):
+                if is_add(stmt.op): # list concatenation
+                    return vg.Cat(
+                        self.translate(stmt.left),
+                        self.translate(stmt.right)
+                    )
+                elif is_mult(stmt.op): # list replication
+                    var = self.translate(stmt.left) if is_list(stmt.left) else self.translate(stmt.right)
+                    times = self.translate(stmt.right) if is_list(stmt.left) else self.translate(stmt.left)
+                    return vg.Repeat(var, times)
+
             return self.translate(stmt.op)(
                 self.translate(stmt.left),
                 self.translate(stmt.right)
@@ -76,13 +89,20 @@ class Context:
         elif is_bit_or(stmt):
             return vg.Or
         elif is_compare(stmt):
-            assert(len(stmt.ops) == len(stmt.comparators) == 1)
-            return self.translate(stmt.ops[0])(
+            curr = self.translate(stmt.ops[0])(
                 self.translate(stmt.left),
                 self.translate(stmt.comparators[0])
             )
+            for op, comp in zip(stmt.ops[1:], stmt.comparators[1:]):
+                curr = self.translate(op)(curr, self.translate(comp))
+            return curr
         elif is_eq(stmt):
             return vg.Eq
+        elif is_if(stmt):
+            body = [self.translate(stmt) for stmt in stmt.body]
+            return vg.If(
+                self.translate(stmt.test),
+            )(body)
         elif is_if_exp(stmt):
             return vg.Cond(
                 self.translate(stmt.test),
@@ -91,6 +111,8 @@ class Context:
             )
         elif is_invert(stmt):
             return vg.Unot
+        elif is_list(stmt):
+            return vg.Cat(*[self.translate(elt) for elt in stmt.elts])
         elif is_lt(stmt):
             return vg.LessThan
         elif is_gt(stmt):
@@ -118,10 +140,20 @@ class Context:
                     self.translate(stmt.slice.lower),
                     self.translate(stmt.slice.upper)
                 )
+        elif is_tuple(stmt):
+            return vg.Cat(*[self.translate(elt) for elt in stmt.elts])
         elif is_unary_op(stmt):
             return self.translate(stmt.op)(self.translate(stmt.operand))
-
-        raise NotImplementedError(stmt)
+        elif is_call(stmt) and is_name(stmt.func) and stmt.func.id == "phi":
+            conds = stmt.args[0].elts
+            values = stmt.args[1].elts
+            prev = self.translate(values[-1])
+            for i in range(len(conds) - 2, -1, -1):
+                prev = vg.Cond(self.translate(conds[i]),
+                               self.translate(values[i]),
+                               prev)
+            return prev
+        raise NotImplementedError(ast.dump(stmt))
 
     def to_verilog(self):
         return self.module.to_verilog()
@@ -140,14 +172,43 @@ class SwapSlices(ast.NodeTransformer):
 
 class RemoveFuncs(ast.NodeTransformer):
     def visit_Call(self, node):
+        node.args = [self.visit(arg) for arg in node.args]
         if isinstance(node.func, ast.Name) and node.func.id in ['bits', 'uint',
-                                                                'bit', 'phi']:
+                                                                'bit']:
             return self.visit(node.args[0])
+        return node
+
+class ExpandLists(ast.NodeTransformer):
+    # TODO: probably should take in width_table in __init__ like TempVarPromoter
+    def visit_Assign(self, node):
+        if is_list(node.value):
+            name = node.targets[0].id
+            targets = [ast.Subscript(ast.Name(name, ast.Load()), ast.Index(ast.Num(x)), ast.Store()) for x in range(len(node.value.elts))]
+            targets = [ast.Tuple(targets, ast.Store())]
+            values = ast.Tuple(node.value.elts, ast.Load())
+            return ast.Assign(targets, values)
+        return node
+
+class ListToVerilog(ast.NodeTransformer):
+    def visit_List(self, node):
+        print(ast.dump(node))
+        node = ast.Set(node.elts)
+        return node
+
+# TODO: this is a hack because it needs to return a list of expanded tuple assignments, might be able to use ast.Module instead with the body
+class TupleAssignToVerilog(ast.NodeTransformer):
+    def visit_Assign(self, node):
+        if is_tuple(node.targets[0]):
+            body = [ast.Assign([node.targets[0].elts[n]], node.value.elts[n])
+                    for n in range(len(node.value.elts))]
+            return ast.If(ast.NameConstant(True), body, [])
         return node
 
 def process_statement(stmt):
     RemoveFuncs().visit(stmt)
     SwapSlices().visit(stmt)
+    stmt = ExpandLists().visit(stmt)
+    stmt = TupleAssignToVerilog().visit(stmt)
     return stmt
 
 class TempVarPromoter(ast.NodeTransformer):
@@ -186,24 +247,26 @@ def compile_statements(ctx, seq, comb_body, states, one_state, width_table,
     # temp_var_promoter = TempVarPromoter(width_table)
     for statement in statements:
         conds = []
-        yields = set()
+        yield_pairs = set()
         contained = [state for state in states if statement in state.statements]
         stores = collect_stores(statement)
         has_reg = any(x in registers for x in stores)
         if contained != states:
             for state in states:
                 if statement in state.statements:
-                    if state.conds or not one_state:
+                    if not one_state:
                         these_conds = []
                         # if state.conds:
                         #     these_conds.extend(astor.to_source(process_statement(cond)).rstrip() for cond in state.conds)
                         # if not one_state:
                         #     these_conds.append(f"(yield_state == {state.start_yield_id})")
-                        yields.add(state.start_yield_id)
+                        yield_pairs.add((state.start_yield_id, state.end_yield_id))
                         # if these_conds:
                         #     conds.append(" & ".join(these_conds))
             if not one_state:
-                conds = [module.get_vars()["yield_state"] == yield_id for yield_id in yields]
+                conds = [(module.get_vars()["yield_state"] == start_yield_id) &
+                         (module.get_vars()["yield_state_next"] == end_yield_id) for
+                         start_yield_id, end_yield_id in yield_pairs]
             statement = process_statement(statement)
             if has_reg:
                 stmt = vg.Subst(ctx.translate(statement.targets[0]), ctx.translate(statement.value), 1)
@@ -216,8 +279,10 @@ def compile_statements(ctx, seq, comb_body, states, one_state, width_table,
                 else:
                     seq(stmt)
             else:
+                # print(astor.to_source(statement))
                 comb_body.append(
-                    vg.Subst(ctx.translate(statement.targets[0]), ctx.translate(statement.value), 1)
+                    ctx.translate(statement)
+                    # vg.Subst(ctx.translate(statement.targets[0]), ctx.translate(statement.value), 1)
                 )
         else:
             process_statement(statement)
@@ -262,33 +327,37 @@ def compile_states(ctx, states, one_state, width_table, registers,
                     if (target, value) not in seen:
                         seen.add((target, value))
                         width = width_table[value]
-                        if target in registers:
-                            if not one_state:
-                                cond = ctx.get_by_name('yield_state_next') == state.start_yield_id
-                                if isinstance(width, MemoryType):
-                                    if_body = []
-                                    for i in range(width.height):
-                                        if_body.append(ctx.assign(vg.Pointer(ctx.get_by_name(target), i),
-                                                                  vg.Pointer(ctx.get_by_name(value), i)))
-                                    seq.If(cond)(if_body)
-                                else:
-                                    seq.If(cond)(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
+                        if not one_state:
+                            cond = ctx.get_by_name('yield_state_next') == state.start_yield_id
+                            if isinstance(width, MemoryType):
+                                if_body = []
+                                for i in range(width.height):
+                                    if_body.append(ctx.assign(vg.Pointer(ctx.get_by_name(target), i),
+                                                              vg.Pointer(ctx.get_by_name(value), i)))
+                                if if_body:
+                                    if target in registers:
+                                        seq.If(cond)(if_body)
+                                    else:
+                                        comb_body.append(vg.If(cond)(if_body))
                             else:
-                                if isinstance(width, MemoryType):
-                                    for i in range(width.height):
-                                        seq(ctx.assign(vg.Pointer(ctx.get_by_name(target), i),
-                                                       vg.Pointer(ctx.get_by_name(value), i)))
+                                if target in registers:
+                                    seq.If(cond)(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
                                 else:
-                                    seq(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
+                                    comb_body.append(vg.If(cond)(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value))))
                         else:
                             if isinstance(width, MemoryType):
                                 for i in range(width.height):
-                                    comb_body.append(ctx.assign(
-                                        vg.Pointer(ctx.get_by_name(target), i),
-                                        vg.Pointer(ctx.get_by_name(value), i))
-                                    )
+                                    if target in registers:
+                                        seq(ctx.assign(vg.Pointer(ctx.get_by_name(target), i),
+                                                       vg.Pointer(ctx.get_by_name(value), i)))
+                                    else:
+                                        comb_body.append(ctx.assign(vg.Pointer(ctx.get_by_name(target), i),
+                                                                    vg.Pointer(ctx.get_by_name(value), i)))
                             else:
-                                comb_body.append(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
+                                if target in registers:
+                                    seq(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
+                                else:
+                                    comb_body.append(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
         statements = []
         for state in states:
             index = len(statements)
@@ -300,16 +369,13 @@ def compile_states(ctx, states, one_state, width_table, registers,
         compile_statements(ctx, seq, comb_body, states, one_state, width_table, registers, statements)
         if not one_state:
             next_state = None
+            started = False
             for i, state in enumerate(states):
                 conds = []
                 if state.conds:
                     conds = [ctx.translate(process_statement(cond)) for cond in state.conds]
                 cond = reduce(vg.Land, conds, ctx.get_by_name('yield_state') == state.start_yield_id)
 
-                if i == 0:
-                    if_stmt = seq.If(cond)
-                else:
-                    if_stmt = seq.Elif(cond)
 
                 output_stmts = []
                 for output, var in state.path[-1].output_map.items():
@@ -325,15 +391,22 @@ def compile_states(ctx, states, one_state, width_table, registers,
                 for stmt in state.path[-1].array_stores_to_process:
                     stmts.append(ctx.translate(process_statement(stmt)))
 
-                if_stmt(stmts)
+                if stmts:
+                    if not started:
+                        if_stmt = seq.If(cond)
+                        started = True
+                    else:
+                        if_stmt = seq.Elif(cond)
+                    if_stmt(stmts)
                 comb_cond = reduce(
                     vg.Land,
                     conds + [ctx.get_by_name('yield_state_next') == state.end_yield_id],
                     ctx.get_by_name('yield_state') == state.start_yield_id)
-                if i == 0:
-                    comb_body.append(vg.If(comb_cond)(output_stmts))
-                else:
-                    comb_body[-1] = comb_body[-1].Elif(comb_cond)(output_stmts)
+                if output_stmts:
+                    if not comb_body:
+                        comb_body.append(vg.If(comb_cond)(output_stmts))
+                    else:
+                        comb_body[-1] = comb_body[-1].Elif(comb_cond)(output_stmts)
             comb_body.insert(0, next_state)
 
         else:

@@ -21,6 +21,7 @@ from silica.transformations.specialize_arguments import specialize_arguments
 from silica.type_check import TypeChecker
 from silica.analysis import CollectInitialWidthsAndTypes
 from silica.transformations.promote_widths import PromoteWidths
+from silica.transformations.desugar_for_loops import propagate_types, get_final_widths
 
 import veriloggen as vg
 
@@ -80,16 +81,30 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     inline_yield_from_functions(tree, func_globals, func_locals)
     constant_fold(tree)
     specialize_list_comps(tree, func_globals, func_locals)
-    desugar_for_loops(tree)
+    tree, list_lens = propagate_types(tree)
+    tree, loopvars = desugar_for_loops(tree, list_lens)
+
     width_table = {}
     if coroutine._inputs:
         for input_, type_ in coroutine._inputs.items():
             width_table[input_] = get_input_width(type_)
 
+    for name,width in loopvars:
+        width_table[name] = width
+
     constant_fold(tree)
     type_table = {}
+
+    for name,_ in loopvars:
+        type_table[name] = 'uint'
+
     CollectInitialWidthsAndTypes(width_table, type_table).visit(tree)
     PromoteWidths(width_table, type_table).visit(tree)
+    tree, loopvars = get_final_widths(tree, width_table, func_locals, func_globals)
+
+    for name,width in loopvars.items():
+        width_table[name] = width
+
     # Desugar(width_table).visit(tree)
     type_table = {}
     TypeChecker(width_table, type_table).check(tree)
@@ -103,11 +118,10 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
         return compile_magma(coroutine, file_name, mux_strategy, output)
 
     registers = set()
-    registers |= cfg.registers
     outputs = tuple()
     for path in cfg.paths:
-        registers |= set(path[0].loads.values())  # Union
         outputs += (collect_names(path[-1].value, ctx=ast.Load), )
+        registers |= (path[0].live_ins & path[0].live_outs)
 
     assert all(outputs[1] == output for output in outputs[1:]), "Yield statements must all have the same outputs except for the first"
     outputs = outputs[1]
@@ -159,14 +173,20 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     ctx.declare_ports(inputs, outputs)
 
     # declare wires
-    for var in cfg.replacer.id_counter:
-        width = width_table[var]
-        for i in range(cfg.replacer.id_counter[var] + 1):
-            if f"{var}_{i}" not in registers:
-                if isinstance(width, MemoryType):
-                    ctx.declare_wire(f"{var}_{i}", width.width, width.height)
-                else:
-                    ctx.declare_wire(f"{var}_{i}", width)
+    # for var in cfg.ssa_var_to_curr_id_map:
+    #     width = width_table[var]
+    #     for i in range(1, cfg.ssa_var_to_curr_id_map[var] + 1):
+    #         if f"{var}_{i}" not in registers:
+    #             if isinstance(width, MemoryType):
+    #                 ctx.declare_wire(f"{var}_{i}", width.width, width.height)
+    #             else:
+    #                 ctx.declare_wire(f"{var}_{i}", width)
+    for var, width in width_table.items():
+        if var not in registers:
+            if isinstance(width, MemoryType):
+                ctx.declare_wire(var, width.width, width.height)
+            else:
+                ctx.declare_wire(var, width)
 
     for (name, index), (value, orig_value) in cfg.replacer.array_stores.items():
         width = width_table[name]
