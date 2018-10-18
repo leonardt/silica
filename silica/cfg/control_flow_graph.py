@@ -376,7 +376,7 @@ class ControlFlowGraph:
                 # print(problem.getSolution(), value, edge)
                 # print("===========")
                 if problem.getSolution():
-                    print(edge)
+                    # print(edge)
                     paths += [[(block)] + path for path in
                               self.find_paths(edge, initial_block, _conds)]
             # for path in true_paths:
@@ -746,8 +746,6 @@ class ControlFlowGraph:
                 if len(block.outgoing_edges) == 1:
                     sink, sink_label = list(block.outgoing_edges)[0]
                     add_edge(source, sink, source_label)
-                    if isinstance(sink, BasicBlock):
-                        sink.print_statements()
                     if source_label == "F":
                         source.false_edge = sink
                     elif source_label == "T":
