@@ -250,7 +250,7 @@ def convert_to_ssa(cfg):
                                 phi_values.append(f"{predecessor._ssa_stores[var]}")
                             conds = []
                             for path in cfg.paths:
-                                if predecessor in path and block in path:
+                                if predecessor in path and block in path and path.index(predecessor) == path.index(block) - 1:
                                     conds.append(get_conds_up_to(path, predecessor))
                             # phi_conds.append(" | ".join(conds))
                             result = conds[0]

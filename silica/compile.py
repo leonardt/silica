@@ -115,7 +115,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     # DesugarArrays().run(tree)
     cfg = ControlFlowGraph(tree, width_table, func_locals)
     # cfg.render()
-    render_paths_between_yields(cfg.paths)
+    # render_paths_between_yields(cfg.paths)
 
     if output == 'magma':
         # NOTE: This is currently not maintained
