@@ -16,7 +16,7 @@ import silica
 from silica.transformations import specialize_constants, replace_symbols, constant_fold
 from silica.visitors import collect_names, collect_stores, collect_loads
 from silica.cfg.types import BasicBlock, Yield, Branch, HeadBlock, State
-from silica.cfg.ssa import SSAReplacer, convert_to_ssa
+from silica.cfg.ssa import SSAReplacer, convert_to_ssa, parse_expr
 from .liveness import liveness_analysis
 from ..memory import MemoryType
 
@@ -236,45 +236,45 @@ class ControlFlowGraph:
             raise error
         # self.paths = promote_live_variables(self.paths)
         liveness_analysis(self)
-        convert_to_ssa(self)
+        # render_paths_between_yields(self.paths)
+        self.ssa_var_to_curr_id_map = convert_to_ssa(self)
         self.states, self.state_vars = build_state_info(self.paths, outputs, inputs)
 
 
-        self.registers = set()
-        for path in self.paths:
-            for block in path:
-                if isinstance(block, (HeadBlock, Yield)):
-                    loads = self.collect_loads_before_yield(block.outgoing_edge[0], set())
-                    for load in loads:
-                        if load in block.live_ins and "_si_tmp_val_" not in load:
-                            prefix = "_".join(load.split("_")[:-1])
-                            self.registers.add(prefix)
-                            block.loads[load] = prefix
+        # self.registers = set()
+        # for path in self.paths:
+        #     for block in path:
+        #         if isinstance(block, (HeadBlock, Yield)):
+        #             loads = self.collect_loads_before_yield(block.outgoing_edge[0], set())
+        #             for load in loads:
+        #                 if load in block.live_ins and "_si_tmp_val_" not in load:
+        #                     prefix = "_".join(load.split("_")[:-1])
+        #                     self.registers.add(prefix)
+        #                     block.loads[load] = prefix
 
-        # render_paths_between_yields(self.paths)
-        for path in self.paths:
-            for block in path:
-                if isinstance(block, Yield):
-                    stores = set()
-                    for edge, _ in block.incoming_edges:
-                        stores |= self.collect_stores_after_yield(edge, set())
-                    for store in stores:
-                        prefix = "_".join(store.split("_")[:-1])
-                        for path2 in self.paths:
-                            for block2 in path2:
-                                if isinstance(block2, Yield):
-                                    if prefix in block2.loads.values():
-                                        store_id = -1
-                                        for store in stores:
-                                            try:
-                                                if prefix in store and "_si_tmp_val_" not in store:
-                                                    store_id = max(int(store.split("_")[-1]), store_id)
-                                            except ValueError:
-                                                pass
-                                        if store_id < 0:
-                                            store_id = 0
-                                        block.stores[prefix + "_" + str(store_id)] = prefix
-                                        break
+        # for path in self.paths:
+        #     for block in path:
+        #         if isinstance(block, Yield):
+        #             stores = set()
+        #             for edge, _ in block.incoming_edges:
+        #                 stores |= self.collect_stores_after_yield(edge, set())
+        #             for store in stores:
+        #                 prefix = "_".join(store.split("_")[:-1])
+        #                 for path2 in self.paths:
+        #                     for block2 in path2:
+        #                         if isinstance(block2, Yield):
+        #                             if prefix in block2.loads.values():
+        #                                 store_id = -1
+        #                                 for store in stores:
+        #                                     try:
+        #                                         if prefix in store and "_si_tmp_val_" not in store:
+        #                                             store_id = max(int(store.split("_")[-1]), store_id)
+        #                                     except ValueError:
+        #                                         pass
+        #                                 if store_id < 0:
+        #                                     store_id = 0
+        #                                 block.stores[prefix + "_" + str(store_id)] = prefix
+        #                                 break
 
         # self.render()
         # render_fsm(self.states)
@@ -347,12 +347,22 @@ class ControlFlowGraph:
                         if width is None:
                             width = 1
                         # -1 hack to work around ~0 == -1 in Python
-                        problem.addVariable(arg, list(range(-1, 1 << width)))
+                        problem.addVariable(arg, range(0, 1 << width))
                         if base_arg not in variables:
                             variables[base_arg] = []
                         variables[base_arg].append(arg)
-                    check = "!=" if result else "=="
-                    _constraint = f"lambda {', '.join(args)}: {astor.to_source(cond).rstrip()} {check} 0"
+
+                        class Wrapper(ast.NodeTransformer):
+                            def __init__(self):
+                                super().__init__()
+
+                            def visit_Name(self, node):
+                                if node.id == arg:
+                                    return parse_expr(f"uint({node.id}, {width})")
+                                return node
+
+                        cond = Wrapper().visit(deepcopy(cond))
+                    _constraint = f"lambda {', '.join(args)}: ({astor.to_source(cond).rstrip()}) == BitVector({value}, 1)"
                     # print(_constraint)
                     problem.addConstraint(
                         eval(_constraint, self.func_locals),
@@ -398,8 +408,8 @@ class ControlFlowGraph:
         paths = []
         for block in self.blocks:
             if isinstance(block, (Yield, HeadBlock)):
-                if isinstance(block, Yield) and block.is_initial_yield:
-                       continue  # Skip initial yield
+                # if isinstance(block, Yield) and block.is_initial_yield:
+                #        continue  # Skip initial yield
                 paths.extend([block] + path for path in self.find_paths(block.outgoing_edge[0], block, []))
         for path in paths:
             for i in range(len(path) - 1):

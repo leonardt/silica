@@ -27,8 +27,8 @@ class Analyzer(ast.NodeVisitor):
                 self.gen.add(node.id)
         else:
             self.kill.add(node.id)
-            if node.id in self.gen:
-                self.gen.remove(node.id)
+            # if node.id in self.gen:
+            #     self.gen.remove(node.id)
 
 #     def visit_Return(self, node):
 #         if isinstance(node, ast.Tuple):
@@ -42,7 +42,7 @@ def analyze(node):
     analyzer = Analyzer()
     if isinstance(node, Yield):
         analyzer.visit(node.value)
-        analyzer.gen = set(value for value in node.output_map.values())
+        # analyzer.gen = set(value for value in node.output_map.values())
         # if not node.terminal:  # We only use assigments
         #     analyzer.gen = set()
         # else:
@@ -81,4 +81,4 @@ def liveness_analysis(cfg):
             block.live_outs = do_analysis(block.outgoing_edge[0])
             block.gen, block.kill = analyze(block)
             still_live = block.live_outs - block.kill
-            block.live_ins = still_live
+            block.live_ins = block.gen | still_live

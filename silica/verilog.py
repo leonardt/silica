@@ -89,11 +89,13 @@ class Context:
         elif is_bit_or(stmt):
             return vg.Or
         elif is_compare(stmt):
-            assert(len(stmt.ops) == len(stmt.comparators) == 1)
-            return self.translate(stmt.ops[0])(
+            curr = self.translate(stmt.ops[0])(
                 self.translate(stmt.left),
                 self.translate(stmt.comparators[0])
             )
+            for op, comp in zip(stmt.ops[1:], stmt.comparators[1:]):
+                curr = self.translate(op)(curr, self.translate(comp))
+            return curr
         elif is_eq(stmt):
             return vg.Eq
         elif is_if(stmt):
@@ -142,8 +144,16 @@ class Context:
             return vg.Cat(*[self.translate(elt) for elt in stmt.elts])
         elif is_unary_op(stmt):
             return self.translate(stmt.op)(self.translate(stmt.operand))
-
-        raise NotImplementedError(stmt)
+        elif is_call(stmt) and is_name(stmt.func) and stmt.func.id == "phi":
+            conds = stmt.args[0].elts
+            values = stmt.args[1].elts
+            prev = self.translate(values[-1])
+            for i in range(len(conds) - 2, -1, -1):
+                prev = vg.Cond(self.translate(conds[i]),
+                               self.translate(values[i]),
+                               prev)
+            return prev
+        raise NotImplementedError(ast.dump(stmt))
 
     def to_verilog(self):
         return self.module.to_verilog()
@@ -162,8 +172,9 @@ class SwapSlices(ast.NodeTransformer):
 
 class RemoveFuncs(ast.NodeTransformer):
     def visit_Call(self, node):
+        node.args = [self.visit(arg) for arg in node.args]
         if isinstance(node.func, ast.Name) and node.func.id in ['bits', 'uint',
-                                                                'bit', 'phi']:
+                                                                'bit']:
             return self.visit(node.args[0])
         return node
 
@@ -198,7 +209,6 @@ def process_statement(stmt):
     SwapSlices().visit(stmt)
     stmt = ExpandLists().visit(stmt)
     stmt = TupleAssignToVerilog().visit(stmt)
-    print(astor.to_source(stmt))
     return stmt
 
 class TempVarPromoter(ast.NodeTransformer):
@@ -268,7 +278,8 @@ def compile_statements(ctx, seq, comb_body, states, one_state, width_table,
                     seq(stmt)
             else:
                 comb_body.append(
-                    vg.Subst(ctx.translate(statement.targets[0]), ctx.translate(statement.value), 1)
+                    ctx.translate(statement)
+                    # vg.Subst(ctx.translate(statement.targets[0]), ctx.translate(statement.value), 1)
                 )
         else:
             process_statement(statement)
@@ -321,7 +332,8 @@ def compile_states(ctx, states, one_state, width_table, registers,
                                     for i in range(width.height):
                                         if_body.append(ctx.assign(vg.Pointer(ctx.get_by_name(target), i),
                                                                   vg.Pointer(ctx.get_by_name(value), i)))
-                                    seq.If(cond)(if_body)
+                                    if if_body:
+                                        seq.If(cond)(if_body)
                                 else:
                                     seq.If(cond)(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
                             else:
@@ -351,16 +363,13 @@ def compile_states(ctx, states, one_state, width_table, registers,
         compile_statements(ctx, seq, comb_body, states, one_state, width_table, registers, statements)
         if not one_state:
             next_state = None
+            started = False
             for i, state in enumerate(states):
                 conds = []
                 if state.conds:
                     conds = [ctx.translate(process_statement(cond)) for cond in state.conds]
                 cond = reduce(vg.Land, conds, ctx.get_by_name('yield_state') == state.start_yield_id)
 
-                if i == 0:
-                    if_stmt = seq.If(cond)
-                else:
-                    if_stmt = seq.Elif(cond)
 
                 output_stmts = []
                 for output, var in state.path[-1].output_map.items():
@@ -376,15 +385,22 @@ def compile_states(ctx, states, one_state, width_table, registers,
                 for stmt in state.path[-1].array_stores_to_process:
                     stmts.append(ctx.translate(process_statement(stmt)))
 
-                if_stmt(stmts)
+                if stmts:
+                    if not started:
+                        if_stmt = seq.If(cond)
+                        started = True
+                    else:
+                        if_stmt = seq.Elif(cond)
+                    if_stmt(stmts)
                 comb_cond = reduce(
                     vg.Land,
                     conds + [ctx.get_by_name('yield_state_next') == state.end_yield_id],
                     ctx.get_by_name('yield_state') == state.start_yield_id)
-                if i == 0:
-                    comb_body.append(vg.If(comb_cond)(output_stmts))
-                else:
-                    comb_body[-1] = comb_body[-1].Elif(comb_cond)(output_stmts)
+                if output_stmts:
+                    if not comb_body:
+                        comb_body.append(vg.If(comb_cond)(output_stmts))
+                    else:
+                        comb_body[-1] = comb_body[-1].Elif(comb_cond)(output_stmts)
             comb_body.insert(0, next_state)
 
         else:

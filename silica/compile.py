@@ -115,18 +115,17 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     # DesugarArrays().run(tree)
     cfg = ControlFlowGraph(tree, width_table, func_locals)
     # cfg.render()
-    # render_paths_between_yields(cfg.paths)
+    render_paths_between_yields(cfg.paths)
 
     if output == 'magma':
         # NOTE: This is currently not maintained
         return compile_magma(coroutine, file_name, mux_strategy, output)
 
     registers = set()
-    registers |= cfg.registers
     outputs = tuple()
     for path in cfg.paths:
-        registers |= set(path[0].loads.values())  # Union
         outputs += (collect_names(path[-1].value, ctx=ast.Load), )
+        registers |= (path[0].live_ins & path[0].live_outs)
 
     assert all(outputs[1] == output for output in outputs[1:]), "Yield statements must all have the same outputs except for the first"
     outputs = outputs[1]
@@ -136,7 +135,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     initial_values = {}
     initial_basic_block = False
     sub_coroutines = []
-    cfg.render()
+    # cfg.render()
     for node in cfg.paths[0][:-1]:
         if isinstance(node, HeadBlock):
             for statement in node:
@@ -178,9 +177,9 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     ctx.declare_ports(inputs, outputs)
 
     # declare wires
-    for var in cfg.replacer.id_counter:
+    for var in cfg.ssa_var_to_curr_id_map:
         width = width_table[var]
-        for i in range(cfg.replacer.id_counter[var] + 1):
+        for i in range(1, cfg.ssa_var_to_curr_id_map[var] + 1):
             if f"{var}_{i}" not in registers:
                 if isinstance(width, MemoryType):
                     ctx.declare_wire(f"{var}_{i}", width.width, width.height)

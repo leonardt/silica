@@ -8,9 +8,7 @@ import fault
 
 @coroutine(inputs={"I0" : Bits(16), "I1" : Bits(16), "I2" : Bits(16), "I3" : Bits(16)})
 def Serializer4():
-    data = [bits(0, 16) for _ in range(4)]
-    O = bits(0, 16)
-    I0, I1, I2, I3 = yield O
+    I0, I1, I2, I3 = yield
     while True:
         data = [I0, I1, I2, I3]
         for O in data:
@@ -38,17 +36,19 @@ def test_ser4():
     for I in inputs:
         for j in range(len(I)):
             tester.poke(getattr(serializer2_si, f"I{j}"), I[j])
-        tester.step(2)
+        tester.step(1)
         ser.send(I)
         assert ser.O == I[0]
         tester.expect(serializer2_si.O, I[0])
+        tester.step(1)
         for i in range(3):
             for j in range(len(I)):
-                tester.poke(getattr(serializer2_si, f"I{j}"), I[j])
-            tester.step(2)
+                tester.poke(getattr(serializer2_si, f"I{j}"), 0)
+            tester.step(1)
             ser.send([0,0,0,0])
             assert ser.O == I[i + 1]
             tester.expect(serializer2_si.O, I[i + 1])
+            tester.step(1)
     tester.compile_and_run(target="verilator", directory="tests/build",
                            flags=['-Wno-fatal'])
 

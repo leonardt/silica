@@ -37,16 +37,26 @@ For each yield, find all paths from other yields that lead into it.
                     for each path leading into predecessor:
                         conds.append(yield_state == start_yield_id &
                                      (cond_1 == T) & (cond_2 == F) & ...)
-                    take predecessor variables if any(reduce(|, conds))
+                    take predecessor variables if reduce(|, conds)
 
         Once we reach the end yield, perform a store with the latest assigned
         temporary variables for each live out.
 """
 import ast
 import astor
+import copy
 
 from collections import defaultdict
 from silica.cfg.types import BasicBlock, Yield, Branch, HeadBlock, State
+
+
+def parse_expr(expr):
+    return ast.parse(expr).body[0].value
+
+
+
+def parse_stmt(statement):
+    return ast.parse(statement).body[0]
 
 
 class SSAReplacer(ast.NodeTransformer):
@@ -138,11 +148,11 @@ class SSAReplacer(ast.NodeTransformer):
 
 
 class Replacer(ast.NodeTransformer):
-    def __init__(self, var_to_curr_id_map):
+    def __init__(self, var_to_curr_id_map, stores, width_table):
         super().__init__()
         self.var_to_curr_id_map = var_to_curr_id_map
-        self.stores = set()
-
+        self.stores = stores
+        self.width_table = width_table
 
     def visit_Assign(self, node):
         node.value = self.visit(node.value)
@@ -150,10 +160,38 @@ class Replacer(ast.NodeTransformer):
         return node
 
     def visit_Name(self, node):
+        if node.id in ["uint"]:
+            return node
+        orig_id = node.id
         if isinstance(node.ctx, ast.Store):
-            self.var_to_curr_id_map[node.id] += 1
+            self.var_to_curr_id_map[orig_id] += 1
         node.id += f"_{self.var_to_curr_id_map[node.id]}"
+        if isinstance(node.ctx, ast.Store):
+            self.stores[orig_id] = node.id
+            self.width_table[node.id] = self.width_table[orig_id]
         return node
+
+
+def get_conds_up_to(path, predecessor):
+    conds = []
+    for i, block in enumerate(path):
+        if isinstance(block, Yield):
+            conds.append(f"yield_state == {block.yield_id}")
+        elif isinstance(block, HeadBlock):
+            conds.append(f"yield_state == 0")
+        elif isinstance(block, Branch):
+            cond = block.cond
+            if path[i + 1] is block.false_edge:
+                cond = ast.UnaryOp(ast.Invert(), cond)
+            conds.append(astor.to_source(cond).rstrip())
+        if block == predecessor:
+            break
+
+    result = conds[0]
+    for cond in conds[1:]:
+        result = f"({result}) & ({cond})"
+    return "(" + result + ")"
+    # return " & ".join(conds)
 
 
 def convert_to_ssa(cfg):
@@ -167,25 +205,71 @@ def convert_to_ssa(cfg):
     for end_yield, paths in yield_to_paths_map.items():
         blocks_to_process = []
         for path in paths:
-            if isinstance(path[0], HeadBlock):
+            if isinstance(path[0], HeadBlock) and path[0] not in blocks_to_process:
                 blocks_to_process.append(path[0])
-            elif all(isinstance(edge, Yield) or edge in processed for edge, _ in path[1].incoming_edges):
-                blocks_to_process.append(path[1])
+            elif all(isinstance(edge, Yield) or edge in blocks_to_process for edge, _ in path[1].incoming_edges):
+                if path[1] not in blocks_to_process:
+                    blocks_to_process.append(path[1])
         while blocks_to_process:
             block = blocks_to_process.pop(0)
             processed.add(block)
-            print(block)
-            print(block.incoming_edges)
-            if isinstance(block, BasicBlock):
-                block.print_statements()
+            loads = []
+
+            block._ssa_stores = {}
+            phi_vars = set()
             if len(block.incoming_edges) == 1:
                 predecessor, _ = next(iter(block.incoming_edges))
-                if isinstance(predecessor, Yield):
-                    loads = []
+                if isinstance(predecessor, (HeadBlock, Yield)):
                     for var in block.live_ins:
-                        loads.append(ast.parse(f"{var}_{var_to_curr_id_map[var]} = {var}"))
                         var_to_curr_id_map[var] += 1
-            replacer = Replacer(var_to_curr_id_map)
+                        ssa_var = f"{var}_{var_to_curr_id_map[var]}"
+                        cfg.width_table[ssa_var] = cfg.width_table[var]
+                        loads.append(parse_stmt(f"{ssa_var} = {var}"))
+                        block._ssa_stores[var] = ssa_var
+                else:
+                    for store, value in predecessor._ssa_stores.items():
+                        if store not in block._ssa_stores:
+                            block._ssa_stores[store] = value
+            elif len(block.incoming_edges) > 1:
+                for var in block.live_ins:
+                    to_mux = []
+                    phi_values = []
+                    phi_conds = []
+                    for predecessor, _ in block.incoming_edges:
+                        if var in predecessor.live_outs:
+                            phi_vars.add(var)
+                            if isinstance(predecessor, (HeadBlock, Yield)):
+                                var_to_curr_id_map[var] += 1
+                                ssa_var = f"{var}_{var_to_curr_id_map[var]}"
+                                loads.append(parse_stmt(f"{ssa_var} = {var}"))
+                                cfg.width_table[ssa_var] = cfg.width_table[var]
+                                block._ssa_stores[var] = ssa_var
+                                phi_values.append(f"{ssa_var}")
+                            else:
+                                to_mux.append(predecessor)
+                                phi_values.append(f"{predecessor._ssa_stores[var]}")
+                            conds = []
+                            for path in cfg.paths:
+                                if predecessor in path and block in path:
+                                    conds.append(get_conds_up_to(path, predecessor))
+                            # phi_conds.append(" | ".join(conds))
+                            result = conds[0]
+                            for cond in conds[1:]:
+                                result = f"({result}) | ({cond})"
+                            phi_conds.append(result)
+
+                    var_to_curr_id_map[var] += 1
+                    ssa_var = f"{var}_{var_to_curr_id_map[var]}"
+                    loads.append(parse_stmt(f"{ssa_var} = phi([{', '.join(phi_conds)}], [{', '.join(phi_values)}])"))
+                    block._ssa_stores[var] = ssa_var
+                    cfg.width_table[ssa_var] = cfg.width_table[var]
+                    for predecessor, _ in block.incoming_edges:
+                        if not isinstance(predecessor, (HeadBlock, Yield)):
+                            for store, value in predecessor._ssa_stores.items():
+                                if store not in block._ssa_stores:
+                                    block._ssa_stores[store] = value
+
+            replacer = Replacer(var_to_curr_id_map, block._ssa_stores, cfg.width_table)
             if isinstance(block, BasicBlock):
                 for statement in block.statements:
                     replacer.visit(statement)
@@ -194,14 +278,14 @@ def convert_to_ssa(cfg):
                 block.cond = replacer.visit(block.cond)
 
             for successor, _ in block.outgoing_edges:
-                if successor in processed:
+                if successor in processed or successor in blocks_to_process:
                     continue
                 if all(isinstance(edge, Yield) or edge in processed for edge, _ in successor.incoming_edges):
                     blocks_to_process.append(successor)
-
-
-
-
-    cfg.render()
-    exit()
-
+                if isinstance(successor, Yield):
+                    assert len(block.outgoing_edges) == 1
+                    assert isinstance(block, (BasicBlock, HeadBlock)), block
+                    for var in successor.live_ins:
+                        ssa_var = f"{var}_{var_to_curr_id_map[var]}"
+                        block.statements.append(parse_stmt(f"{var} = {ssa_var}"))
+    return var_to_curr_id_map
