@@ -7,8 +7,8 @@ import magma as m
 import fault
 
 
-@coroutine(inputs={"I0" : Bits(16), "I1" : Bits(16), "I2" : Bits(16), "I3" : Bits(16)})
-def Serializer4():
+@coroutine
+def Serializer4(I0 : Bits(16), I1 : Bits(16), I2 : Bits(16), I3 : Bits(16)):
     # data = [bits(0, 16) for _ in range(3)]
     data0 = bits(0, 16)
     data1 = bits(0, 16)
@@ -33,15 +33,17 @@ def Serializer4():
         #     I0, I1, I2, I3 = yield O
 
 
-@coroutine
 def inputs_generator(inputs):
-    while True:
-        for i in inputs:
-            I = [BitVector(x, 16) for x in i]
-            yield I
-            for _ in range(3):
-                I = [BitVector((_ * len(i)) + j, 16) for j in range(len(i))]
+    @coroutine
+    def gen():
+        while True:
+            for i in inputs:
+                I = [BitVector(x, 16) for x in i]
                 yield I
+                for _ in range(3):
+                    I = [BitVector((_ * len(i)) + j, 16) for j in range(len(i))]
+                    yield I
+    return gen()
 
 inputs = [[4,5,6,7],[10,16,8,3]]
 
@@ -69,7 +71,7 @@ def test_ser4():
             tester.expect(serializer_si.O, I[i + 1])
             tester.step(1)
     tester.compile_and_run(target="verilator", directory="tests/build",
-                           flags=['-Wno-fatal'])
+                           flags=['-Wno-fatal', '--trace'])
 
 
     shutil.copy("verilog/serializer.v", "tests/build/serializer_verilog.v")
@@ -79,7 +81,7 @@ def test_ser4():
 
     verilog_tester = tester.retarget(serializer_verilog, serializer_verilog.CLK)
     verilog_tester.compile_and_run(target="verilator", directory="tests/build",
-                                   flags=['-Wno-fatal'])
+                                   flags=['-Wno-fatal', '--trace'])
 
     if __name__ == '__main__':
         print("===== BEGIN : SILICA RESULTS =====")

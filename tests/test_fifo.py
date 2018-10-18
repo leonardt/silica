@@ -7,8 +7,8 @@ from bit_vector import BitVector
 import magma as m
 
 
-@si.coroutine(inputs={"wdata": si.Bits(4), "wen": si.Bit, "ren": si.Bit})
-def SilicaFifo():
+@si.coroutine
+def SilicaFifo(wdata: si.Bits(4), wen: si.Bit, ren: si.Bit):
     buffer = memory(4, 4)
     raddr = uint(0, 3)
     waddr = uint(0, 3)
@@ -72,14 +72,16 @@ expected_trace = [
     {'wdata': 14, 'wen': 1, 'ren': 1, 'rdata': 10, 'full': False, 'empty': False, 'buffer': [14, 10, 11, 12], 'raddr': 6, 'waddr': 1},
 ]
 
-@si.coroutine
 def inputs_generator(N):
-    while True:
-        for trace in expected_trace:
-            wdata = bits(trace["wdata"], N)
-            wen = bool(trace["wen"])
-            ren = bool(trace["ren"])
-            yield wdata, wen, ren
+    @si.coroutine
+    def gen():
+        while True:
+            for trace in expected_trace:
+                wdata = bits(trace["wdata"], N)
+                wen = bool(trace["wen"])
+                ren = bool(trace["ren"])
+                yield wdata, wen, ren
+    return gen()
 
 def test_fifo():
     fifo = SilicaFifo()

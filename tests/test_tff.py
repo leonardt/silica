@@ -6,14 +6,17 @@ import fault
 from common import evaluate_circuit
 
 
-@silica.coroutine(inputs={"I": silica.Bit})
 def TFF(init=0):
-    state = bit(init)
-    I = yield
-    while True:
-        O = state
-        state = I ^ state
-        I = yield O
+    @silica.coroutine
+    def tff(I : silica.Bit):
+        state = bit(init)
+        I = yield
+        while True:
+            O = state
+            state = I ^ state
+            I = yield O
+
+    return tff()
 
 
 def test_TFF():
