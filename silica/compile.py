@@ -185,7 +185,6 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     #                 ctx.declare_wire(f"{var}_{i}", width.width, width.height)
     #             else:
     #                 ctx.declare_wire(f"{var}_{i}", width)
-    print(width_table)
     for var, width in width_table.items():
         if var not in registers:
             if isinstance(width, MemoryType):

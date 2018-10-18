@@ -64,15 +64,17 @@ def analyze(node):
             analyzer.visit(statement)
     return analyzer.gen, analyzer.kill
 
-def do_analysis(block):
+def do_analysis(block, cfg):
     block.gen, block.kill = analyze(block)
     if not isinstance(block, Yield):
         if isinstance(block, Branch):
-            true_live_ins = do_analysis(block.true_edge)
-            false_live_ins = do_analysis(block.false_edge)
-            block.live_outs |= true_live_ins | false_live_ins
+            for path in cfg.paths:
+                if block in path and block.true_edge in path:
+                    block.live_outs |= do_analysis(block.true_edge, cfg)
+                if block in path and block.false_edge in path:
+                    block.live_outs |= do_analysis(block.false_edge, cfg)
         else:
-            block.live_outs |= do_analysis(block.outgoing_edge[0])
+            block.live_outs |= do_analysis(block.outgoing_edge[0], cfg)
     still_live = block.live_outs - block.kill
     block.live_ins = block.gen | still_live
     return block.live_ins
@@ -83,7 +85,7 @@ def liveness_analysis(cfg):
     while last_live_outs != curr_live_outs:
         for block in cfg.blocks:
             if isinstance(block, (HeadBlock, Yield)):
-                block.live_outs = do_analysis(block.outgoing_edge[0])
+                block.live_outs = do_analysis(block.outgoing_edge[0], cfg)
                 block.gen, block.kill = analyze(block)
                 still_live = block.live_outs - block.kill
                 block.live_ins = block.gen | still_live

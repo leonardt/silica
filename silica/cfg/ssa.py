@@ -303,7 +303,7 @@ def convert_to_ssa(cfg):
                                 phi_values.append(f"{predecessor._ssa_stores[var]}")
                             conds = []
                             for path in cfg.paths:
-                                if predecessor in path and block in path and path.index(predecessor) == path.index(block) - 1:
+                                if predecessor in path and block in path[1:] and path.index(predecessor) == path[1:].index(block):
                                     conds.append(get_conds_up_to(path, predecessor, cfg))
                             # phi_conds.append(" | ".join(conds))
                             result = conds[0]
@@ -365,7 +365,7 @@ def convert_to_ssa(cfg):
                         new_block.incoming_edges.add((edge, label))
                     block.incoming_edges = {(new_block, "")}
                     new_block.outgoing_edges = {(block, "")}
-                    for path in paths:
+                    for path in cfg.paths:
                         if block in path[1:]:
                             idx = path[1:].index(block)
                             path.insert(1 + idx, new_block)

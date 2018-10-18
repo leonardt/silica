@@ -237,6 +237,7 @@ class ControlFlowGraph:
         # self.paths = promote_live_variables(self.paths)
         liveness_analysis(self)
         # render_paths_between_yields(self.paths)
+        # self.render()
         self.ssa_var_to_curr_id_map = convert_to_ssa(self)
         # self.render()
         self.states, self.state_vars = build_state_info(self.paths, outputs, inputs)
@@ -325,7 +326,9 @@ class ControlFlowGraph:
         elif isinstance(block, Branch):
             true_paths = []
             false_paths = []
-            # print("begin", block)
+            print("~~~~~")
+            print(block)
+            print(block.outgoing_edges)
             for value, paths, edge in [(True, true_paths, block.true_edge),
                                        (False, false_paths, block.false_edge)]:
                 _conds = conds[:] + [(block.cond, value)]
@@ -361,7 +364,7 @@ class ControlFlowGraph:
                                 return node
 
                         cond = Wrapper().visit(deepcopy(cond))
-                    _constraint = f"lambda {', '.join(args)}: ({astor.to_source(cond).rstrip()}) == BitVector({value}, 1)"
+                    _constraint = f"lambda {', '.join(args)}: ({astor.to_source(cond).rstrip()}) == BitVector({result}, 1)"
                     # print(_constraint)
                     problem.addConstraint(
                         eval(_constraint, self.func_locals),
@@ -376,12 +379,14 @@ class ControlFlowGraph:
                 # print(problem.getSolution(), value, edge)
                 # print("===========")
                 if problem.getSolution():
+                    print(edge)
                     paths += [[(block)] + path for path in
                               self.find_paths(edge, initial_block, _conds)]
-            for path in true_paths:
-                path[0].true_edge = path[1]
-            for path in false_paths:
-                path[0].false_edge = path[1]
+            print("~~~~~")
+            # for path in true_paths:
+            #     path[0].true_edge = path[1]
+            # for path in false_paths:
+            #     path[0].false_edge = path[1]
             return true_paths + false_paths
         else:
             raise NotImplementedError(type(block))
