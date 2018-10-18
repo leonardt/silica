@@ -184,7 +184,7 @@ class ExpandLists(ast.NodeTransformer):
         if is_list(node.value):
             name = node.targets[0].id
             targets = [ast.Subscript(ast.Name(name, ast.Load()), ast.Index(ast.Num(x)), ast.Store()) for x in range(len(node.value.elts))]
-            targets = [ast.Tuple(targets)]
+            targets = [ast.Tuple(targets, ast.Store())]
             values = ast.Tuple(node.value.elts, ast.Load())
             return ast.Assign(targets, values)
         return node
