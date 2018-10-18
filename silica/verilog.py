@@ -247,24 +247,26 @@ def compile_statements(ctx, seq, comb_body, states, one_state, width_table,
     # temp_var_promoter = TempVarPromoter(width_table)
     for statement in statements:
         conds = []
-        yields = set()
+        yield_pairs = set()
         contained = [state for state in states if statement in state.statements]
         stores = collect_stores(statement)
         has_reg = any(x in registers for x in stores)
         if contained != states:
             for state in states:
                 if statement in state.statements:
-                    if state.conds or not one_state:
+                    if not one_state:
                         these_conds = []
                         # if state.conds:
                         #     these_conds.extend(astor.to_source(process_statement(cond)).rstrip() for cond in state.conds)
                         # if not one_state:
                         #     these_conds.append(f"(yield_state == {state.start_yield_id})")
-                        yields.add(state.start_yield_id)
+                        yield_pairs.add((state.start_yield_id, state.end_yield_id))
                         # if these_conds:
                         #     conds.append(" & ".join(these_conds))
             if not one_state:
-                conds = [module.get_vars()["yield_state"] == yield_id for yield_id in yields]
+                conds = [(module.get_vars()["yield_state"] == start_yield_id) &
+                         (module.get_vars()["yield_state_next"] == end_yield_id) for
+                         start_yield_id, end_yield_id in yield_pairs]
             statement = process_statement(statement)
             if has_reg:
                 stmt = vg.Subst(ctx.translate(statement.targets[0]), ctx.translate(statement.value), 1)
@@ -277,6 +279,7 @@ def compile_statements(ctx, seq, comb_body, states, one_state, width_table,
                 else:
                     seq(stmt)
             else:
+                # print(astor.to_source(statement))
                 comb_body.append(
                     ctx.translate(statement)
                     # vg.Subst(ctx.translate(statement.targets[0]), ctx.translate(statement.value), 1)

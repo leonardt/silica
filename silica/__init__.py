@@ -6,6 +6,7 @@ config = Config()
 import magma as m
 from magma import Bit, zext, concat, Array, Bits, UInt
 from bit_vector import BitVector
+import bit_vector
 import operator
 
 
@@ -16,12 +17,12 @@ class BitVector(BitVector):
 
 class Memory(list):
     def __getitem__(self, key):
-        if isinstance(key, m.bit_vector.BitVector):
+        if isinstance(key, bit_vector.BitVector):
             key = key.as_int()
         return super().__getitem__(key)
 
     def __setitem__(self, key, value):
-        if isinstance(key, m.bit_vector.BitVector):
+        if isinstance(key, bit_vector.BitVector):
             key = key.as_int()
         return super().__setitem__(key, value)
 
@@ -42,7 +43,7 @@ def zext(value, n):
     return BitVector(value, num_bits=n + value.num_bits)
 
 def add(a, b, cout=False):
-    assert isinstance(a, m.bit_vector.BitVector) and isinstance(b, m.bit_vector.BitVector)
+    assert isinstance(a, bit_vector.BitVector) and isinstance(b, bit_vector.BitVector)
     assert len(a) == len(b)
     if cout:
         width = len(a)

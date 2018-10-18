@@ -36,10 +36,10 @@ def test_detect111():
     tester = fault.Tester(si_detect, si_detect.CLK)
     for i, o in zip(inputs, outputs):
         tester.poke(si_detect.I, i)
-        tester.eval()
+        tester.step(1)
         tester.expect(si_detect.O, o)
         assert o == detect.send(i)
-        tester.step(2)
+        tester.step(1)
     tester.compile_and_run(target="verilator", directory="tests/build",
                            flags=['-Wno-fatal'],
                            include_verilog_libraries=['../cells_sim.v'])

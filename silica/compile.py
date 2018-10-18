@@ -177,14 +177,21 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     ctx.declare_ports(inputs, outputs)
 
     # declare wires
-    for var in cfg.ssa_var_to_curr_id_map:
-        width = width_table[var]
-        for i in range(1, cfg.ssa_var_to_curr_id_map[var] + 1):
-            if f"{var}_{i}" not in registers:
-                if isinstance(width, MemoryType):
-                    ctx.declare_wire(f"{var}_{i}", width.width, width.height)
-                else:
-                    ctx.declare_wire(f"{var}_{i}", width)
+    # for var in cfg.ssa_var_to_curr_id_map:
+    #     width = width_table[var]
+    #     for i in range(1, cfg.ssa_var_to_curr_id_map[var] + 1):
+    #         if f"{var}_{i}" not in registers:
+    #             if isinstance(width, MemoryType):
+    #                 ctx.declare_wire(f"{var}_{i}", width.width, width.height)
+    #             else:
+    #                 ctx.declare_wire(f"{var}_{i}", width)
+    print(width_table)
+    for var, width in width_table.items():
+        if var not in registers:
+            if isinstance(width, MemoryType):
+                ctx.declare_wire(var, width.width, width.height)
+            else:
+                ctx.declare_wire(var, width)
 
     for (name, index), (value, orig_value) in cfg.replacer.array_stores.items():
         width = width_table[name]

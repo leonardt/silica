@@ -238,6 +238,7 @@ class ControlFlowGraph:
         liveness_analysis(self)
         # render_paths_between_yields(self.paths)
         self.ssa_var_to_curr_id_map = convert_to_ssa(self)
+        # self.render()
         self.states, self.state_vars = build_state_info(self.paths, outputs, inputs)
 
 
@@ -342,15 +343,13 @@ class ControlFlowGraph:
                         if arg in seen:
                             continue
                         seen.add(arg)
-                        base_arg = "_".join(arg.split("_")[:-1])
                         width = self.width_table[arg]
                         if width is None:
                             width = 1
-                        # -1 hack to work around ~0 == -1 in Python
                         problem.addVariable(arg, range(0, 1 << width))
-                        if base_arg not in variables:
-                            variables[base_arg] = []
-                        variables[base_arg].append(arg)
+                        if arg not in variables:
+                            variables[arg] = []
+                        variables[arg].append(arg)
 
                         class Wrapper(ast.NodeTransformer):
                             def __init__(self):
@@ -658,7 +657,8 @@ class ControlFlowGraph:
             #     output = stmt.value.value.id
             #     # self.curr_block.statements.append(ast.parse(f"{output} = {output}_{self.replacer.id_counter[output]}"))
             #     output_map = {output: f"{output}_{self.replacer.id_counter[output]}"}
-            self.add_new_yield(stmt.value, output_map)
+            # self.add_new_yield(stmt.value, output_map)
+            self.add_new_yield(stmt.value)
         elif isinstance(stmt.value, ast.Str):
             # Docstring, ignore
             pass
@@ -1033,6 +1033,8 @@ def build_state_info(paths, outputs, inputs):
                 if path[i + 1] is block.false_edge:
                     # cond = ast.Call(ast.Name("not_", ast.Load()), [cond], [])
                     cond = ast.UnaryOp(ast.Invert(), cond)
+                else:
+                    assert path[i + 1] is block.true_edge
                 names = collect_names(cond)
                 for name in names:
                     if outputs and name not in outputs and \
