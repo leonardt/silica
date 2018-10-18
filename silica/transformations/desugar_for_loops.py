@@ -98,7 +98,7 @@ def desugar_for_loops(tree, type_table):
                     ast.Assign([ast.Name(index, ast.Store())], start),
                     ast.While(ast.BinOp(ast.Name(index, ast.Load()), ast.Lt(), stop),
                         [ast.Assign([ast.Name(node.target.id, ast.Store())],
-                                    ast.Subscript(node.iter, ast.Index(ast.Name(index, ast.Load()))))] +
+                                    ast.Subscript(node.iter, ast.Index(ast.Name(index, ast.Load())), ast.Load()))] +
                         node.body + [
                             ast.Assign([ast.Name(index, ast.Store())], ast.BinOp(
                                 ast.Name(index, ast.Load()), ast.Add(), step))
