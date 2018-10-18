@@ -6,8 +6,5 @@ class MemoryType:
     def __eq__(self, other):
         return isinstance(other, MemoryType) and self.height == other.height and self.width == other.width
 
-    def __str__(self):
-        return "<MemoryType: {}, {}>".format(self.height, self.width)
-
     def __repr__(self):
         return "<MemoryType: {}, {}>".format(self.height, self.width)
