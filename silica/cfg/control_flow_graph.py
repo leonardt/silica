@@ -326,9 +326,6 @@ class ControlFlowGraph:
         elif isinstance(block, Branch):
             true_paths = []
             false_paths = []
-            print("~~~~~")
-            print(block)
-            print(block.outgoing_edges)
             for value, paths, edge in [(True, true_paths, block.true_edge),
                                        (False, false_paths, block.false_edge)]:
                 _conds = conds[:] + [(block.cond, value)]
@@ -382,7 +379,6 @@ class ControlFlowGraph:
                     print(edge)
                     paths += [[(block)] + path for path in
                               self.find_paths(edge, initial_block, _conds)]
-            print("~~~~~")
             # for path in true_paths:
             #     path[0].true_edge = path[1]
             # for path in false_paths:

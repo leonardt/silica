@@ -276,8 +276,13 @@ def convert_to_ssa(cfg):
                     for var in block.live_ins:
                         ssa_var = f"{var}_{var_to_curr_id_map[var]}"
                         var_to_curr_id_map[var] += 1
-                        cfg.width_table[ssa_var] = cfg.width_table[var]
-                        loads.append(parse_stmt(f"{ssa_var} = {var}"))
+                        width = cfg.width_table[var]
+                        cfg.width_table[ssa_var] = width
+                        if isinstance(width, MemoryType):
+                            for i in range(width.height):
+                                loads.append(parse_stmt(f"{ssa_var}[{i}] = {var}[{i}]"))
+                        else:
+                            loads.append(parse_stmt(f"{ssa_var} = {var}"))
                         block._ssa_stores[var] = ssa_var
                 else:
                     for store, value in predecessor._ssa_stores.items():
@@ -294,8 +299,13 @@ def convert_to_ssa(cfg):
                             if isinstance(predecessor, (HeadBlock, Yield)):
                                 ssa_var = f"{var}_{var_to_curr_id_map[var]}"
                                 var_to_curr_id_map[var] += 1
-                                loads.append(parse_stmt(f"{ssa_var} = {var}"))
-                                cfg.width_table[ssa_var] = cfg.width_table[var]
+                                width = cfg.width_table[var]
+                                if isinstance(width, MemoryType):
+                                    for i in range(width.height):
+                                        loads.append(parse_stmt(f"{ssa_var}[{i}] = {var}[{i}]"))
+                                else:
+                                    loads.append(parse_stmt(f"{ssa_var} = {var}"))
+                                cfg.width_table[ssa_var] = width
                                 block._ssa_stores[var] = ssa_var
                                 phi_values.append(f"{ssa_var}")
                             else:
@@ -314,9 +324,15 @@ def convert_to_ssa(cfg):
                     assert phi_conds, var
                     ssa_var = f"{var}_{var_to_curr_id_map[var]}"
                     var_to_curr_id_map[var] += 1
-                    loads.append(parse_stmt(f"{ssa_var} = phi([{', '.join(phi_conds)}], [{', '.join(phi_values)}])"))
+                    width = cfg.width_table[var]
+                    if isinstance(width, MemoryType):
+                        for i in range(width.height):
+                            _phi_values = [f"{val}[{i}]" for val in phi_values]
+                            loads.append(parse_stmt(f"{ssa_var}[{i}] = phi([{', '.join(phi_conds)}], [{', '.join(_phi_values)}])"))
+                    else:
+                        loads.append(parse_stmt(f"{ssa_var} = phi([{', '.join(phi_conds)}], [{', '.join(phi_values)}])"))
                     block._ssa_stores[var] = ssa_var
-                    cfg.width_table[ssa_var] = cfg.width_table[var]
+                    cfg.width_table[ssa_var] = width
                     for predecessor, _ in block.incoming_edges:
                         if not isinstance(predecessor, (HeadBlock, Yield)):
                             for store, value in predecessor._ssa_stores.items():
@@ -332,7 +348,12 @@ def convert_to_ssa(cfg):
                     index_hash = "_".join(ast.dump(i) for i in index)
                     count = replacer.index_map[index_hash]
                     if ssa_var not in arrays_loaded:
-                        loads.append(parse_stmt(f"{ssa_var} = {block._ssa_stores[var]}"))
+                        width = cfg.width_table[var]
+                        if isinstance(width, MemoryType):
+                            for i in range(width.height):
+                                loads.append(parse_stmt(f"{ssa_var}[{i}] = {block._ssa_stores[var]}[{i}]"))
+                        else:
+                            loads.append(parse_stmt(f"{ssa_var} = {block._ssa_stores[var]}"))
                         arrays_loaded.add(ssa_var)
                         block._ssa_stores[var] = ssa_var
                         var_to_curr_id_map[var] += 1
