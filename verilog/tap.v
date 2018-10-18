@@ -5,8 +5,14 @@ module tap(
   output TDO,
  
   output reg [3:0] IR, //Instruction Register
-  output reg [4:0] reg5, //Register at IR=5, which is 5 bits wide
-  output reg [6:0] reg7 //Register at IR=7, which is 7 bits wide
+  output reg [4:0] regA, //Register at IR=5, which is 5 bits wide
+  output reg [6:0] regB, //Register at IR=7, which is 7 bits wide
+  output update_dr,
+  output update_ir,
+  output [3:0] cs,
+  output [3:0] ns,
+  output shift_ir,
+  output shift_dr
 );
 
   localparam TEST_LOGIC_RESET = 4'd0 ,
@@ -28,6 +34,9 @@ module tap(
   
   reg [3:0] CS = TEST_LOGIC_RESET;
   reg [3:0] NS;
+
+  assign cs = CS;
+  assign ns = NS;
 
   always @(posedge TCK) begin
     CS <= NS;
@@ -54,22 +63,23 @@ module tap(
     endcase
   end
   
-  wire update_dr;
-  assign update_dr = CS==UPDATE_IR;
+  //wire update_dr;
+  assign update_dr = CS==UPDATE_DR;
 
-  wire shift_dr;
-  assign shift_dr = NS==SHIFT_DR;
+  //wire shift_dr;
+  assign shift_dr = CS==SHIFT_DR;
 
-  wire update_ir;
+  //Do not need this right now
+  //wire update_ir;
   assign update_ir = CS==UPDATE_IR;
 
-  wire shift_ir;
-  assign shift_ir = NS==SHIFT_IR;
+  //wire shift_ir;
+  assign shift_ir = CS==SHIFT_IR;
 
-  wire shift_reg5 = shift_dr & (IR==4'd5);
-  wire shift_reg7 = shift_dr & (IR==4'd7);
+  wire shift_regA = shift_dr & (IR==4'd2);
+  wire shift_regB = shift_dr & (IR==4'd14);
 
-  assign TDO = shift_ir ? IR[0] : (shift_reg5 ? reg5[0] : (shift_reg7 ? reg7[0] : 1'b0));
+  assign TDO = shift_ir ? IR[0] : (shift_regA ? regA[0] : (shift_regB ? regB[0] : 1'b0 ));
 
   always @(posedge TCK) begin
     if (shift_ir) begin
@@ -78,14 +88,14 @@ module tap(
   end
   
   always @(posedge TCK) begin
-    if (shift_reg5) begin
-      reg5 <= {TDI,reg5[4:1]};
+    if (shift_regA) begin
+      regA <= {TDI,regA[4:1]};
     end
   end
   
   always @(posedge TCK) begin
-    if (shift_reg7) begin
-      reg7 <= {TDI,reg7[6:1]};
+    if (shift_regB) begin
+      regB <= {TDI,regB[6:1]};
     end
   end
 
