@@ -6,8 +6,8 @@ from common import evaluate_circuit
 import magma as m
 import fault
 
-@coroutine(inputs={"I0" : Bits(16), "I1" : Bits(16), "I2" : Bits(16), "I3" : Bits(16)})
-def Serializer4():
+@coroutine
+def Serializer4(I0 : Bits(16), I1 : Bits(16), I2 : Bits(16), I3 : Bits(16)):
     I0, I1, I2, I3 = yield
     while True:
         data = [I0, I1, I2, I3]
@@ -15,15 +15,17 @@ def Serializer4():
             # yield O
             I0, I1, I2, I3 = yield O
 
-@coroutine
 def inputs_generator(inputs):
-    while True:
-        for i in inputs:
-            I = [BitVector(x, 16) for x in i]
-            yield I
-            for _ in range(3):
-                I = [BitVector((_ * len(i)) + j, 16) for j in range(len(i))]
+    @coroutine
+    def gen():
+        while True:
+            for i in inputs:
+                I = [BitVector(x, 16) for x in i]
                 yield I
+                for _ in range(3):
+                    I = [BitVector((_ * len(i)) + j, 16) for j in range(len(i))]
+                    yield I
+    return gen()
 
 inputs = [[4,5,6,7],[10,16,8,3]]
 
