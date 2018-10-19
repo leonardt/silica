@@ -20,7 +20,7 @@ def evaluate_circuit(verilog_file, top_name):
         results[top_name] = {}
     # Uncomment to generate dot files
     # res = run(f"yosys -p 'synth_ice40 -top {top_name} -blif tests/build/{verilog_file}.blif; show -stretch -prefix {top_name} -format dot' tests/build/{verilog_file}.v | grep -A 16 \"2.27. Printing statistics.\"")
-    res = run(f"yosys -p 'synth_ice40 -top {top_name} -blif tests/build/{verilog_file}.blif' tests/build/{verilog_file}.v | grep -A 16 \"2.27. Printing statistics.\"")
+    res = run(f"yosys -p 'synth_ice40 -top {top_name} -blif tests/build/{verilog_file}.blif' tests/build/{verilog_file}.v | grep -A 20 \"2.27. Printing statistics.\"")
     for line in res.out.splitlines():
         line = line.split()
         if not line:
@@ -34,7 +34,17 @@ def evaluate_circuit(verilog_file, top_name):
         ]):
             results[top_name][line[0]] = line[1]
 
-    res = run(f"arachne-pnr -q -d 1k -o tests/build/{verilog_file}.txt tests/build/{verilog_file}.blif")
+    res = run(f"arachne-pnr -d 8k -o tests/build/{verilog_file}.txt tests/build/{verilog_file}.blif")
+    for line in res.err.splitlines():
+        line = line.split()
+        if not line:
+            continue
+        if line[0] in "LCs":
+            results[top_name][line[0]] = line[1]
+        elif line[0] in "PLBs":
+            results[top_name][line[0]] = line[1]
+
+
     res = run(f"icetime -tmd hx1k tests/build/{verilog_file}.txt | grep -B 2 \"Total path delay\"")
     match = re.compile(r"\((\d*\.?\d+) MHz\)")
     for line in res.out.splitlines():
