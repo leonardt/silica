@@ -175,7 +175,7 @@ def test_lbmem():
                                    include_directories=["../../verilog"])
     if __name__ == '__main__':
         print("===== BEGIN : SILICA RESULTS =====")
-        evaluate_circuit("si_lbmem", "SILbMem")
+        evaluate_circuit("si_lbmem", "mem")
         print("===== END   : SILICA RESULTS =====")
         import shutil
         shutil.copy('verilog/lbmem.v', 'tests/build/verilog_lbmem.v')

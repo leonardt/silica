@@ -10,9 +10,15 @@ module uart_tx(input CLK, input [7:0] data, input valid, output tx, output ready
                     tx <= 0;  // start bit
                     state <= 1;
                     send_cnt <= 7;
+                    ready <= 0;
+                end else begin
+                    tx <= 1;
+                    state <= 0;
+                    ready <= 1;
                 end
             1:
                 begin
+                    ready <= 0;
                     tx <= message[send_cnt];
                     send_cnt <= send_cnt - 1;
                     if (send_cnt > 0) begin
@@ -23,13 +29,14 @@ module uart_tx(input CLK, input [7:0] data, input valid, output tx, output ready
                 end
             2:
                 begin
+                    ready <= 0;
                     tx <= 1; // end bit
                     state <= 0;
                 end
         endcase
-        $display("valid=%d", valid);
-        $display("tx=%d", tx);
-        $display("send_cnt=%d", send_cnt);
+        /* $display("valid=%d", valid); */
+        /* $display("tx=%d", tx); */
+        /* $display("send_cnt=%d", send_cnt); */
     end
-    assign ready = state == 0 & ~valid;
+    /* assign ready = state == 0 & ~valid; */
 endmodule

@@ -336,7 +336,7 @@ class ControlFlowGraph:
                 seen = set()
                 for cond, result in _conds:
                     args = collect_names(cond)
-                    for special_func in ["uint", "bit"]:
+                    for special_func in ["uint", "bit", "bits"]:
                         if special_func in args:
                             args.remove(special_func)
                     for arg in args:

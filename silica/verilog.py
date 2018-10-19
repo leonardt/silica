@@ -117,6 +117,8 @@ class Context:
             return vg.LessThan
         elif is_gt(stmt):
             return vg.GreaterThan
+        elif is_gt_e(stmt):
+            return vg.GreaterEq
         elif is_name(stmt):
             return self.get_by_name(stmt.id)
         elif is_name_constant(stmt):
@@ -386,6 +388,8 @@ def compile_states(ctx, states, one_state, width_table, registers,
                 next_yield = ctx.assign(ctx.get_by_name('yield_state_next'), state.end_yield_id)
                 if next_state is None:
                     next_state = vg.If(cond)(next_yield)
+                elif i == len(states) - 1:
+                    next_state.Else(next_yield)
                 else:
                     next_state.Elif(cond)(next_yield)
                 for stmt in state.path[-1].array_stores_to_process:
@@ -395,6 +399,8 @@ def compile_states(ctx, states, one_state, width_table, registers,
                     if not started:
                         if_stmt = seq.If(cond)
                         started = True
+                    elif i == len(states) - 1:
+                        if_stmt = seq.Else()
                     else:
                         if_stmt = seq.Elif(cond)
                     if_stmt(stmts)
@@ -405,6 +411,8 @@ def compile_states(ctx, states, one_state, width_table, registers,
                 if output_stmts:
                     if not comb_body:
                         comb_body.append(vg.If(comb_cond)(output_stmts))
+                    elif i == len(states) - 1:
+                        comb_body[-1] = comb_body[-1].Else(output_stmts)
                     else:
                         comb_body[-1] = comb_body[-1].Elif(comb_cond)(output_stmts)
             comb_body.insert(0, next_state)
