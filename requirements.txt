@@ -5,3 +5,4 @@ git+git://github.com/phanrahan/mantle.git#egg=mantle
 git+git://github.com/phanrahan/loam.git#egg=loam
 coreir
 git+git://github.com/leonardt/veriloggen.git#egg=veriloggen
+delegator.py
