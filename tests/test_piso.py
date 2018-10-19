@@ -118,7 +118,7 @@ def test_PISO():
 
 
         print("===== BEGIN : SILICA RESULTS =====")
-        evaluate_circuit("si_piso", "SIPISO10")
+        evaluate_circuit("si_piso", "SIPISO")
         print("===== END   : SILICA RESULTS =====")
         print("===== BEGIN : MANTLE RESULTS =====")
         evaluate_circuit("mantle_piso", "PISO10")
