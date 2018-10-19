@@ -42,9 +42,9 @@ def evaluate_circuit(verilog_file, top_name):
         if not line:
             continue
         if line[0] == "Total number of logic levels":
-            results[top_name][line[0]] = line[1].rstrip()
+            results[top_name]["logic levels"] = line[1].rstrip()
         elif line[0] == "Total path delay":
-            results[top_name][line[0]] = line[1].split()[0]
+            results[top_name]["path delay"] = line[1].split()[0]
             result = line[1]
             result = match.findall(result)
             assert len(result) == 1, "Should only be one match"
