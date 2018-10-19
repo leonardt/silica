@@ -4,6 +4,7 @@ import magma as m
 m.set_mantle_target('ice40')
 import fault
 from common import evaluate_circuit
+import shutil
 
 
 def SilicaCounter(width, init=0, incr=1):
@@ -37,13 +38,23 @@ def test_counter():
     mantle_tester.compile_and_run(target="verilator", directory="tests/build",
                                   flags=['-Wno-fatal'],
                                   include_verilog_libraries=['../cells_sim.v'])
+
+
+    verilog_counter = m.DefineFromVerilogFile("verilog/counter.v", type_map={"CLK": m.In(m.Clock)})[0]
+    verilog_tester = tester.retarget(verilog_counter, verilog_counter.CLK)
+    verilog_tester.compile_and_run(target="verilator", directory="tests/build",
+                                  flags=['-Wno-fatal'])
     if __name__ == '__main__':
         m.compile("tests/build/mantle_counter", mantle_counter)
         print("===== BEGIN : SILICA RESULTS =====")
         evaluate_circuit("counter_si", "counter")
         print("===== END   : SILICA RESULTS =====")
+        # print("===== BEGIN : MANTLE RESULTS =====")
+        # evaluate_circuit("mantle_counter", "Counter3")
+        # print("===== END   : MANTLE RESULTS =====")
         print("===== BEGIN : MANTLE RESULTS =====")
-        evaluate_circuit("mantle_counter", "Counter3")
+        shutil.copy("verilog/counter.v", "tests/build/vcounter.v")
+        evaluate_circuit("vcounter", "vcounter")
         print("===== END   : MANTLE RESULTS =====")
 
 if __name__ == '__main__':
