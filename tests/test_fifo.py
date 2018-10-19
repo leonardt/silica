@@ -98,13 +98,13 @@ def test_fifo():
         for input_ in inputs:
             args += (BitVector(trace[input_]), )
             tester.poke(si_fifo.interface.ports[input_], trace[input_])
-            tester.print(si_fifo.interface.ports[input_])
+            # tester.print(si_fifo.interface.ports[input_])
         fifo.send(args)
         tester.step(1)
         for output in outputs:
             assert getattr(fifo, output) == trace[output], (i, output, getattr(fifo, output), trace[output])
             tester.expect(si_fifo.interface.ports[output], trace[output])
-            tester.print(si_fifo.interface.ports[output])
+            # tester.print(si_fifo.interface.ports[output])
         tester.step(1)
         for state in states:
             assert getattr(fifo, state) == trace[state], (i, state, getattr(fifo, state), trace[state])

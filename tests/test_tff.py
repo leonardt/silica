@@ -62,7 +62,7 @@ def test_TFF():
     if __name__ == '__main__':
         m.compile("tests/build/mantle_tff", MantleTFF)
         print("===== BEGIN : SILICA RESULTS =====")
-        evaluate_circuit("si_tff", "TFF")
+        evaluate_circuit("si_tff", "tff")
         print("===== END   : SILICA RESULTS =====")
         print("===== BEGIN : MANTLE RESULTS =====")
         evaluate_circuit("mantle_tff", "MantleTFF")
