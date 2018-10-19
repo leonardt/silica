@@ -8,7 +8,7 @@ module detect111(
   wire [1:0] cnt_next;
 
   always @(posedge CLK) begin
-    cnt <= I ? (cnt==3 ? cnt : cnt+1) : 0;
+    cnt <= cnt_next;
   end
 
   // mealey version

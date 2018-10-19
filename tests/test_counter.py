@@ -40,7 +40,7 @@ def test_counter():
     if __name__ == '__main__':
         m.compile("tests/build/mantle_counter", mantle_counter)
         print("===== BEGIN : SILICA RESULTS =====")
-        evaluate_circuit("counter_si", "SilicaCounter")
+        evaluate_circuit("counter_si", "counter")
         print("===== END   : SILICA RESULTS =====")
         print("===== BEGIN : MANTLE RESULTS =====")
         evaluate_circuit("mantle_counter", "Counter3")
