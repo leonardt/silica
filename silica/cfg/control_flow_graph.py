@@ -207,6 +207,7 @@ class ControlFlowGraph:
         self.local_vars = set()
         self.width_table = width_table
         self.func_locals = func_locals
+        self.breaks = []
 
         # inputs, outputs = parse_arguments(tree.args.args)
         inputs, outputs = get_io(tree)
@@ -570,6 +571,9 @@ class ControlFlowGraph:
             # branch to the new basic block (exiting the loop)
             self.curr_block = self.gen_new_block()
             add_false_edge(branch, self.curr_block)
+            for break_ in self.breaks:
+                add_edge(break_, self.curr_block)
+            self.breaks = []
         elif isinstance(stmt, (ast.If,)):
             end_then_block = self.curr_block
             # true_counts = {}
@@ -645,9 +649,11 @@ class ControlFlowGraph:
             #         self.curr_block.statements.append(
             #             ast.parse(f"{next_var} = phi({true_var} if {astor.to_source(stmt.test).rstrip()} else {false_var})").body[0])
 
-            add_edge(end_then_block, self.curr_block)
+            if end_then_block not in self.breaks:
+                add_edge(end_then_block, self.curr_block)
             if stmt.orelse:
-                add_edge(end_else_block, self.curr_block)
+                if end_else_block not in self.breaks:
+                    add_edge(end_else_block, self.curr_block)
             else:
                 add_false_edge(branch, self.curr_block)
 
@@ -727,12 +733,14 @@ class ControlFlowGraph:
             self.process_expr(stmt)
         elif isinstance(stmt, ast.Assign):
             self.process_assign(stmt)
+        elif isinstance(stmt, ast.Break):
+            self.breaks.append(self.curr_block)
         else:
             # self.replacer.visit(stmt)
             # Append a normal statement to the current block
             self.curr_block.add(stmt)
 
-    def remove_block(self, block):
+    def remove_block(self, block, take_branch=None):
         """
         Removes ``block`` from the control flow graph and collapses incoming
         edges to outgoing edges.
@@ -752,11 +760,31 @@ class ControlFlowGraph:
                         source.true_edge = sink
                     else:  # pragma: no cover
                         assert False
-                else:
-                    assert not block.outgoing_edges
-            else:
-                for sink, sink_label in block.outgoing_edges:
+                elif block.outgoing_edges:
+                    assert isinstance(block, Branch), "Encountered non branch with more than one out edge"
+                    assert take_branch, "Cannot remove branch without knowing which edge to take"
+                    if take_branch is True:
+                        sink = block.true_edge
+                    else:
+                        sink = block.false_edge
                     add_edge(source, sink, source_label)
+                    if source_label == "F":
+                        source.false_edge = sink
+                    elif source_label == "T":
+                        source.true_edge = sink
+                    else:  # pragma: no cover
+                        assert False
+            else:
+                if isinstance(block, Branch):
+                    if take_branch is True:
+                        sink = block.true_edge
+                        add_edge(source, sink)
+                    else:
+                        sink = block.false_edge
+                        add_edge(source, sink)
+                else:
+                    for sink, sink_label in block.outgoing_edges:
+                        add_edge(source, sink, source_label)
 
     def consolidate_empty_blocks(self):
         """
@@ -778,7 +806,7 @@ class ControlFlowGraph:
         for block in self.blocks:
             if isinstance(block, Branch) and (isinstance(block.cond, ast.NameConstant) \
                     and block.cond.value is True):
-                self.remove_block(block)
+                self.remove_block(block, take_branch=True)
             else:
                 new_blocks.append(block)
         self.blocks = new_blocks
