@@ -4,7 +4,7 @@ import mantle
 import silica
 from silica import bit, bits
 import fault
-from common import evaluate_circuit
+from tests.common import evaluate_circuit
 
 # @silica.coroutine
 # def uart_transmitter(data : In(Array(8, Bit)), valid : In(Bit), 

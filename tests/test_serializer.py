@@ -2,7 +2,7 @@ import silica as si
 from silica import coroutine, uint, Bit, BitVector, compile, Array, Bits, bits
 import pytest
 import shutil
-from common import evaluate_circuit
+from tests.common import evaluate_circuit
 import magma as m
 import fault
 

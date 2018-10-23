@@ -4,7 +4,7 @@ import math
 import fault
 import magma as m
 from bit_vector import BitVector
-from common import evaluate_circuit
+from tests.common import evaluate_circuit
 
 
 # @si.combinational

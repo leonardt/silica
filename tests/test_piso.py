@@ -8,7 +8,7 @@ from magma.bitutils import seq2int, int2seq
 from magma.testing.coroutine import check
 import fault
 from bit_vector import BitVector
-from common import evaluate_circuit
+from tests.common import evaluate_circuit
 
 
 def DefinePISO(n):

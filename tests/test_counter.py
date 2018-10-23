@@ -3,7 +3,7 @@ from silica import bits, add
 import magma as m
 m.set_mantle_target('ice40')
 import fault
-from common import evaluate_circuit
+from tests.common import evaluate_circuit
 import shutil
 
 

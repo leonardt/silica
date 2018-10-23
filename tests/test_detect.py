@@ -4,7 +4,7 @@ from silica import bits, Bit, uint, zext, bit
 import pytest
 import shutil
 import magma as m
-from common import evaluate_circuit
+from tests.common import evaluate_circuit
 
 @silica.coroutine
 def SIDetect111(I : Bit):

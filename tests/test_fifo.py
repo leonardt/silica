@@ -119,7 +119,7 @@ def test_fifo():
                                    flags=['-Wno-fatal'],
                                    include_directories=["../../verilog"])
     if __name__ == '__main__':
-        from common import evaluate_circuit
+        from tests.common import evaluate_circuit
         print("===== BEGIN : SILICA RESULTS =====")
         evaluate_circuit("si_fifo", "SilicaFifo")
         print("===== END   : SILICA RESULTS =====")
