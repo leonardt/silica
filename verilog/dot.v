@@ -14,6 +14,6 @@ module vdot(input CLK, input I,
       end
     endcase
   end
-  assign cb = (state == 0) & I;
-  assign is_ = (state == 1) & ~I;
+  assign cb = (state == 0) ? I : 0;
+  assign is_ = (state == 1) ? ~I : 0;
 endmodule
