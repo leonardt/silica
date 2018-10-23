@@ -208,6 +208,7 @@ class ControlFlowGraph:
         self.width_table = width_table
         self.func_locals = func_locals
         self.breaks = []
+        self.continues = []
 
         # inputs, outputs = parse_arguments(tree.args.args)
         inputs, outputs = get_io(tree)
@@ -574,6 +575,9 @@ class ControlFlowGraph:
             for break_ in self.breaks:
                 add_edge(break_, self.curr_block)
             self.breaks = []
+            for continue_ in self.continues:
+                add_edge(continue_, branch)
+            self.continues = []
         elif isinstance(stmt, (ast.If,)):
             end_then_block = self.curr_block
             # true_counts = {}
@@ -649,10 +653,10 @@ class ControlFlowGraph:
             #         self.curr_block.statements.append(
             #             ast.parse(f"{next_var} = phi({true_var} if {astor.to_source(stmt.test).rstrip()} else {false_var})").body[0])
 
-            if end_then_block not in self.breaks:
+            if end_then_block not in self.breaks + self.continues:
                 add_edge(end_then_block, self.curr_block)
             if stmt.orelse:
-                if end_else_block not in self.breaks:
+                if end_else_block not in self.breaks + self.continues:
                     add_edge(end_else_block, self.curr_block)
             else:
                 add_false_edge(branch, self.curr_block)
@@ -735,6 +739,8 @@ class ControlFlowGraph:
             self.process_assign(stmt)
         elif isinstance(stmt, ast.Break):
             self.breaks.append(self.curr_block)
+        elif isinstance(stmt, ast.Continue):
+            self.continues.append(self.curr_block)
         else:
             # self.replacer.visit(stmt)
             # Append a normal statement to the current block
