@@ -266,4 +266,4 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     if file_name is not None:
         with open(file_name, "w") as f:
             f.write(verilog_str)
-    return m.DefineFromVerilog(verilog_str, type_map={"CLK": m.In(m.Clock)}, module=coroutine._name)
+    return m.DefineFromVerilog(verilog_str, type_map={"CLK": m.In(m.Clock)}, target_modules=[coroutine._name])[0]
