@@ -4,6 +4,7 @@ import magma as m
 m.set_mantle_target("ice40")
 import fault
 from tests.common import evaluate_circuit
+from bit_vector import BitVector
 
 
 def TFF(init=0):
@@ -27,14 +28,14 @@ def test_TFF():
     tester = fault.Tester(si_tff, si_tff.CLK)
     # Should toggle
     for i in range(5):
-        tff.send(True)
+        tff.send(BitVector(1, 1))
         assert tff.O == i % 2
         tester.poke(si_tff.I, 1)
         tester.expect(si_tff.O, i % 2)
         tester.step(2)
     # Should stay high
     for i in range(3):
-        tff.send(False)
+        tff.send(BitVector(0, 1))
         assert tff.O == True
         tester.poke(si_tff.I, 0)
         tester.expect(si_tff.O, 1)

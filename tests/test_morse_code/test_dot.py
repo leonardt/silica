@@ -7,26 +7,28 @@ import shutil
 
 
 @si.coroutine
-def Dot(I: Bit):
+def Dot(I: Bit) -> {"cb": Bit, "is_": Bit}:
     I = yield
     while True:
         if I:
             cb = bit(1)
             is_ = bit(0)
-            while True:
-                I = yield cb, is_
+            I = yield cb, is_
+            if ~I:
                 cb = bit(0)
                 is_ = bit(1)
-                if I:
-                    break
-            while True:
-                cb = bit(0)
-                is_ = bit(0)
-                I = yield cb, is_
-                if ~I:
-                    break
-        cb = bit(0)
-        is_ = bit(0)
+            else:
+                while True:
+                    cb = bit(0)
+                    is_ = bit(0)
+                    I = yield cb, is_
+                    if ~I:
+                        cb = bit(0)
+                        is_ = bit(0)
+                        break
+        else:
+            cb = bit(0)
+            is_ = bit(0)
         I = yield cb, is_
 
 
@@ -44,9 +46,6 @@ def test_dot():
         assert dot.is_ == 1
         dot.send(False)
         assert dot.cb == 0
-        assert dot.is_ == 1
-        dot.send(True)
-        assert dot.cb == 0
         assert dot.is_ == 0
         dot.send(False)
         assert dot.cb == 0
@@ -63,11 +62,6 @@ def test_dot():
         tester.expect(si_dot.is_, 1)
         tester.step(1)
         tester.poke(si_dot.I, False)
-        tester.step(1)
-        tester.expect(si_dot.cb, 0)
-        tester.expect(si_dot.is_, 1)
-        tester.step(1)
-        tester.poke(si_dot.I, True)
         tester.step(1)
         tester.expect(si_dot.cb, 0)
         tester.expect(si_dot.is_, 0)

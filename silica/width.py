@@ -1,8 +1,10 @@
 import ast
 import astor
 from .memory import MemoryType
+import silica.ast_utils as ast_utils
+import magma as m
 
-def get_width(node, width_table):
+def get_width(node, width_table, func_locals={}, func_globals={}):
     if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and \
        node.func.id in {"bits", "uint", "BitVector"}:
         if isinstance(node.args[1], ast.Call) and node.args[1].func.id == "eval":
@@ -24,6 +26,8 @@ def get_width(node, width_table):
         if node.id not in width_table:
             raise Exception(f"Trying to get width of variable that hasn't been previously added to the width_table: {node.id} (width_table={width_table})")
         return width_table[node.id]
+    elif ast_utils.is_call(node) and ast_utils.is_name(node.func) and node.func.id == "coroutine_create":
+        return eval(astor.to_source(node.args[0]), func_globals, func_locals)()
     elif isinstance(node, ast.Call):
         if isinstance(node.func, ast.Name):
             widths = [get_width(arg, width_table) for arg in node.args]
@@ -90,5 +94,12 @@ def get_width(node, width_table):
                 return MemoryType(upper - lower + 1, width.width)
     elif isinstance(node, ast.Num):
         return node.n.bit_length()
+    elif isinstance(node, ast.Attribute):
+        type_ = width_table[node.value.id]._outputs[node.attr]
+        if isinstance(type_, m.BitKind):
+            return None
+        raise NotImplementedError(type_)
+
+
 
     raise NotImplementedError(ast.dump(node))

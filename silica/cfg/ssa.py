@@ -46,6 +46,7 @@ import ast
 import astor
 import copy
 from ..memory import MemoryType
+import silica.ast_utils as ast_utils
 
 from collections import defaultdict
 from silica.cfg.types import BasicBlock, Yield, Branch, HeadBlock, State
@@ -149,13 +150,14 @@ class SSAReplacer(ast.NodeTransformer):
 
 
 class Replacer(ast.NodeTransformer):
-    def __init__(self, var_to_curr_id_map, stores, width_table):
+    def __init__(self, var_to_curr_id_map, stores, width_table, sub_coroutines):
         super().__init__()
         self.var_to_curr_id_map = var_to_curr_id_map
         self.stores = stores
         self.width_table = width_table
         self.array_stores = {}
         self.index_map = {}
+        self.sub_coroutines = sub_coroutines
 
     def get_name(self, node):
         if isinstance(node, ast.Subscript):
@@ -206,8 +208,15 @@ class Replacer(ast.NodeTransformer):
             node.targets = [self.visit(target) for target in node.targets]
         return node
 
+    def visit_Call(self, node):
+        if ast_utils.is_name(node.func) and node.func.id == "coroutine_create":
+            return node
+        else:
+            super().generic_visit(node)
+            return node
+
     def visit_Name(self, node):
-        if node.id in ["uint", "bits", "bit", "memory"]:
+        if node.id in ["uint", "bits", "bit", "memory", "coroutine_create"] + self.sub_coroutines:
             return node
         orig_id = node.id
         if isinstance(node.ctx, ast.Store):
@@ -274,6 +283,8 @@ def convert_to_ssa(cfg):
                 predecessor, _ = next(iter(block.incoming_edges))
                 if isinstance(predecessor, (HeadBlock, Yield)):
                     for var in block.live_ins:
+                        if var in cfg.sub_coroutines:
+                            continue
                         ssa_var = f"{var}_{var_to_curr_id_map[var]}"
                         var_to_curr_id_map[var] += 1
                         width = cfg.width_table[var]
@@ -290,6 +301,8 @@ def convert_to_ssa(cfg):
                             block._ssa_stores[store] = value
             elif len(block.incoming_edges) > 1:
                 for var in block.live_ins:
+                    if var in cfg.sub_coroutines:
+                        continue
                     to_mux = []
                     phi_values = []
                     phi_conds = []
@@ -339,7 +352,7 @@ def convert_to_ssa(cfg):
                                 if store not in block._ssa_stores:
                                     block._ssa_stores[store] = value
 
-            replacer = Replacer(var_to_curr_id_map, block._ssa_stores, cfg.width_table)
+            replacer = Replacer(var_to_curr_id_map, block._ssa_stores, cfg.width_table, cfg.sub_coroutines)
             if isinstance(block, (BasicBlock, HeadBlock)):
                 for statement in block.statements:
                     replacer.visit(statement)
@@ -394,6 +407,8 @@ def convert_to_ssa(cfg):
                             assert path[1 + idx + 1] == block
                 if isinstance(block, Yield):
                     for var in block.live_ins:
+                        if var in cfg.sub_coroutines:
+                            continue
                         # new_block.statements.append(parse_stmt(f"{var} = {block._ssa_stores[var]}"))
                         block.stores[block._ssa_stores[var]] = var
             for successor, _ in block.outgoing_edges:

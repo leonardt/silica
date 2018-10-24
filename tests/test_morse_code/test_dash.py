@@ -7,7 +7,7 @@ import shutil
 
 
 @si.coroutine
-def Dash(I: Bit):
+def Dash(I: Bit) -> {"cb": Bit, "is_": Bit}:
     I = yield
     while True:
         if I:

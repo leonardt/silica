@@ -12,7 +12,6 @@ def Serializer4(I0 : Bits(16), I1 : Bits(16), I2 : Bits(16), I3 : Bits(16)):
     while True:
         data = [I0, I1, I2, I3]
         for O in data:
-            # yield O
             I0, I1, I2, I3 = yield O
 
 def inputs_generator(inputs):

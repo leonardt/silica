@@ -10,8 +10,9 @@ from .cfg.types import HeadBlock
 from .memory import MemoryType
 
 class Context:
-    def __init__(self, name):
+    def __init__(self, name, sub_coroutines):
         self.module = vg.Module(name)
+        self.sub_coroutines = sub_coroutines
 
     def declare_ports(self, inputs, outputs):
         if outputs:
@@ -58,6 +59,10 @@ class Context:
             return vg.Int(1 if stmt else 0)
         elif is_add(stmt):
             return vg.Add
+        elif is_r_shift(stmt):
+            return vg.Srl
+        elif is_l_shift(stmt):
+            return vg.Sll
         elif is_assign(stmt):
             target = self.translate(stmt.targets[0])
             return vg.Subst(
@@ -155,6 +160,21 @@ class Context:
                                self.translate(values[i]),
                                prev)
             return prev
+        elif isinstance(stmt, ast.Expr) and is_call(stmt.value) and is_attribute(stmt.value.func) and stmt.value.func.attr == "send":
+            coroutine = stmt.value.func.value.id
+            subs = []
+            inputs = []
+            for key, value in self.sub_coroutines[coroutine].IO.ports.items():
+                if key == "CLK":
+                    continue
+                if value.isinput():
+                    inputs.append(key)
+            for key, arg in zip(inputs, stmt.value.args):
+                subs.append(vg.Subst(self.get_by_name("_si_" + coroutine + "_" + key), self.get_by_name(arg.id), 1))
+            return subs
+        elif is_attribute(stmt):
+            coroutine = stmt.value.id
+            return self.get_by_name("_si_" + coroutine + "_" + stmt.attr)
         raise NotImplementedError(ast.dump(stmt))
 
     def to_verilog(self):
@@ -301,10 +321,19 @@ def compile_statements(ctx, seq, comb_body, states, one_state, width_table,
 
 
 def compile_states(ctx, states, one_state, width_table, registers,
-                   strategy="by_statement"):
+                   sub_coroutines, strategy="by_statement"):
     module = ctx.module
     seq = vg.TmpSeq(module, module.get_ports()["CLK"])
     comb_body = []
+    for name, def_ in sub_coroutines.items():
+        ports = []
+        for key, type_ in def_.interface.ports.items():
+            if key == "CLK":
+                ports.append((key, ctx.get_by_name(f"CLK")))
+            else:
+                ports.append((key, ctx.get_by_name(f"_si_{name}_{key}")))
+
+        module.Instance(def_.name, name, ports=ports)
 
     if strategy == "by_statement":
         seen = set()

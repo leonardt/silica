@@ -7,7 +7,7 @@ import shutil
 
 
 @si.coroutine
-def Space(I: Bit):
+def Space(I: Bit) -> {"cb": Bit, "is_": Bit}:
     I = yield
     while True:
         if ~I:
@@ -25,8 +25,6 @@ def Space(I: Bit):
                         I = yield cb, is_
                         if I:
                             break
-                        cb = bit(1)
-                        is_ = bit(0)
         cb = bit(0)
         is_ = bit(0)
         I = yield cb, is_
@@ -47,39 +45,34 @@ def test_space():
         assert space.cb == 0
         assert space.is_ == 1
         space.send(False)
-        assert space.cb == 1
-        assert space.is_ == 0
+        assert space.cb == 0
+        assert space.is_ == 1
         space.send(True)
         assert space.cb == 0
         assert space.is_ == 0
 
     for i in range(2):
         tester.poke(si_space.I, False)
-        tester.step(1)
+        tester.step(2)
         tester.expect(si_space.cb, 1)
-        tester.step(1)
         tester.poke(si_space.I, False)
-        tester.step(1)
+        tester.step(2)
         tester.expect(si_space.cb, 1)
-        tester.step(1)
         tester.poke(si_space.I, False)
-        tester.step(1)
+        tester.step(2)
         tester.expect(si_space.cb, 0)
         tester.expect(si_space.is_, 1)
-        tester.step(1)
         tester.poke(si_space.I, False)
-        tester.step(1)
-        tester.expect(si_space.cb, 1)
-        tester.expect(si_space.is_, 0)
-        tester.step(1)
+        tester.step(2)
+        tester.expect(si_space.cb, 0)
+        tester.expect(si_space.is_, 1)
         tester.poke(si_space.I, True)
-        tester.step(1)
+        tester.step(2)
         tester.expect(si_space.cb, 0)
         tester.expect(si_space.is_, 0)
-        tester.step(1)
 
     tester.compile_and_run(target="verilator", directory="tests/build",
-                           flags=['-Wno-fatal'])
+                           flags=['-Wno-fatal', '--trace'])
 
     # verilog_dot = m.DefineFromVerilogFile("verilog/dot.v", type_map={"CLK": m.In(m.Clock)})[0]
     # verilog_tester = tester.retarget(verilog_dot, verilog_dot.CLK)

@@ -29,8 +29,8 @@ class Memory(list):
 def memory(height, width):
     return Memory(bits(0, width) for _ in range(height))
 
-def bit(val):
-    return val
+def bit(value):
+    return BitVector(value, 1)
 
 def bits(value, width):
     return BitVector(value, width)

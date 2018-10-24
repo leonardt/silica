@@ -15,7 +15,6 @@ from silica.transformations import specialize_constants, replace_symbols, \
     constant_fold, desugar_for_loops, specialize_evals, inline_yield_from_functions
 from silica.visitors import collect_names
 import silica.verilog as verilog
-from .width import get_width
 from .memory import MemoryType
 from silica.transformations.specialize_arguments import specialize_arguments
 from silica.type_check import TypeChecker
@@ -85,20 +84,29 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     tree, loopvars = desugar_for_loops(tree, list_lens)
 
     width_table = {}
+    type_table = {}
     if coroutine._inputs:
         for input_, type_ in coroutine._inputs.items():
             width_table[input_] = get_input_width(type_)
+            if isinstance(type_, m.BitKind):
+                type_ = "bit"
+            elif isinstance(type_, m.UIntKind):
+                type_ = "uint"
+            elif isinstance(type_, m.BitsKind):
+                type_ = "bits"
+            else:
+                raise NotImplementedError(type_)
+            type_table[input_] = type_
 
     for name,width in loopvars:
         width_table[name] = width
 
     constant_fold(tree)
-    type_table = {}
 
     for name,_ in loopvars:
         type_table[name] = 'uint'
 
-    CollectInitialWidthsAndTypes(width_table, type_table).visit(tree)
+    CollectInitialWidthsAndTypes(width_table, type_table, func_locals, func_globals).visit(tree)
     PromoteWidths(width_table, type_table).visit(tree)
     tree, loopvars = get_final_widths(tree, width_table, func_locals, func_globals)
 
@@ -109,7 +117,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     type_table = {}
     TypeChecker(width_table, type_table).check(tree)
     # DesugarArrays().run(tree)
-    cfg = ControlFlowGraph(tree, width_table, func_locals)
+    cfg = ControlFlowGraph(tree, width_table, func_locals, func_globals)
     # cfg.render()
     # render_paths_between_yields(cfg.paths)
 
@@ -130,17 +138,16 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     num_states = len(states)
     initial_values = {}
     initial_basic_block = False
-    sub_coroutines = []
+    sub_coroutines = {}
     # cfg.render()
     for node in cfg.paths[0][:-1]:
         if isinstance(node, HeadBlock):
             for statement in node:
                 if ast_utils.is_call(statement.value) and ast_utils.is_name(statement.value.func) and statement.value.func.id == "coroutine_create":
                     sub_coroutine = eval(astor.to_source(statement.value.args[0]), func_globals, func_locals)
-                    raise NotImplementedError()
-                    statement.value.func = ast.Name(sub_coroutine._name, ast.Load())
-                    statement.value.args = []
-                    sub_coroutines.append((statement, sub_coroutine))
+                    # statement.value.func = ast.Name(sub_coroutine._name, ast.Load())
+                    # statement.value.args = []
+                    sub_coroutines[statement.targets[0].id] = compile(sub_coroutine())
                 else:
                     if ast_utils.is_name(statement.value) and statement.value.id in initial_values:
                         initial_values[statement.targets[0].id] = initial_values[statement.value.id]
@@ -159,7 +166,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
         raise NotImplementedError("add ce to module decl")
 
     # declare module and ports
-    ctx = verilog.Context(module_name)
+    ctx = verilog.Context(module_name, sub_coroutines)
 
     def get_len(t):
         try:
@@ -181,7 +188,10 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     #                 ctx.declare_wire(f"{var}_{i}", width.width, width.height)
     #             else:
     #                 ctx.declare_wire(f"{var}_{i}", width)
+    # cfg.render()
     for var, width in width_table.items():
+        if isinstance(width, Coroutine):
+            continue
         if var not in registers:
             if isinstance(width, MemoryType):
                 ctx.declare_wire(var, width.width, width.height)
@@ -206,12 +216,24 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     # declare regs
     for register in registers:
         width = width_table[register]
+        if isinstance(width, Coroutine):
+            continue
         if isinstance(width, MemoryType):
             ctx.declare_reg(register, width.width, width.height)
         else:
             ctx.declare_reg(register, width)
 
     init_body = [ctx.assign(ctx.get_by_name(key), value) for key,value in initial_values.items() if value is not None]
+
+    for sub_coroutine in sub_coroutines:
+        for key, type_ in sub_coroutines[sub_coroutine].interface.ports.items():
+            if key == "CLK":
+                continue
+            if isinstance(type_, m.BitType):
+                width = None
+            else:
+                width = len(type_)
+            ctx.declare_wire(f"_si_{sub_coroutine}_{key}", width)
 
     if cfg.curr_yield_id > 1:
         yield_state_width = (cfg.curr_yield_id - 1).bit_length()
@@ -233,9 +255,15 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     wens = {}
     # if initial_basic_block:
     #     states = states[1:]
-    verilog.compile_states(ctx, states, cfg.curr_yield_id == 1, width_table, registers, strategy)
+    verilog.compile_states(ctx, states, cfg.curr_yield_id == 1, width_table,
+                           registers, sub_coroutines, strategy)
     # cfg.render()
+    verilog_str = ""
+    for sub_coroutine in sub_coroutines.values():
+        verilog_str += sub_coroutine.verilogFile
+    verilog_str += ctx.to_verilog()
 
-    with open(file_name, "w") as f:
-        f.write(ctx.to_verilog())
-    return m.DefineFromVerilog(ctx.to_verilog(), type_map={"CLK": m.In(m.Clock)})[-1]
+    if file_name is not None:
+        with open(file_name, "w") as f:
+            f.write(verilog_str)
+    return m.DefineFromVerilog(verilog_str, type_map={"CLK": m.In(m.Clock)}, module=coroutine._name)

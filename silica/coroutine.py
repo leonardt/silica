@@ -21,6 +21,11 @@ class Coroutine:
         self.co = self.definition(*self.args, **self.kwargs)
         next(self.co)
 
+    def __deepcopy__(self, memo):
+        obj = type(self)(*self.args, **self.kwargs)
+        memo[id(self)] = obj
+        return obj
+
     def __getattr__(self, key):
         try:
             return self.co.gi_frame.f_locals[key]
@@ -49,6 +54,9 @@ def coroutine(func=None, inputs=None):
     defn_locals = stack[1].frame.f_locals
 
     inputs = inspect.getfullargspec(func).annotations
+    outputs = inspect.signature(func).return_annotation
+    if 'return' in inputs:
+        del inputs['return']
     args = [ inputs[arg] for arg in inspect.getfullargspec(func).args ]
     kwargs = { arg : inputs[arg] for arg in inspect.getfullargspec(func).kwonlyargs }
 
@@ -56,6 +64,7 @@ def coroutine(func=None, inputs=None):
         class _Coroutine(Coroutine):
             _definition = func
             _inputs = inputs
+            _outputs = outputs
             _defn_locals = defn_locals
             _name = func.__name__
         return _Coroutine(*args, **kwargs)
