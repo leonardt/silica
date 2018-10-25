@@ -354,12 +354,20 @@ def compile_states(ctx, states, one_state, width_table, registers,
                         else:
                             comb_body.append(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
                             comb_body[-1].blk = 1
-                for value, target in state.path[0].stores.items():
+                for value, target in state.path[-1].stores.items():
                     if (target, value) not in seen:
                         seen.add((target, value))
                         width = width_table[value]
                         if not one_state:
-                            cond = ctx.get_by_name('yield_state_next') == state.start_yield_id
+                            # cond = ctx.get_by_name('yield_state_next') == state.start_yield_id
+                            all_conds = []
+                            for _state in states:
+                                if _state.path[-1] is not state.path[-1]:
+                                    continue
+                                conds = [ctx.translate(process_statement(cond)) for cond in _state.conds]
+                                cond = reduce(vg.Land, conds, ctx.get_by_name('yield_state') == _state.start_yield_id)
+                                all_conds.append(cond)
+                            cond = reduce(vg.Lor, all_conds)
                             if isinstance(width, MemoryType):
                                 if_body = []
                                 for i in range(width.height):

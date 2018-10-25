@@ -45,7 +45,7 @@ def evaluate_circuit(verilog_file, top_name):
             results[top_name][line[0]] = line[1]
 
 
-    res = run(f"icetime -tmd hx1k tests/build/{verilog_file}.txt | grep -B 2 \"Total path delay\"")
+    res = run(f"icetime -itmd hx8k tests/build/{verilog_file}.txt | grep -B 2 \"Total path delay\"")
     match = re.compile(r"\((\d*\.?\d+) MHz\)")
     for line in res.out.splitlines():
         line = line.split(":")
