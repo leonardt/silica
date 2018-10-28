@@ -6,3 +6,4 @@ parsetab.py
 .cache
 .magma
 .pytest_cache
+vagrant/.vagrant
