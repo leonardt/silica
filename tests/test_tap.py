@@ -138,7 +138,7 @@ def SilicaTAP(TMS : Bit, TDI : Bit):
     regB = bits(0, 7)
     TMS, TDI = yield #TODO it seems to be failing here
     while True:
-        NS = TEST_LOGIC_RESET
+        NS = bits(TEST_LOGIC_RESET, 4)
         if CS == TEST_LOGIC_RESET:
             NS = TEST_LOGIC_RESET if TMS else RUN_TEST_IDLE
         elif CS == RUN_TEST_IDLE:
