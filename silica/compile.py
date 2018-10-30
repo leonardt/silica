@@ -115,6 +115,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
 
     # Desugar(width_table).visit(tree)
     type_table = {}
+    print(astor.to_source(tree))
     TypeChecker(width_table, type_table).check(tree)
     # DesugarArrays().run(tree)
     cfg = ControlFlowGraph(tree, width_table, func_locals, func_globals)

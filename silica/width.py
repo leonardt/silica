@@ -58,6 +58,13 @@ def get_width(node, width_table, func_locals={}, func_globals={}):
         if left_width != right_width:
             raise TypeError(f"Binary operation with mismatched widths {ast.dump(node)}")
         return left_width
+    elif isinstance(node, ast.IfExp):
+        left_width = get_width(node.body, width_table)
+        if node.orelse:
+            right_width = get_width(node.orelse, width_table)
+            if left_width != right_width:
+                raise TypeError(f"Binary operation with mismatched widths {ast.dump(node)}")
+        return left_width
     elif isinstance(node, ast.Compare):
         # TODO: Check widths of operands
         return None
@@ -93,7 +100,7 @@ def get_width(node, width_table, func_locals={}, func_globals={}):
                 width = width_table[node.value.id]
                 return MemoryType(upper - lower + 1, width.width)
     elif isinstance(node, ast.Num):
-        return node.n.bit_length()
+        return max(node.n.bit_length(), 1)
     elif isinstance(node, ast.Attribute):
         type_ = width_table[node.value.id]._outputs[node.attr]
         if isinstance(type_, m.BitKind):

@@ -113,22 +113,22 @@ class TAPDriver:
 
 
 
-TEST_LOGIC_RESET = 0
-RUN_TEST_IDLE = 1
-SELECT_DR_SCAN = 2
-CAPTURE_DR = 3
-SHIFT_DR = 4
-EXIT1_DR = 5
-PAUSE_DR = 6
-EXIT2_DR = 7
-UPDATE_DR = 8
-SELECT_IR_SCAN = 9
-CAPTURE_IR = 10
-SHIFT_IR = 11
-EXIT1_IR = 12
-PAUSE_IR = 13
-EXIT2_IR = 14
-UPDATE_IR = 15
+TEST_LOGIC_RESET = bits(0, 4)
+RUN_TEST_IDLE = bits(1, 4)
+SELECT_DR_SCAN = bits(2, 4)
+CAPTURE_DR = bits(3, 4)
+SHIFT_DR = bits(4, 4)
+EXIT1_DR = bits(5, 4)
+PAUSE_DR = bits(6, 4)
+EXIT2_DR = bits(7, 4)
+UPDATE_DR = bits(8, 4)
+SELECT_IR_SCAN = bits(9, 4)
+CAPTURE_IR = bits(10, 4)
+SHIFT_IR = bits(11, 4)
+EXIT1_IR = bits(12, 4)
+PAUSE_IR = bits(13, 4)
+EXIT2_IR = bits(14, 4)
+UPDATE_IR = bits(15, 4)
 
 @si.coroutine
 def SilicaTAP(TMS : Bit, TDI : Bit):
@@ -138,7 +138,7 @@ def SilicaTAP(TMS : Bit, TDI : Bit):
     regB = bits(0, 7)
     TMS, TDI = yield #TODO it seems to be failing here
     while True:
-        NS = bits(TEST_LOGIC_RESET, 4)
+        NS = TEST_LOGIC_RESET
         if CS == TEST_LOGIC_RESET:
             NS = TEST_LOGIC_RESET if TMS else RUN_TEST_IDLE
         elif CS == RUN_TEST_IDLE:
