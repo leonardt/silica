@@ -1,5 +1,5 @@
 import ast
-from .types import Yield, HeadBlock, Branch
+from .types import Yield, HeadBlock, Branch, BasicBlock
 import silica.ast_utils as ast_utils
 import copy
 
@@ -68,11 +68,17 @@ def do_analysis(block, cfg):
     block.gen, block.kill = analyze(block)
     if not isinstance(block, Yield):
         if isinstance(block, Branch):
+            true_edge_seen = False
+            false_edge_seen = False
             for path in cfg.paths:
-                if block in path and block.true_edge in path:
+                if block in path and block.true_edge in path and not true_edge_seen:
                     block.live_outs |= do_analysis(block.true_edge, cfg)
-                if block in path and block.false_edge in path:
+                    true_edge_seen = True
+                if block in path and block.false_edge in path and not false_edge_seen:
                     block.live_outs |= do_analysis(block.false_edge, cfg)
+                    false_edge_seen = True
+                if true_edge_seen and false_edge_seen:
+                    break
         else:
             block.live_outs |= do_analysis(block.outgoing_edge[0], cfg)
     still_live = block.live_outs - block.kill
