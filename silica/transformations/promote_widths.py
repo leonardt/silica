@@ -8,7 +8,7 @@ class PromoteWidths(ast.NodeTransformer):
         self.type_table = type_table
 
     def check_valid(self, int_length, expected_length):
-        if int_length > expected_length:
+        if expected_length is None and int_length > 1 or int_length > expected_length:
             raise TypeError("Cannot promote integer with greater width than other operand")
 
     def make(self, value, width, type_):
@@ -29,7 +29,7 @@ class PromoteWidths(ast.NodeTransformer):
                         return node.slice.upper.n
                 else:
                     raise NotImplementedError(ast.dump(node))
-        raise NotImplementedError(node)
+        return get_width(node, self.width_table)
 
     def visit_Assign(self, node):
         node.value = self.visit(node.value)
@@ -55,11 +55,19 @@ class PromoteWidths(ast.NodeTransformer):
         node.right = self.visit(node.right)
         if isinstance(node.left, ast.Num):
             right_width = get_width(node.right, self.width_table)
-            self.check_valid(node.left.n.bit_length(), right_width)
+            try:
+                self.check_valid(node.left.n.bit_length(), right_width)
+            except TypeError as e:
+                print(f"Error type checking node {ast.dump(node)}")
+                raise e
             node.left = self.make(node.left.n, right_width, self.get_type(node.right))
         elif isinstance(node.right, ast.Num):
             left_width = get_width(node.left, self.width_table)
-            self.check_valid(node.right.n.bit_length(), left_width)
+            try:
+                self.check_valid(node.right.n.bit_length(), left_width)
+            except TypeError as e:
+                print(f"Error type checking node {ast.dump(node)}")
+                raise e
             node.right = self.make(node.right.n, left_width, self.get_type(node.left))
         return node
 

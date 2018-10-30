@@ -188,13 +188,13 @@ def SilicaTAP(TMS : Bit, TDI : Bit):
         
         if shift_ir:
             # emulating {TDI,IR[3:1]}   
-            IR = (IR>>1 & ((1<<4)-1)) | (TDI << 3) #TODO how to concat?
+            IR = (IR>>1 & ((1<<4)-1)) | (bits(TDI, 4) << 3) #TODO how to concat?
         if shift_regA:
             # emulating {TDI,regA[4:1]}   
-            regA = (regA>>1 & ((1<<5)-1)) | (TDI << 4)
+            regA = (regA>>1 & ((1<<5)-1)) | (bits(TDI, 5) << 4)
         if shift_regB:
             # emulating {TDI,regB[3:1]}   
-            regB = (regB>>1 & ((1<<7)-1)) | (TDI << 6)
+            regB = (regB>>1 & ((1<<7)-1)) | (bits(TDI, 7) << 6)
 
         CS = NS
         TMS, TDI = yield TDO, update_dr,update_ir
