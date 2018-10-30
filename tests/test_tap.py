@@ -136,7 +136,7 @@ def SilicaTAP(TMS : Bit, TDI : Bit):
     IR = bits(0, 4)
     regA = bits(0, 5)
     regB = bits(0, 7)
-    TMS, TDI = yield
+    TMS, TDI = yield #TODO it seems to be failing here
     while True:
         NS = TEST_LOGIC_RESET
         if CS == TEST_LOGIC_RESET:
@@ -178,7 +178,7 @@ def SilicaTAP(TMS : Bit, TDI : Bit):
         shift_ir = (CS == SHIFT_IR)
         shift_regA = shift_dr & (IR == 2) #2 is address of regA
         shift_regB = shift_dr & (IR == 14) #14 is address of regB
-        TDO = 0
+        TDO = bit(0) #Can this just be 0?
         if shift_ir:
             TDO = IR[0]
         elif shift_regA:
@@ -220,7 +220,6 @@ def test_tap():
 
     tester.compile_and_run(
         target="verilator", directory="tests/build", flags=['-Wno-fatal'])
-
 
 
     shutil.copy("verilog/tap.v", "tests/build/tap_verilog.v")
