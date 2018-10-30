@@ -15,7 +15,7 @@ class YieldFromFunctionInliner(ast.NodeTransformer):
         flatten any lists that are returned. This allows visitors to return
         more than one node.
         """
-        if hasattr(node, 'body'):
+        if hasattr(node, 'body') and not isinstance(node, ast.IfExp):
             new_body = []
             for statement in node.body:
                 result = self.visit(statement)
