@@ -247,11 +247,11 @@ def get_conds_up_to(path, predecessor, cfg):
             break
 
     if not conds:
-        return "1"
+        return ast.Num(1)
     result = conds[0]
     for cond in conds[1:]:
         result = f"({result}) & ({cond})"
-    return "(" + result + ")"
+    return ast.parse("(" + result + ")").body[0].value
     # return " & ".join(conds)
 
 
@@ -308,6 +308,17 @@ def convert_to_ssa(cfg):
                     phi_conds = []
                     for predecessor, _ in block.incoming_edges:
                         if var in predecessor.live_outs:
+                            conds = []
+                            for path in cfg.paths:
+                                if predecessor in path and block in path[1:] and path.index(predecessor) == path[1:].index(block):
+                                    conds.append(get_conds_up_to(path, predecessor, cfg))
+                            if not conds:
+                                # not in valid path
+                                continue
+                            if len(conds) > 1:
+                                phi_conds.append(ast.BoolOp(ast.Or(), conds))
+                            else:
+                                phi_conds.extend(conds)
                             phi_vars.add(var)
                             if isinstance(predecessor, (HeadBlock, Yield)):
                                 ssa_var = f"{var}_{var_to_curr_id_map[var]}"
@@ -324,15 +335,6 @@ def convert_to_ssa(cfg):
                             else:
                                 to_mux.append(predecessor)
                                 phi_values.append(f"{predecessor._ssa_stores[var]}")
-                            conds = []
-                            for path in cfg.paths:
-                                if predecessor in path and block in path[1:] and path.index(predecessor) == path[1:].index(block):
-                                    conds.append(get_conds_up_to(path, predecessor, cfg))
-                            # phi_conds.append(" | ".join(conds))
-                            result = conds[0]
-                            for cond in conds[1:]:
-                                result = f"({result}) | ({cond})"
-                            phi_conds.append(result)
 
                     assert phi_conds, var
                     ssa_var = f"{var}_{var_to_curr_id_map[var]}"
@@ -341,9 +343,9 @@ def convert_to_ssa(cfg):
                     if isinstance(width, MemoryType):
                         for i in range(width.height):
                             _phi_values = [f"{val}[{i}]" for val in phi_values]
-                            loads.append(parse_stmt(f"{ssa_var}[{i}] = phi([{', '.join(phi_conds)}], [{', '.join(_phi_values)}])"))
+                            loads.append(parse_stmt(f"{ssa_var}[{i}] = phi([{', '.join(astor.to_source(cond).rstrip() for cond in phi_conds)}], [{', '.join(_phi_values)}])"))
                     else:
-                        loads.append(parse_stmt(f"{ssa_var} = phi([{', '.join(phi_conds)}], [{', '.join(phi_values)}])"))
+                        loads.append(parse_stmt(f"{ssa_var} = phi([{', '.join(astor.to_source(cond).rstrip() for cond in phi_conds)}], [{', '.join(phi_values)}])"))
                     block._ssa_stores[var] = ssa_var
                     cfg.width_table[ssa_var] = width
                     for predecessor, _ in block.incoming_edges:

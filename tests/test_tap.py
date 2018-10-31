@@ -13,17 +13,17 @@ class TAPDriver:
     DRBits = dict(REGA=5, REGB=7)
     IR_bits = 4
     
-    def __init__(self, tester, tap_v):
+    def __init__(self, tester, tap_v, clock):
         self.tester = tester
-        self.TCK = tap_v.TCK
+        self.TCK = clock
         self.TMS = tap_v.TMS
         self.TDI = tap_v.TDI
         self.TDO = tap_v.TDO
-        self.IR = tap_v.IR
+        # self.IR = tap_v.IR
         self.update_ir = tap_v.update_ir
         self.update_dr = tap_v.update_dr
-        self.cs = tap_v.cs
-        self.ns = tap_v.ns
+        # self.cs = tap_v.cs
+        # self.ns = tap_v.ns
         self.sigs = tap_v
 
     #This would be useful to be a fault helper function
@@ -205,7 +205,7 @@ def test_tap():
 
     tester = fault.Tester(si_tap, si_tap.CLK)
 
-    tap_driver = TAPDriver(tester, si_tap)
+    tap_driver = TAPDriver(tester, si_tap, si_tap.CLK)
     tap_driver.init_tap()
 
     tap_driver.write_IR("REGA")

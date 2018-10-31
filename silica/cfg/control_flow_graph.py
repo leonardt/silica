@@ -22,14 +22,11 @@ from ..memory import MemoryType
 import silica.ast_utils as ast_utils
 
 def get_constant(node):
-    if isinstance(node, ast.Num) and len(stmt.targets) == 1:
+    if isinstance(node, ast.Num):
         return node.n
     elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and \
-         node.func.id in {"bits", "uint"}:
-        return node.args[0].n
-    elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and \
-         node.func.id == "bit":
-        return int(node.args[0].n)
+         node.func.id in {"bits", "uint", "bit"}:
+        return get_constant(node.args[0])
     elif isinstance(node, ast.NameConstant):
         return int(node.value)
 

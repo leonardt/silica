@@ -59,6 +59,8 @@ class Context:
             return vg.Int(1 if stmt else 0)
         elif is_add(stmt):
             return vg.Add
+        elif is_or(stmt):
+            return vg.Or
         elif is_r_shift(stmt):
             return vg.Srl
         elif is_l_shift(stmt):
@@ -71,6 +73,14 @@ class Context:
                 # not self.is_reg(target)
                 1
             )
+        elif is_bool_op(stmt):
+            result = self.translate(stmt.op)(
+                self.translate(stmt.values[0]),
+                self.translate(stmt.values[1])
+            )
+            for value in stmt.values[2:]:
+                result = self.translate(stmt.op)(result, self.translate(value))
+            return result
         elif is_bin_op(stmt):
             if is_list(stmt.left) or is_list(stmt.right):
                 if is_add(stmt.op): # list concatenation
