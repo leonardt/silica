@@ -224,9 +224,9 @@ def test_tap():
 
     shutil.copy("verilog/tap.v", "tests/build/tap_verilog.v")
     tap_v = m.DefineFromVerilogFile(
-        "tests/build/tap_verilog.v", type_map={"TCK": m.In(m.Clock)})[0]
+        "tests/build/tap_verilog.v", type_map={"CLK": m.In(m.Clock)})[0]
 
-    v_tester = tester.retarget(tap_v, tap_v.TCK)
+    v_tester = tester.retarget(tap_v, tap_v.CLK)
     v_tester.compile_and_run(
         target="verilator", directory="tests/build", flags=['-Wno-fatal'])
 
