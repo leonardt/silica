@@ -230,29 +230,31 @@ class Replacer(ast.NodeTransformer):
 
 
 def get_conds_up_to(path, predecessor, cfg):
-    conds = []
+    conds = set()
     for i, block in enumerate(path):
         if isinstance(block, Yield):
             if cfg.curr_yield_id > 1:
-                conds.append(f"yield_state == {block.yield_id}")
+                conds.add(f"yield_state == {block.yield_id}")
         elif isinstance(block, HeadBlock):
             if cfg.curr_yield_id > 1:
-                conds.append(f"yield_state == 0")
+                conds.add(f"yield_state == 0")
         elif isinstance(block, Branch):
             cond = block.cond
             if path[i + 1] is block.false_edge:
                 cond = ast.UnaryOp(ast.Invert(), cond)
-            conds.append(astor.to_source(cond).rstrip())
+            conds.add(astor.to_source(cond).rstrip())
         if block == predecessor:
             break
 
     if not conds:
         return ast.Num(1)
-    result = conds[0]
-    for cond in conds[1:]:
-        result = f"({result}) & ({cond})"
-    return ast.parse("(" + result + ")").body[0].value
-    # return " & ".join(conds)
+    result = None
+    for cond in conds:
+        if result is None:
+            result = cond
+        else:
+            result = f"({result}) & ({cond})"
+    return result
 
 
 def convert_to_ssa(cfg):
@@ -308,13 +310,14 @@ def convert_to_ssa(cfg):
                     phi_conds = []
                     for predecessor, _ in block.incoming_edges:
                         if var in predecessor.live_outs:
-                            conds = []
+                            conds = set()
                             for path in cfg.paths:
                                 if predecessor in path and block in path[1:] and path.index(predecessor) == path[1:].index(block):
-                                    conds.append(get_conds_up_to(path, predecessor, cfg))
+                                    conds.add(get_conds_up_to(path, predecessor, cfg))
                             if not conds:
                                 # not in valid path
                                 continue
+                            conds = [ast.parse(cond) for cond in conds]
                             if len(conds) > 1:
                                 phi_conds.append(ast.BoolOp(ast.Or(), conds))
                             else:

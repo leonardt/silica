@@ -5,6 +5,7 @@ import shutil
 from tests.common import evaluate_circuit
 import magma as m
 import fault
+import shutil
 
 
 class TAPDriver:
@@ -200,8 +201,10 @@ def SilicaTAP(TMS : Bit, TDI : Bit):
         TMS, TDI = yield TDO, update_dr,update_ir
 
 def test_tap():
-    tap = SilicaTAP()
-    si_tap = si.compile(tap, file_name="tests/build/si_tap.v")
+    # tap = SilicaTAP()
+    # si_tap = si.compile(tap, file_name="tests/build/si_tap.v")
+    si_tap = m.DefineFromVerilogFile(
+        "tests/build/si_tap.v", type_map={"CLK": m.In(m.Clock)})[0]
 
     tester = fault.Tester(si_tap, si_tap.CLK)
 
@@ -222,7 +225,7 @@ def test_tap():
         target="verilator", directory="tests/build", flags=['-Wno-fatal'])
 
 
-    shutil.copy("verilog/tap.v", "tests/build/tap_verilog.v")
+    shutil.copy("verilog/tap.v", "tests/build/verilog_tap.v")
     tap_v = m.DefineFromVerilogFile(
         "tests/build/tap_verilog.v", type_map={"CLK": m.In(m.Clock)})[0]
 
@@ -230,15 +233,15 @@ def test_tap():
     v_tester.compile_and_run(
         target="verilator", directory="tests/build", flags=['-Wno-fatal'])
 
- 
-    #if __name__ == '__main__':
-    #    print("===== BEGIN : SILICA RESULTS =====")
-    #    evaluate_circuit("serializer_si", "Serializer4")
-    #    print("===== END   : SILICA RESULTS =====")
 
-    #    print("===== BEGIN : VERILOG RESULTS =====")
-    #    evaluate_circuit("serializer_verilog", "serializer")
-    #    print("===== END   : VERILOG RESULTS =====")
+    if __name__ == '__main__':
+        print("===== BEGIN : SILICA RESULTS =====")
+        evaluate_circuit("si_tap", "SilicaTAP")
+        print("===== END   : SILICA RESULTS =====")
+
+        print("===== BEGIN : VERILOG RESULTS =====")
+        evaluate_circuit("verilog_tap", "tap")
+        print("===== END   : VERILOG RESULTS =====")
 
 
 if __name__ == '__main__':
