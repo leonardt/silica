@@ -142,35 +142,35 @@ def SilicaTAP(TMS : Bit, TDI : Bit):
         NS = TEST_LOGIC_RESET
         if CS == TEST_LOGIC_RESET:
             NS = TEST_LOGIC_RESET if TMS else RUN_TEST_IDLE
-        if CS == RUN_TEST_IDLE:
+        elif CS == RUN_TEST_IDLE:
             NS = SELECT_DR_SCAN if TMS else RUN_TEST_IDLE
-        if CS == SELECT_DR_SCAN:
+        elif CS == SELECT_DR_SCAN:
             NS = SELECT_IR_SCAN if TMS else CAPTURE_DR
-        if CS == CAPTURE_DR:
+        elif CS == CAPTURE_DR:
             NS = EXIT1_DR if TMS else SHIFT_DR
-        if CS == SHIFT_DR:
+        elif CS == SHIFT_DR:
             NS = EXIT1_DR if TMS else SHIFT_DR
-        if CS == EXIT1_DR:
+        elif CS == EXIT1_DR:
             NS = UPDATE_DR if TMS else PAUSE_DR
-        if CS == PAUSE_DR:
+        elif CS == PAUSE_DR:
             NS = EXIT2_DR if TMS else PAUSE_DR
-        if CS == EXIT2_DR:
+        elif CS == EXIT2_DR:
             NS = UPDATE_DR if TMS else SHIFT_DR
-        if CS == UPDATE_DR:
+        elif CS == UPDATE_DR:
             NS = SELECT_DR_SCAN if TMS else RUN_TEST_IDLE
-        if CS == SELECT_IR_SCAN:
+        elif CS == SELECT_IR_SCAN:
             NS = TEST_LOGIC_RESET if TMS else CAPTURE_IR
-        if CS == CAPTURE_IR:
+        elif CS == CAPTURE_IR:
             NS = EXIT1_IR if TMS else SHIFT_IR
-        if CS == SHIFT_IR:
+        elif CS == SHIFT_IR:
             NS = EXIT1_IR if TMS else SHIFT_IR
-        if CS == EXIT1_IR:
+        elif CS == EXIT1_IR:
             NS = UPDATE_IR if TMS else PAUSE_IR
-        if CS == PAUSE_IR:
+        elif CS == PAUSE_IR:
             NS = EXIT2_IR if TMS else PAUSE_IR
-        if CS == EXIT2_IR:
+        elif CS == EXIT2_IR:
             NS = UPDATE_IR if TMS else SHIFT_IR
-        if CS == UPDATE_IR:
+        elif CS == UPDATE_IR:
             NS = SELECT_IR_SCAN if TMS else RUN_TEST_IDLE
         
         update_dr = (CS == UPDATE_DR)
