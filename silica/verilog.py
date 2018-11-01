@@ -436,22 +436,22 @@ def compile_states(coroutine, ctx, states, one_state, width_table, registers,
                     output_stmts.append(ctx.assign(ctx.get_by_name(output), ctx.get_by_name(var)))
                     output_stmts[-1].blk = 1
 
-                value = state.path[-1].value.value.value
-                if not isinstance(value, ast.Tuple):
-                    elts = (value,)
-                else:
-                    elts = value.elts
-                for name, value in zip(coroutine._outputs, elts):
-                    if not isinstance(value, ast.Name):
-                        if isinstance(value, ast.Subscript):
-                            if not isinstance(value.value, ast.Name):
-                                raise NotImplementedError(value)
-                            value = copy.deepcopy(value)
-                            assert value.value.id in state.path[-1]._ssa_stores, state.path[-1]._ssa_stores
-                            value.value.id = state.path[-1]._ssa_stores[value.value.id]
+                # value = state.path[-1].value.value.value
+                # if not isinstance(value, ast.Tuple):
+                #     elts = (value,)
+                # else:
+                #     elts = value.elts
+                # for name, value in zip(coroutine._outputs, elts):
+                #     if not isinstance(value, ast.Name):
+                #         if isinstance(value, ast.Subscript):
+                #             if not isinstance(value.value, ast.Name):
+                #                 raise NotImplementedError(value)
+                #             value = copy.deepcopy(value)
+                #             assert value.value.id in state.path[-1]._ssa_stores, state.path[-1]._ssa_stores
+                #             value.value.id = state.path[-1]._ssa_stores[value.value.id]
 
-                        output_stmts.append(ctx.assign(ctx.get_by_name(name), ctx.translate(value)))
-                        output_stmts[-1].blk = 1
+                #         output_stmts.append(ctx.assign(ctx.get_by_name(name), ctx.translate(value)))
+                #         output_stmts[-1].blk = 1
 
                 stmts = []
                 next_yield = ctx.assign(ctx.get_by_name('yield_state_next'), state.end_yield_id)
