@@ -999,7 +999,7 @@ def collect_constant_assigns(statements):
     """
     constant_assigns = {}
     for stmt in statements:
-        if isinstance(stmt, ast.Assign):
+        if isinstance(stmt, ast.Assign) and isinstance(stmt.targets[0], ast.Name):
             constant = get_constant(stmt.value)
             if constant is not None:
                 constant_assigns[stmt.targets[0].id] = constant

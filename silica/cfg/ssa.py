@@ -168,10 +168,8 @@ class Replacer(ast.NodeTransformer):
             raise NotImplementedError("Found assign to subscript that isn't of the form name[x][y]...[z]")
 
     def get_index(self, node):
-        if isinstance(node.slice, ast.Index):
-            index = node.slice.value
-        else:
-            raise NotImplementedError(node.slice, type(node.slice))
+        if isinstance(node.slice, (ast.Index, ast.Slice)):
+            index = node.slice
         if isinstance(node.value, ast.Subscript):
             return (index, ) + self.get_index(node.value)
         return (index, )
@@ -199,7 +197,16 @@ class Replacer(ast.NodeTransformer):
             if isinstance(width, MemoryType):
                 width = width.width
             else:
-                width = None
+                if len(index) == 1:
+                    index = index[0]
+                else:
+                    raise NotImplementedError(index)
+                if isinstance(index, ast.Index):
+                    width = None
+                elif isinstance(index, ast.Slice) and index.step is None and index.lower and index.upper:
+                    if not ast_utils.is_num(index.upper) and ast_utils.is_num(index.lower):
+                        raise NotImplementedError()
+                    width = index.upper.n - index.lower.n
             self.width_table[node.targets[0].value.id] = width
             node.targets[0] = node.targets[0].value
             node.targets[0].ctx = ast.Store()

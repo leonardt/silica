@@ -8,6 +8,7 @@ import magma
 from .visitors.collect_stores import collect_stores
 from .cfg.types import HeadBlock
 from .memory import MemoryType
+import copy
 
 class Context:
     def __init__(self, name, sub_coroutines):
@@ -200,6 +201,10 @@ class SwapSlices(ast.NodeTransformer):
                     raise NotImplementedError()
                 node.slice.lower = ast.Num(node.slice.upper.n - 1)
                 node.slice.upper = ast.Num(0)
+            elif isinstance(node.slice.lower, ast.Num) and isinstance(node.slice.upper, ast.Num):
+                if node.slice.step is not None:
+                    raise NotImplementedError()
+                node.slice.lower, node.slice.upper = ast.Num(node.slice.upper.n - 1), ast.Num(node.slice.lower.n)
         return node
 
 class RemoveFuncs(ast.NodeTransformer):
@@ -330,7 +335,7 @@ def compile_statements(ctx, seq, comb_body, states, one_state, width_table,
                 comb_body.append(stmt)
 
 
-def compile_states(ctx, states, one_state, width_table, registers,
+def compile_states(coroutine, ctx, states, one_state, width_table, registers,
                    sub_coroutines, strategy="by_statement"):
     module = ctx.module
     seq = vg.TmpSeq(module, module.get_ports()["CLK"])
@@ -431,6 +436,23 @@ def compile_states(ctx, states, one_state, width_table, registers,
                     output_stmts.append(ctx.assign(ctx.get_by_name(output), ctx.get_by_name(var)))
                     output_stmts[-1].blk = 1
 
+                value = state.path[-1].value.value.value
+                if not isinstance(value, ast.Tuple):
+                    elts = (value,)
+                else:
+                    elts = value.elts
+                for name, value in zip(coroutine._outputs, elts):
+                    if not isinstance(value, ast.Name):
+                        if isinstance(value, ast.Subscript):
+                            if not isinstance(value.value, ast.Name):
+                                raise NotImplementedError(value)
+                            value = copy.deepcopy(value)
+                            assert value.value.id in state.path[-1]._ssa_stores, state.path[-1]._ssa_stores
+                            value.value.id = state.path[-1]._ssa_stores[value.value.id]
+
+                        output_stmts.append(ctx.assign(ctx.get_by_name(name), ctx.translate(value)))
+                        output_stmts[-1].blk = 1
+
                 stmts = []
                 next_yield = ctx.assign(ctx.get_by_name('yield_state_next'), state.end_yield_id)
                 if next_state is None:
@@ -456,7 +478,7 @@ def compile_states(ctx, states, one_state, width_table, registers,
                     conds + [ctx.get_by_name('yield_state_next') == state.end_yield_id],
                     ctx.get_by_name('yield_state') == state.start_yield_id)
                 if output_stmts:
-                    if not comb_body:
+                    if not isinstance(comb_body[-1], vg.If):
                         comb_body.append(vg.If(comb_cond)(output_stmts))
                     elif i == len(states) - 1:
                         comb_body[-1] = comb_body[-1].Else(output_stmts)

@@ -8,7 +8,9 @@ class PromoteWidths(ast.NodeTransformer):
         self.type_table = type_table
 
     def check_valid(self, int_length, expected_length):
-        if expected_length is None and int_length > 1 or int_length > expected_length:
+        if expected_length is None and int_length == 1:
+            return
+        if expected_length is None or int_length > expected_length:
             raise TypeError("Cannot promote integer with greater width than other operand")
 
     def make(self, value, width, type_):
@@ -20,13 +22,14 @@ class PromoteWidths(ast.NodeTransformer):
         elif isinstance(node, ast.Subscript):
             if isinstance(node.value, ast.Name):
                 type_ = self.type_table[node.value.id]
-                if type_ == "uint" and isinstance(node.slice, ast.Index):
+                if type_ in ["uint", "bits"] and isinstance(node.slice, ast.Index):
                     return "bit"
                 elif type_ == "uint" and isinstance(node.slice, ast.Slice):
+                    if node.slice.step is not None:
+                        raise NotImplementedError()
                     if node.slice.lower is None and isinstance(node.slice.upper, ast.Num):
-                        if node.slice.step is not None:
-                            raise NotImplementedError()
-                        # return node.slice.upper.n
+                        return "bits"
+                    elif isinstance(node.slice.lower, ast.Num) and isinstance(node.slice.upper, ast.Num):
                         return "bits"
                 else:
                     raise NotImplementedError(ast.dump(node))

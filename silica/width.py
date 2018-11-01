@@ -98,7 +98,10 @@ def get_width(node, width_table, func_locals={}, func_globals={}):
                 lower = node.slice.lower.n
                 upper = node.slice.upper.n
                 width = width_table[node.value.id]
-                return MemoryType(upper - lower + 1, width.width)
+                if isinstance(width, MemoryType):
+                    return MemoryType(upper - lower, width.width)
+                else:
+                    return upper - lower
     elif isinstance(node, ast.Num):
         return max(node.n.bit_length(), 1)
     elif isinstance(node, ast.Attribute):

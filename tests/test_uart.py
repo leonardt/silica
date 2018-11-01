@@ -88,6 +88,7 @@ def test_UART():
 
     verilog_tester.compile_and_run(target="verilator", directory="tests/build",
                                    flags=['-Wno-fatal'])
+
     if __name__ == '__main__':
         print("===== BEGIN : SILICA RESULTS =====")
         evaluate_circuit("si_uart", "uart_transmitter")

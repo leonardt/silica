@@ -38,7 +38,10 @@ class Coroutine:
         raise KeyError(f"Could not find key {key}")
 
     def send(self, args):
-        return self.co.send(args)
+        outputs = self.co.send(args)
+        for value, name in zip(outputs, self._outputs):
+            setattr(self, name, value)
+        return outputs
 
     def __next__(self):
         return next(self.co)

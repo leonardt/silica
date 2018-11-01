@@ -126,13 +126,13 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
         return compile_magma(coroutine, file_name, mux_strategy, output)
 
     registers = set()
-    outputs = tuple()
+    # outputs = tuple()
     for path in cfg.paths:
-        outputs += (collect_names(path[-1].value, ctx=ast.Load), )
+        # outputs += (collect_names(path[-1].value, ctx=ast.Load), )
         registers |= (path[0].live_ins & path[0].live_outs)
 
-    assert all(outputs[1] == output for output in outputs[1:]), "Yield statements must all have the same outputs except for the first"
-    outputs = outputs[1]
+    # assert all(outputs[1] == output for output in outputs[1:]), "Yield statements must all have the same outputs except for the first"
+    # outputs = outputs[1]
     states = cfg.states
     num_yields = cfg.curr_yield_id
     num_states = len(states)
@@ -176,6 +176,8 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
 
     inputs = { i : get_len(t) for i,t in coroutine._inputs.items() }
     inputs["CLK"] = 1
+    inputs["RESET"] = 1
+    outputs = coroutine._outputs
     outputs = { o : width_table.get(o, 1) or 1 for o in outputs }
     ctx.declare_ports(inputs, outputs)
 
@@ -255,8 +257,8 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     wens = {}
     # if initial_basic_block:
     #     states = states[1:]
-    verilog.compile_states(ctx, states, cfg.curr_yield_id == 1, width_table,
-                           registers, sub_coroutines, strategy)
+    verilog.compile_states(coroutine, ctx, states, cfg.curr_yield_id == 1,
+                           width_table, registers, sub_coroutines, strategy)
     # cfg.render()
     verilog_str = ""
     for sub_coroutine in sub_coroutines.values():
