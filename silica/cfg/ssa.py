@@ -346,9 +346,15 @@ def convert_to_ssa(cfg):
                     if isinstance(width, MemoryType):
                         for i in range(width.height):
                             _phi_values = [f"{val}[{i}]" for val in phi_values]
-                            loads.append(parse_stmt(f"{ssa_var}[{i}] = phi([{', '.join(astor.to_source(cond).rstrip() for cond in phi_conds)}], [{', '.join(_phi_values)}])"))
+                            if all(x == phi_values[0] for x in phi_values):
+                                loads.append(parse_stmt(f"{ssa_var}[{i}] = {phi_values[0]}[{i}]"))
+                            else:
+                                loads.append(parse_stmt(f"{ssa_var}[{i}] = phi([{', '.join(astor.to_source(cond).rstrip() for cond in phi_conds)}], [{', '.join(_phi_values)}])"))
                     else:
-                        loads.append(parse_stmt(f"{ssa_var} = phi([{', '.join(astor.to_source(cond).rstrip() for cond in phi_conds)}], [{', '.join(phi_values)}])"))
+                        if all(x == phi_values[0] for x in phi_values):
+                            loads.append(parse_stmt(f"{ssa_var} = {phi_values[0]}"))
+                        else:
+                            loads.append(parse_stmt(f"{ssa_var} = phi([{', '.join(astor.to_source(cond).rstrip() for cond in phi_conds)}], [{', '.join(phi_values)}])"))
                     block._ssa_stores[var] = ssa_var
                     cfg.width_table[ssa_var] = width
                     for predecessor, _ in block.incoming_edges:

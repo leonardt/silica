@@ -103,26 +103,37 @@ def get_io(tree):
     return IOCollector().run(tree)
 
 
-def get_next_block(block):
+def get_next_block(block, seen):
     if isinstance(block, Branch):
-        return find_branch_join(block)
+        return find_branch_join(block, seen)
     elif isinstance(block, (BasicBlock, Yield)):
         return block.outgoing_edge[0]
     raise NotImplementedError(block)
 
 
-def find_branch_join(branch):
-    curr_false_block = branch.false_edge
+def find_branch_join(branch, seen=[]):
+    seen.append(branch)
     curr_true_block = branch.true_edge
-    while curr_false_block != curr_true_block:
-        next_true_block = get_next_block(curr_true_block)
-        if next_true_block == curr_false_block:
-            break
-        next_false_block = get_next_block(curr_false_block)
-        if next_false_block == curr_true_block:
-            break
-        curr_true_block, curr_false_block = next_true_block, next_false_block
+    while curr_true_block not in seen:
+        seen.append(curr_true_block)
+        curr_true_block = get_next_block(curr_true_block, seen)
+    curr_false_block = branch.false_edge
+    while curr_false_block not in seen:
+        curr_false_block = get_next_block(curr_false_block, seen)
     return curr_false_block
+    # curr_false_block = branch.false_edge
+    # curr_true_block = branch.true_edge
+    # while curr_false_block != curr_true_block:
+    #     seen.add(curr_false_block)
+    #     seen.add(curr_true_block)
+    #     next_true_block = get_next_block(curr_true_block, seen)
+    #     if next_true_block == curr_false_block:
+    #         break
+    #     next_false_block = get_next_block(curr_false_block, seen)
+    #     if next_false_block == curr_true_block:
+    #         break
+    #     curr_true_block, curr_false_block = next_true_block, next_false_block
+    # return curr_false_block
 
 
 def get_stores_on_branch(curr_block, join_block, var_counter):
@@ -294,6 +305,7 @@ class ControlFlowGraph:
         """
         assert isinstance(func_def, ast.FunctionDef)
         self.head_block = HeadBlock()
+        self.head_block.yield_id = 0
         self.blocks.append(self.head_block)
         self.curr_block = self.head_block
         # self.curr_block = self.gen_new_block()
@@ -1079,6 +1091,13 @@ def build_state_info(paths, outputs, inputs):
                 # state.statements.append(ast.parse(f"__silica_cond_{__unique_cond_id} = {astor.to_source(cond).rstrip()}").body[0])
                 # state.conds.append(ast.parse(f"__silica_cond_{__unique_cond_id}").body[0].value)
                 state.conds.append(cond)
+                # join_block = find_branch_join(block)
+                # skip_cond = True
+                # for path_ in paths:
+                #     if block in path and join_block not in path or path.index(join_block) < path.index(block):
+                #         skip_cond = False
+                # if not skip_cond:
+                #     state.conds.append(cond)
             elif isinstance(block, BasicBlock):
                 state.statements.extend(block.statements)
             elif isinstance(block, HeadBlock):

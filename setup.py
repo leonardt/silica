@@ -6,7 +6,7 @@ setup(
     description='',
     packages=["silica", "silica.cfg"],
     install_requires=[
-        "fault==0.27",
+        "fault==0.28",
         "python-constraint"
     ]
 )
