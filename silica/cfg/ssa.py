@@ -234,9 +234,11 @@ def get_conds_up_to(path, predecessor, cfg):
     conds = set()
     for i, block in enumerate(path):
         if isinstance(block, Yield):
+            continue
             if cfg.curr_yield_id > 1:
                 conds.add(f"yield_state == {block.yield_id}")
         elif isinstance(block, HeadBlock):
+            continue
             if cfg.curr_yield_id > 1:
                 conds.add(f"yield_state == 0")
         elif isinstance(block, Branch):
@@ -251,7 +253,7 @@ def get_conds_up_to(path, predecessor, cfg):
             break
 
     if not conds:
-        return ast.Num(1)
+        return "1"
     result = None
     for cond in conds:
         if result is None:
@@ -315,13 +317,23 @@ def convert_to_ssa(cfg):
                     for predecessor, _ in block.incoming_edges:
                         if var in predecessor.live_outs:
                             conds = set()
+                            conds = {}
                             for path in cfg.paths:
                                 if predecessor in path and block in path[1:] and path.index(predecessor) == path[1:].index(block):
-                                    conds.add(get_conds_up_to(path, predecessor, cfg))
+                                    these_conds = get_conds_up_to(path, predecessor, cfg)
+                                    if these_conds not in conds:
+                                        conds[these_conds] = set()
+                                    conds[these_conds].add(path[0].yield_id)
                             if not conds:
                                 # not in valid path
                                 continue
-                            conds = [ast.parse(cond) for cond in conds]
+                            expanded_conds = []
+                            for cond, yields in conds.items():
+                                # If not in all yields
+                                if len(yields) < cfg.curr_yield_id - 1:
+                                    cond = cond + " & " + "(" + " | ".join(f"(yield_state == {i})" for i in yields) + ")"
+                                expanded_conds.append(cond)
+                            conds = [ast.parse(cond) for cond in expanded_conds]
                             if len(conds) > 1:
                                 phi_conds.append(ast.BoolOp(ast.Or(), conds))
                             else:

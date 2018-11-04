@@ -6,7 +6,7 @@ python tests/test_detect.py
 python tests/test_fifo.py
 python tests/test_lbmem.py
 python tests/test_piso.py
-python tests/test_serializer3.py
+python tests/test_serializer.py
 python tests/test_tap.py
 python tests/test_tff.py
 python tests/test_uart.py
