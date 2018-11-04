@@ -8,11 +8,17 @@ class PromoteWidths(ast.NodeTransformer):
         self.type_table = type_table
 
     def check_valid(self, int_length, expected_length):
-        if expected_length is None and int_length > 1 or int_length > expected_length:
-            raise TypeError("Cannot promote integer with greater width than other operand")
+        if expected_length is None and int_length <= 1:
+            return
+        if int_length <= expected_length:
+            return
+        raise TypeError("Cannot promote integer with greater width than other operand")
 
     def make(self, value, width, type_):
-        return ast.parse(f"{type_}({value}, {width})").body[0].value
+        if type_ == "bit":
+            return ast.parse(f"{type_}({value})").body[0].value
+        else:
+            return ast.parse(f"{type_}({value}, {width})").body[0].value
 
     def get_type(self, node):
         if isinstance(node, ast.Name):

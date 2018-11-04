@@ -8,26 +8,29 @@ import fault
 
 
 @coroutine
-def Serializer4(I0 : Bits(16), I1 : Bits(16), I2 : Bits(16), I3 : Bits(16)):
+def Serializer4(valid : Bit, I0 : Bits(16), I1 : Bits(16), I2 : Bits(16), I3 : Bits(16)):
     # data = [bits(0, 16) for _ in range(3)]
     data0 = bits(0, 16)
     data1 = bits(0, 16)
     data2 = bits(0, 16)
     # I0, I1, I2, I3 = yield
-    I0, I1, I2, I3 = yield
+    O = bits(0, 16)
     while True:
-        O = I0
-        # data = I[1:]
-        data0 = I1
-        data1 = I2
-        data2 = I3
-        I0, I1, I2, I3 = yield O
-        O = data0
-        I0, I1, I2, I3 = yield O
-        O = data1
-        I0, I1, I2, I3 = yield O
-        O = data2
-        I0, I1, I2, I3 = yield O
+        valid, I0, I1, I2, I3 = yield O
+        if valid:
+            O = I0
+            # data = I[1:]
+            data0 = I1
+            data1 = I2
+            data2 = I3
+            valid, I0, I1, I2, I3 = yield O
+            O = data0
+            valid, I0, I1, I2, I3 = yield O
+            O = data1
+            valid, I0, I1, I2, I3 = yield O
+            O = data2
+        else:
+            O = bits(0, 16)
         # for i in range(3):
         #     O = data[i]
         #     I0, I1, I2, I3 = yield O
@@ -53,20 +56,23 @@ def test_ser4():
     # serializer_si = m.DefineFromVerilogFile("tests/build/serializer_si.v",
     #                             type_map={"CLK": m.In(m.Clock)})[0]
     tester = fault.Tester(serializer_si, serializer_si.CLK)
+    tester.step(1)
     for I in inputs:
+        tester.poke(serializer_si.valid, 1)
         for j in range(len(I)):
             tester.poke(getattr(serializer_si, f"I{j}"), I[j])
         tester.step(1)
-        ser.send(I)
+        ser.send([1] + I)
         assert ser.O == I[0]
         tester.print(serializer_si.O)
         tester.expect(serializer_si.O, I[0])
         tester.step(1)
         for i in range(3):
+            tester.poke(serializer_si.valid, 0)
             for j in range(len(I)):
                 tester.poke(getattr(serializer_si, f"I{j}"), 0)
             tester.step(1)
-            ser.send([0,0,0,0])
+            ser.send([0,0,0,0,0])
             assert ser.O == I[i + 1]
             tester.expect(serializer_si.O, I[i + 1])
             tester.step(1)

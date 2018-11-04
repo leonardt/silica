@@ -74,6 +74,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     tree = ast_utils.get_ast(coroutine._definition).body[0]  # Get the first element of the ast.Module
     module_name = coroutine._name
     func_locals.update(coroutine._defn_locals)
+    func_locals.update(func_globals)
     specialize_arguments(tree, coroutine)
     specialize_constants(tree, coroutine._defn_locals)
     specialize_evals(tree, func_globals, func_locals)
@@ -255,7 +256,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     wens = {}
     # if initial_basic_block:
     #     states = states[1:]
-    verilog.compile_states(ctx, states, cfg.curr_yield_id == 1, width_table,
+    verilog.compile_states(ctx, states, cfg.curr_yield_id == 3, width_table,
                            registers, sub_coroutines, strategy)
     # cfg.render()
     verilog_str = ""

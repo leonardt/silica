@@ -65,31 +65,53 @@ def SILbMem(depth=64, lbmem_width=8):
     def mem(wdata : si.Bits(8), wen : si.Bit):
         lbmem = memory(depth, lbmem_width)
         waddr = uint(0, eval(math.ceil(math.log2(depth))))
-        count = uint(0, 3)
+        count = uint(0, 4)
+        state = bit(0)
         wdata, wen = yield
         while True:
-            while (count < uint(7, 3)) | ~wen:
-                rdata = lbmem[waddr - uint(count, 6)]
-                valid = bit(0)
+            if wen:
+                raddr = waddr - uint(count, 6)
+            else:
+                raddr = waddr - uint(count - 1, 6)
+            rdata = lbmem[raddr]
+            valid = (state & (bit(count != 1) | wen)) | (bit(count == 7) & wen)
+            if state == 0:
+                state = (count == 7) & wen
                 if wen:
-                    lbmem[waddr] = wdata
                     count = count + 1
-                    waddr = waddr + 1
-                wdata, wen = yield rdata, valid
-            lbmem[waddr] = wdata
-            rdata = lbmem[waddr - uint(count, 6)]
-            waddr = waddr + 1
-            valid = bit(1)
-            wdata, wen = yield rdata, valid
-            while count > 0:
-                valid = bit(1)
-                rdata = lbmem[waddr - uint(count, 6)]
+            else:
+                state = (count != 1) | wen
                 if ~wen:
                     count = count - 1
-                if wen:
-                    lbmem[waddr] = wdata
-                    waddr = waddr + 1
-                wdata, wen = yield rdata, valid
+            if wen:
+                lbmem[waddr] = wdata
+                waddr = waddr + 1
+            wdata, wen = yield rdata, valid
+
+
+        # while True:
+        #     while (count < uint(7, 3)) | ~wen:
+        #         rdata = lbmem[waddr - uint(count, 6)]
+        #         valid = bit(0)
+        #         if wen:
+        #             lbmem[waddr] = wdata
+        #             count = count + 1
+        #             waddr = waddr + 1
+        #         wdata, wen = yield rdata, valid
+        #     lbmem[waddr] = wdata
+        #     rdata = lbmem[waddr - uint(count, 6)]
+        #     waddr = waddr + 1
+        #     valid = bit(1)
+        #     wdata, wen = yield rdata, valid
+        #     while count > 0:
+        #         valid = bit(1)
+        #         rdata = lbmem[waddr - uint(count, 6)]
+        #         if ~wen:
+        #             count = count - 1
+        #         if wen:
+        #             lbmem[waddr] = wdata
+        #             waddr = waddr + 1
+        #         wdata, wen = yield rdata, valid
 
             # while True:
             #     waddr = yield from FillingState(lbmem_width, depth, lbmem, raddr, waddr, wdata, wen)
@@ -121,10 +143,10 @@ def test_lbmem():
         tester.poke(si_lbmem.wen, 1)
         lbmem.send((i, BitVector(1)))
         tester.step(1)
-        assert lbmem.valid == (i == 7)
+        assert lbmem.valid == (i == 7), (lbmem.valid, i)
         # tester.print(si_lbmem.valid)
         tester.expect(si_lbmem.valid, i == 7), "Valid only on last write"
-        assert lbmem.rdata == 0, "should be 0, even on first read"
+        assert lbmem.rdata == 0, f"should be 0, even on first read, iter={i}, got {lbmem.rdata}"
         tester.expect(si_lbmem.rdata, 0)
         tester.step(1)
     for i in range(0, 8):
@@ -137,8 +159,8 @@ def test_lbmem():
         # there's nothing left to drain
         rdata = i + 1 if i < 7 else 0
         valid = i < 7
-        assert lbmem.rdata == rdata, i
-        assert lbmem.valid == valid, i
+        assert lbmem.rdata == rdata, (i, (lbmem.rdata, lbmem.valid), (rdata, valid))
+        assert lbmem.valid == valid, (i, (lbmem.rdata, lbmem.valid), (rdata, valid))
         tester.expect(si_lbmem.rdata, rdata)
         # tester.print(si_lbmem.valid)
         tester.expect(si_lbmem.valid, valid)
@@ -166,7 +188,7 @@ def test_lbmem():
         # print(drain_state)
 
     tester.compile_and_run(target="verilator", directory="tests/build",
-                           flags=['-Wno-fatal', '--trace'])
+                           flags=['-Wno-fatal'])
     verilog_lbmem = m.DefineFromVerilogFile("verilog/lbmem.v",
                                             type_map={"CLK": m.In(m.Clock)})[0]
     verilog_tester = tester.retarget(verilog_lbmem, verilog_lbmem.CLK)

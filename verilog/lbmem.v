@@ -13,7 +13,7 @@ module lbmem(
 
   reg state = 0;
   
-  reg [3:0] cnt = 0;
+  reg [4:0] cnt = 0;
 
   always @(posedge CLK) begin
     if (state==0) begin

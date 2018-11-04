@@ -56,7 +56,7 @@ def get_width(node, width_table, func_locals={}, func_globals={}):
         left_width = get_width(node.left, width_table)
         right_width = get_width(node.right, width_table)
         if left_width != right_width:
-            raise TypeError(f"Binary operation with mismatched widths {ast.dump(node)}")
+            raise TypeError(f"Binary operation with mismatched widths ({left_width}, {right_width}) {ast.dump(node)}")
         return left_width
     elif isinstance(node, ast.IfExp):
         left_width = get_width(node.body, width_table)

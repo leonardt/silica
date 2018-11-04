@@ -50,6 +50,7 @@ import silica.ast_utils as ast_utils
 
 from collections import defaultdict
 from silica.cfg.types import BasicBlock, Yield, Branch, HeadBlock, State
+from .util import find_branch_join
 
 
 def parse_expr(expr):
@@ -239,6 +240,9 @@ def get_conds_up_to(path, predecessor, cfg):
             if cfg.curr_yield_id > 1:
                 conds.add(f"yield_state == 0")
         elif isinstance(block, Branch):
+            # join_block = find_branch_join(block)
+            # if join_block in path and path.index(join_block) > i:
+            #     continue
             cond = block.cond
             if path[i + 1] is block.false_edge:
                 cond = ast.UnaryOp(ast.Invert(), cond)

@@ -18,6 +18,7 @@ from silica.visitors import collect_names, collect_stores, collect_loads
 from silica.cfg.types import BasicBlock, Yield, Branch, HeadBlock, State
 from silica.cfg.ssa import SSAReplacer, convert_to_ssa, parse_expr
 from .liveness import liveness_analysis
+from .util import find_branch_join
 from ..memory import MemoryType
 import silica.ast_utils as ast_utils
 
@@ -103,39 +104,6 @@ def get_io(tree):
     return IOCollector().run(tree)
 
 
-def get_next_block(block, seen):
-    if isinstance(block, Branch):
-        return find_branch_join(block, seen)
-    elif isinstance(block, (BasicBlock, Yield)):
-        return block.outgoing_edge[0]
-    raise NotImplementedError(block)
-
-
-def find_branch_join(branch, seen=[]):
-    seen.append(branch)
-    curr_true_block = branch.true_edge
-    while curr_true_block not in seen:
-        seen.append(curr_true_block)
-        curr_true_block = get_next_block(curr_true_block, seen)
-    curr_false_block = branch.false_edge
-    while curr_false_block not in seen:
-        curr_false_block = get_next_block(curr_false_block, seen)
-    return curr_false_block
-    # curr_false_block = branch.false_edge
-    # curr_true_block = branch.true_edge
-    # while curr_false_block != curr_true_block:
-    #     seen.add(curr_false_block)
-    #     seen.add(curr_true_block)
-    #     next_true_block = get_next_block(curr_true_block, seen)
-    #     if next_true_block == curr_false_block:
-    #         break
-    #     next_false_block = get_next_block(curr_false_block, seen)
-    #     if next_false_block == curr_true_block:
-    #         break
-    #     curr_true_block, curr_false_block = next_true_block, next_false_block
-    # return curr_false_block
-
-
 def get_stores_on_branch(curr_block, join_block, var_counter):
     stores = set()
     while curr_block != join_block:
@@ -212,7 +180,7 @@ class ControlFlowGraph:
     def __init__(self, tree, width_table, func_locals, func_globals):
         self.blocks = []
         self.curr_block = None
-        self.curr_yield_id = 0
+        self.curr_yield_id = 1
         self.local_vars = set()
         self.width_table = width_table
         self.func_locals = func_locals
