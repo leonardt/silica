@@ -1,4 +1,5 @@
 import ast
+from orderedset import OrderedSet
 
 def test_Block():
     from silica.cfg.types import Block
