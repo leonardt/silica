@@ -3,11 +3,12 @@ Class definitions for nodes in the CFG
 """
 import ast
 import astor
+from orderedset import OrderedSet
 
 class Block:
     def __init__(self):
-        self.outgoing_edges = set()
-        self.incoming_edges = set()
+        self.outgoing_edges = OrderedSet()
+        self.incoming_edges = OrderedSet()
         self.live_outs = set()
         self.live_ins = set()
         self.gen = set()

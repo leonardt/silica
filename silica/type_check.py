@@ -1,5 +1,6 @@
 import ast
 from .width import get_width
+import astor
 
 
 class TypeChecker(ast.NodeVisitor):

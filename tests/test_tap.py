@@ -170,7 +170,8 @@ def SilicaTAP(TMS : Bit, TDI : Bit):
             NS = EXIT2_IR if TMS else PAUSE_IR
         elif CS == EXIT2_IR:
             NS = UPDATE_IR if TMS else SHIFT_IR
-        elif CS == UPDATE_IR:
+        # elif CS == UPDATE_IR:
+        else:
             NS = SELECT_IR_SCAN if TMS else RUN_TEST_IDLE
         
         update_dr = (CS == UPDATE_DR)
