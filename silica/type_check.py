@@ -1,6 +1,6 @@
 import ast
 from .width import get_width
-
+import astor
 
 class TypeChecker(ast.NodeVisitor):
     def __init__(self, width_table, type_table):
@@ -33,8 +33,13 @@ class TypeChecker(ast.NodeVisitor):
                 for target, width in zip(node.targets[0].elts, widths):
                     self.width_table[target.id] = width
             elif isinstance(node.targets[0], ast.Subscript):
-                if not get_width(node.targets[0], self.width_table) == get_width(node.value, self.width_table):
-                    raise TypeError(f"Mismatched widths {get_width(node.targets[0], self.width_table)} != {get_width(node.value, self.width_table)} : {astor.to_source(node).rstrip()}")
+                width = get_width(node.targets[0].value, self.width_table)
+                if isinstance(node.targets[0].slice, ast.Index):
+                    width = 1
+                else:
+                    raise NotImplementedError(ast.dump(node))
+                if not width == get_width(node.value, self.width_table):
+                    raise TypeError(f"Mismatched widths {width} != {get_width(node.value, self.width_table)} : {astor.to_source(node).rstrip()}")
             else:
                 raise NotImplementedError(ast.dump(node))
         else:
