@@ -9,7 +9,7 @@ from bit_vector import BitVector
 
 def TFF(init=0):
     @silica.coroutine
-    def tff(I : silica.Bit):
+    def tff(I : silica.Bit) -> {"O": silica.Bit}:
         state = bit(init)
         I = yield
         while True:

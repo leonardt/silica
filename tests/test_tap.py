@@ -132,7 +132,7 @@ EXIT2_IR = bits(14, 4)
 UPDATE_IR = bits(15, 4)
 
 @si.coroutine
-def SilicaTAP(TMS : Bit, TDI : Bit):
+def SilicaTAP(TMS : Bit, TDI : Bit) -> {"TDO": si.Bit, "update_dr": si.Bit, "update_ir": si.Bit}:
     CS = bits(TEST_LOGIC_RESET,4)
     IR = bits(0, 4)
     regA = bits(0, 5)

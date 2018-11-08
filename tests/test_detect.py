@@ -7,7 +7,7 @@ import magma as m
 from tests.common import evaluate_circuit
 
 @silica.coroutine
-def SIDetect111(I : Bit):
+def SIDetect111(I : Bit) -> {"O": Bit}:
     cnt = uint(0, 2)
     I = yield
     while True:

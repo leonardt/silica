@@ -8,7 +8,7 @@ import fault
 
 
 @coroutine
-def Serializer4(valid : Bit, I0 : Bits(16), I1 : Bits(16), I2 : Bits(16), I3 : Bits(16)):
+def Serializer4(valid : Bit, I0 : Bits(16), I1 : Bits(16), I2 : Bits(16), I3 : Bits(16)) -> {"O": si.Bits(16)}:
     # data = [bits(0, 16) for _ in range(3)]
     data0 = bits(0, 16)
     data1 = bits(0, 16)

@@ -13,7 +13,7 @@ from tests.common import evaluate_circuit
 
 def DefinePISO(n):
     @silica.coroutine
-    def SIPISO(PI: silica.Bits(n), SI: silica.Bit, LOAD: silica.Bit):
+    def SIPISO(PI: silica.Bits(n), SI: silica.Bit, LOAD: silica.Bit) -> {"O": silica.Bit}:
         values = bits(0, n)
         # O = values[-1]
         PI, SI, LOAD = yield

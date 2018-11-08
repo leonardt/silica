@@ -62,7 +62,7 @@ def DrainingState(lbmem_width, depth, lbmem, raddr, waddr, wdata, wen):
 
 def SILbMem(depth=64, lbmem_width=8):
     @si.coroutine
-    def mem(wdata : si.Bits(8), wen : si.Bit):
+    def mem(wdata : si.Bits(8), wen : si.Bit) -> { "rdata": si.Bits(8), "valid": si.Bit}:
         lbmem = memory(depth, lbmem_width)
         waddr = uint(0, eval(math.ceil(math.log2(depth))))
         count = uint(0, 4)
