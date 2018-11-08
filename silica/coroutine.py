@@ -21,6 +21,7 @@ class Coroutine:
         self.co = self.definition(*self.args, **self.kwargs)
         next(self.co)
 
+
     def __deepcopy__(self, memo):
         obj = type(self)(*self.args, **self.kwargs)
         memo[id(self)] = obj
@@ -38,7 +39,16 @@ class Coroutine:
         raise KeyError(f"Could not find key {key}")
 
     def send(self, args):
-        return self.co.send(args)
+        result = self.co.send(args)
+        if not isinstance(result, tuple):
+            assert len(self._outputs) == 1
+            key = next(iter(self._outputs))
+            setattr(self, key, result)
+        else:
+            for o, r in zip(self._outputs.keys(), result):
+                setattr(self, o, r)
+        return result
+
 
     def __next__(self):
         return next(self.co)
@@ -88,9 +98,11 @@ class Generator(Coroutine):
 def generator(func=None, inputs=None):
     stack = inspect.stack()
     defn_locals = stack[1].frame.f_locals
+    outputs = inspect.signature(func).return_annotation
     if inputs is not None:
         def wrapper(func):
             class _Generator(Generator):
+                _outputs = outputs
                 _definition = func
                 _inputs = inputs
                 _defn_locals = defn_locals
@@ -98,6 +110,7 @@ def generator(func=None, inputs=None):
         return wrapper
     else:
         class _Generator(Generator):
+            _outputs = outputs
             _definition = func
             _inputs = inputs
             _defn_locals = defn_locals
