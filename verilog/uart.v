@@ -1,6 +1,6 @@
 module uart_tx(input CLK, input [7:0] data, input valid, output tx, output ready);
     reg [7:0] message;
-    reg [2:0] send_cnt;
+    reg [2:0] send_cnt = 3'h0; //Was not initialized. 
     reg [1:0] state = 2'h0;
     always @(posedge CLK) begin
         case (state)
@@ -21,11 +21,7 @@ module uart_tx(input CLK, input [7:0] data, input valid, output tx, output ready
                     ready <= 1'b0;
                     tx <= message[send_cnt];
                     send_cnt <= send_cnt - 1'b1;
-                    if (send_cnt > 0) begin
-                        state <= 2'h1;
-                    end else begin
-                        state <= 2'h2;
-                    end
+                    state <= (send_cnt > 0) ? 2'h1 : 2'h2;
                 end
             2'h2:
                 begin

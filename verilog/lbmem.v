@@ -36,7 +36,7 @@ module lbmem(
 
   reg [5:0] waddr = 6'h0;
   wire [5:0] raddr;
-  assign raddr = waddr - {2'h0, wen ? cnt : cnt-1'b1};
+  assign raddr = waddr - {2'h0, (wen ? cnt : cnt-1'b1)};
 
   always @(posedge CLK) begin
     if (wen) begin
