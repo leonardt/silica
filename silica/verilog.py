@@ -2,6 +2,7 @@ import astor
 import ast
 from .width import get_width
 import veriloggen as vg
+from pyverilog.ast_code_generator.codegen import ASTCodeGenerator
 from functools import *
 from .ast_utils import *
 import magma
@@ -52,6 +53,14 @@ class Context:
     def is_reg(self, obj):
         return isinstance(obj, vg.core.vtypes.Reg)
 
+    def translate_assign(self, target, value, blk=1):
+        return vg.Subst(
+            self.translate(target),
+            value,
+            blk
+        )
+
+
     # TODO: should reorder the switch into more sensible ordering
     # TODO: should split this up into a few translate functions that translate certain classes of inputs
     def translate(self, stmt):
@@ -59,18 +68,37 @@ class Context:
             return vg.Int(1 if stmt else 0)
         elif is_add(stmt):
             return vg.Add
+        elif is_or(stmt):
+            return vg.Or
         elif is_r_shift(stmt):
             return vg.Srl
         elif is_l_shift(stmt):
             return vg.Sll
-        elif is_assign(stmt):
-            target = self.translate(stmt.targets[0])
-            return vg.Subst(
-                target,
-                self.translate(stmt.value),
-                # not self.is_reg(target)
-                1
+        elif is_assign(stmt) and is_call(stmt.value) and is_name(stmt.value.func) and stmt.value.func.id == "phi":
+            conds = [self.translate(x) for x in stmt.value.args[0].elts]
+            values = [self.translate(x) for x in stmt.value.args[1].elts]
+            block = vg.If(conds[0])(
+                self.translate_assign(stmt.targets[0], values[0])
             )
+            for cond, value in zip(conds[1:-1], values[1:-1]):
+                block.Elif(cond)(
+                    self.translate_assign(stmt.targets[0], value)
+                )
+            block.Else(
+                self.translate_assign(stmt.targets[0], values[-1])
+            )
+            return block
+        elif is_assign(stmt):
+            # blk = not self.is_reg(target)
+            return self.translate_assign(stmt.targets[0], self.translate(stmt.value))
+        elif is_bool_op(stmt):
+            result = self.translate(stmt.op)(
+                self.translate(stmt.values[0]),
+                self.translate(stmt.values[1])
+            )
+            for value in stmt.values[2:]:
+                result = self.translate(stmt.op)(result, self.translate(value))
+            return result
         elif is_bin_op(stmt):
             if is_list(stmt.left) or is_list(stmt.right):
                 if is_add(stmt.op): # list concatenation
@@ -151,15 +179,6 @@ class Context:
             return vg.Cat(*[self.translate(elt) for elt in stmt.elts])
         elif is_unary_op(stmt):
             return self.translate(stmt.op)(self.translate(stmt.operand))
-        elif is_call(stmt) and is_name(stmt.func) and stmt.func.id == "phi":
-            conds = stmt.args[0].elts
-            values = stmt.args[1].elts
-            prev = self.translate(values[-1])
-            for i in range(len(conds) - 2, -1, -1):
-                prev = vg.Cond(self.translate(conds[i]),
-                               self.translate(values[i]),
-                               prev)
-            return prev
         elif isinstance(stmt, ast.Expr) and is_call(stmt.value) and is_attribute(stmt.value.func) and stmt.value.func.attr == "send":
             coroutine = stmt.value.func.value.id
             subs = []
@@ -309,7 +328,7 @@ def compile_statements(ctx, seq, comb_body, states, one_state, width_table,
         else:
             process_statement(statement)
             try:
-                stmt = vg.Subst(ctx.translate(statement.targets[0]), ctx.translate(statement.value), 1)
+                stmt = ctx.translate(statement)
             except Exception as e:
                 ctx.module.Always(vg.SensitiveAll())(comb_body)
                 print(ctx.module.to_verilog())
@@ -360,13 +379,14 @@ def compile_states(ctx, states, one_state, width_table, registers,
                         width = width_table[value]
                         if not one_state:
                             # cond = ctx.get_by_name('yield_state_next') == state.start_yield_id
-                            all_conds = []
+                            all_conds = {}
                             for _state in states:
                                 if _state.path[-1] is not state.path[-1]:
                                     continue
                                 conds = [ctx.translate(process_statement(cond)) for cond in _state.conds]
                                 cond = reduce(vg.Land, conds, ctx.get_by_name('yield_state') == _state.start_yield_id)
-                                all_conds.append(cond)
+                                all_conds[str(cond)] = cond
+                            all_conds = list(all_conds.values())
                             cond = reduce(vg.Lor, all_conds)
                             if isinstance(width, MemoryType):
                                 if_body = []
@@ -407,8 +427,38 @@ def compile_states(ctx, states, one_state, width_table, registers,
                     statements.insert(index, statement)
         compile_statements(ctx, seq, comb_body, states, one_state, width_table, registers, statements)
         if not one_state:
-            next_state = None
             started = False
+            yields = set()
+            for state in states:
+                yields.add(state.path[0])
+                yields.add(state.path[-1])
+            next_yield_stmts = []
+            next_state = None
+            yields = list(yields)
+            for yield_ in yields:
+                next_yield = ctx.assign(ctx.get_by_name('yield_state_next'), yield_.yield_id)
+                all_conds = {}
+                for state in states:
+                    if state.end_yield_id == yield_.yield_id:
+                        cond = ctx.get_by_name('yield_state') == state.start_yield_id
+                        if state.conds:
+                            conds = (ctx.translate(process_statement(cond)) for cond in state.conds)
+                            cond = reduce(vg.Land, conds, cond)
+                        all_conds[str(cond)] = cond
+                if all_conds:
+                    all_conds = list(all_conds.values())
+                    if len(all_conds) > 1:
+                        cond = reduce(vg.Lor, all_conds[1:], all_conds[0])
+                    else:
+                        cond = all_conds[0]
+                    if next_state is None:
+                        next_state = vg.If(cond)(next_yield)
+                    elif yield_ == yields[-1]:
+                        next_state.Else(next_yield)
+                    else:
+                        next_state.Elif(cond)(next_yield)
+            assert next_state is not None
+            comb_body.insert(0, next_state)
             for i, state in enumerate(states):
                 conds = []
                 if state.conds:
@@ -422,13 +472,6 @@ def compile_states(ctx, states, one_state, width_table, registers,
                     output_stmts[-1].blk = 1
 
                 stmts = []
-                next_yield = ctx.assign(ctx.get_by_name('yield_state_next'), state.end_yield_id)
-                if next_state is None:
-                    next_state = vg.If(cond)(next_yield)
-                elif i == len(states) - 1:
-                    next_state.Else(next_yield)
-                else:
-                    next_state.Elif(cond)(next_yield)
                 for stmt in state.path[-1].array_stores_to_process:
                     stmts.append(ctx.translate(process_statement(stmt)))
 
@@ -443,7 +486,7 @@ def compile_states(ctx, states, one_state, width_table, registers,
                     if_stmt(stmts)
                 comb_cond = reduce(
                     vg.Land,
-                    conds + [ctx.get_by_name('yield_state_next') == state.end_yield_id],
+                    conds, #  + [ctx.get_by_name('yield_state_next') == state.end_yield_id],
                     ctx.get_by_name('yield_state') == state.start_yield_id)
                 if output_stmts:
                     if not comb_body:
@@ -452,7 +495,6 @@ def compile_states(ctx, states, one_state, width_table, registers,
                         comb_body[-1] = comb_body[-1].Else(output_stmts)
                     else:
                         comb_body[-1] = comb_body[-1].Elif(comb_cond)(output_stmts)
-            comb_body.insert(0, next_state)
 
         else:
             for output, var in states[0].path[-1].output_map.items():

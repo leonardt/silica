@@ -1,19 +1,19 @@
 module lbmem(
   input CLK,
-  input [15:0] wdata,
+  input [7:0] wdata,
   input wen,
-  output [15:0] rdata,
+  output [7:0] rdata,
   output valid
 );
   
   //parameter LWIDTH = 8;
   //parameter DEPTH = 64;
 
-  reg [15:0] data [0:63];
+  reg [7:0] data [0:63];
 
   reg state = 0;
   
-  reg [3:0] cnt = 0;
+  reg [4:0] cnt = 0;
 
   always @(posedge CLK) begin
     if (state==0) begin

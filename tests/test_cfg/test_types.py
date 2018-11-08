@@ -1,4 +1,5 @@
 import ast
+from orderedset import OrderedSet
 
 def test_Block():
     from silica.cfg.types import Block
@@ -6,8 +7,8 @@ def test_Block():
     b = Block()
     assert len(b.incoming_edges) == 0
     assert len(b.outgoing_edges) == 0
-    assert isinstance(b.incoming_edges, set)
-    assert isinstance(b.outgoing_edges, set)
+    assert isinstance(b.incoming_edges, OrderedSet)
+    assert isinstance(b.outgoing_edges, OrderedSet)
 
     get_item_from_set = lambda _set: next(iter(_set))
     c = Block()

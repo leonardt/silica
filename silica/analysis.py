@@ -20,7 +20,7 @@ class CollectInitialWidthsAndTypes(ast.NodeVisitor):
                 elif node.targets[0].id not in self.width_table:
                     self.width_table[node.targets[0].id] = get_width(node.value, self.width_table, self.func_locals, self.func_globals)
                     if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name) and \
-                       node.value.func.id in {"bits", "uint"}:
+                       node.value.func.id in {"bits", "uint", "bit"}:
                         self.type_table[node.targets[0].id] = node.value.func.id
                     elif isinstance(node.value, ast.NameConstant) and node.value.value in [True, False]:
                         self.type_table[node.targets[0].id] = "bit"

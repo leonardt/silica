@@ -56,7 +56,14 @@ def get_width(node, width_table, func_locals={}, func_globals={}):
         left_width = get_width(node.left, width_table)
         right_width = get_width(node.right, width_table)
         if left_width != right_width:
-            raise TypeError(f"Binary operation with mismatched widths {ast.dump(node)}")
+            raise TypeError(f"Binary operation with mismatched widths ({left_width}, {right_width}) {ast.dump(node)}")
+        return left_width
+    elif isinstance(node, ast.IfExp):
+        left_width = get_width(node.body, width_table)
+        if node.orelse:
+            right_width = get_width(node.orelse, width_table)
+            if left_width != right_width:
+                raise TypeError(f"Binary operation with mismatched widths {ast.dump(node)}")
         return left_width
     elif isinstance(node, ast.Compare):
         # TODO: Check widths of operands
@@ -86,14 +93,20 @@ def get_width(node, width_table, func_locals={}, func_globals={}):
                 if isinstance(node.slice.lower, ast.Num):
                     lower = node.slice.lower.n
                 width = width_table[node.value.id]
-                return MemoryType(width.height - lower, width.width)
+                if isinstance(width, MemoryType):
+                    return MemoryType(width.height - lower, width.width)
+                else:
+                    return width - lower
             elif isinstance(node.slice.upper, ast.Num):
                 lower = node.slice.lower.n
                 upper = node.slice.upper.n
                 width = width_table[node.value.id]
-                return MemoryType(upper - lower + 1, width.width)
+                if isinstance(width, MemoryType):
+                    return MemoryType(upper - lower - 1, width.width)
+                else:
+                    return upper - lower - 1
     elif isinstance(node, ast.Num):
-        return node.n.bit_length()
+        return max(node.n.bit_length(), 1)
     elif isinstance(node, ast.Attribute):
         type_ = width_table[node.value.id]._outputs[node.attr]
         if isinstance(type_, m.BitKind):

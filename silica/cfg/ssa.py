@@ -50,6 +50,7 @@ import silica.ast_utils as ast_utils
 
 from collections import defaultdict
 from silica.cfg.types import BasicBlock, Yield, Branch, HeadBlock, State
+from .util import find_branch_join
 
 
 def parse_expr(expr):
@@ -230,29 +231,36 @@ class Replacer(ast.NodeTransformer):
 
 
 def get_conds_up_to(path, predecessor, cfg):
-    conds = []
+    conds = set()
     for i, block in enumerate(path):
         if isinstance(block, Yield):
+            continue
             if cfg.curr_yield_id > 1:
-                conds.append(f"yield_state == {block.yield_id}")
+                conds.add(f"yield_state == {block.yield_id}")
         elif isinstance(block, HeadBlock):
+            continue
             if cfg.curr_yield_id > 1:
-                conds.append(f"yield_state == 0")
+                conds.add(f"yield_state == 0")
         elif isinstance(block, Branch):
+            join_block = find_branch_join(block)
+            if join_block in path and path.index(join_block) > i and path.index(join_block) < path.index(predecessor):
+                continue
             cond = block.cond
             if path[i + 1] is block.false_edge:
                 cond = ast.UnaryOp(ast.Invert(), cond)
-            conds.append(astor.to_source(cond).rstrip())
+            conds.add(astor.to_source(cond).rstrip())
         if block == predecessor:
             break
 
     if not conds:
         return "1"
-    result = conds[0]
-    for cond in conds[1:]:
-        result = f"({result}) & ({cond})"
-    return "(" + result + ")"
-    # return " & ".join(conds)
+    result = None
+    for cond in conds:
+        if result is None:
+            result = cond
+        else:
+            result = f"({result}) & ({cond})"
+    return result
 
 
 def convert_to_ssa(cfg):
@@ -308,6 +316,28 @@ def convert_to_ssa(cfg):
                     phi_conds = []
                     for predecessor, _ in block.incoming_edges:
                         if var in predecessor.live_outs:
+                            conds = set()
+                            conds = {}
+                            for path in cfg.paths:
+                                if predecessor in path and block in path[1:] and path.index(predecessor) == path[1:].index(block):
+                                    these_conds = get_conds_up_to(path, predecessor, cfg)
+                                    if these_conds not in conds:
+                                        conds[these_conds] = set()
+                                    conds[these_conds].add(path[0].yield_id)
+                            if not conds:
+                                # not in valid path
+                                continue
+                            expanded_conds = []
+                            for cond, yields in conds.items():
+                                # If not in all yields
+                                if len(yields) < cfg.curr_yield_id - 1:
+                                    cond = cond + " & " + "(" + " | ".join(f"(yield_state == {i})" for i in yields) + ")"
+                                expanded_conds.append(cond)
+                            conds = [ast.parse(cond) for cond in expanded_conds]
+                            if len(conds) > 1:
+                                phi_conds.append(ast.BoolOp(ast.Or(), conds))
+                            else:
+                                phi_conds.extend(conds)
                             phi_vars.add(var)
                             if isinstance(predecessor, (HeadBlock, Yield)):
                                 ssa_var = f"{var}_{var_to_curr_id_map[var]}"
@@ -324,15 +354,6 @@ def convert_to_ssa(cfg):
                             else:
                                 to_mux.append(predecessor)
                                 phi_values.append(f"{predecessor._ssa_stores[var]}")
-                            conds = []
-                            for path in cfg.paths:
-                                if predecessor in path and block in path[1:] and path.index(predecessor) == path[1:].index(block):
-                                    conds.append(get_conds_up_to(path, predecessor, cfg))
-                            # phi_conds.append(" | ".join(conds))
-                            result = conds[0]
-                            for cond in conds[1:]:
-                                result = f"({result}) | ({cond})"
-                            phi_conds.append(result)
 
                     assert phi_conds, var
                     ssa_var = f"{var}_{var_to_curr_id_map[var]}"
@@ -341,9 +362,15 @@ def convert_to_ssa(cfg):
                     if isinstance(width, MemoryType):
                         for i in range(width.height):
                             _phi_values = [f"{val}[{i}]" for val in phi_values]
-                            loads.append(parse_stmt(f"{ssa_var}[{i}] = phi([{', '.join(phi_conds)}], [{', '.join(_phi_values)}])"))
+                            if all(x == phi_values[0] for x in phi_values):
+                                loads.append(parse_stmt(f"{ssa_var}[{i}] = {phi_values[0]}[{i}]"))
+                            else:
+                                loads.append(parse_stmt(f"{ssa_var}[{i}] = phi([{', '.join(astor.to_source(cond).rstrip() for cond in phi_conds)}], [{', '.join(_phi_values)}])"))
                     else:
-                        loads.append(parse_stmt(f"{ssa_var} = phi([{', '.join(phi_conds)}], [{', '.join(phi_values)}])"))
+                        if all(x == phi_values[0] for x in phi_values):
+                            loads.append(parse_stmt(f"{ssa_var} = {phi_values[0]}"))
+                        else:
+                            loads.append(parse_stmt(f"{ssa_var} = phi([{', '.join(astor.to_source(cond).rstrip() for cond in phi_conds)}], [{', '.join(phi_values)}])"))
                     block._ssa_stores[var] = ssa_var
                     cfg.width_table[ssa_var] = width
                     for predecessor, _ in block.incoming_edges:

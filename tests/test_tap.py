@@ -5,6 +5,7 @@ import shutil
 from tests.common import evaluate_circuit
 import magma as m
 import fault
+import shutil
 
 
 class TAPDriver:
@@ -12,18 +13,18 @@ class TAPDriver:
     DRAddrs = dict(REGA=2, REGB=14)
     DRBits = dict(REGA=5, REGB=7)
     IR_bits = 4
-
-    def __init__(self, tester, tap_v):
+    
+    def __init__(self, tester, tap_v, clock):
         self.tester = tester
-        self.TCK = tap_v.TCK
+        self.TCK = clock
         self.TMS = tap_v.TMS
         self.TDI = tap_v.TDI
         self.TDO = tap_v.TDO
-        self.IR = tap_v.IR
+        # self.IR = tap_v.IR
         self.update_ir = tap_v.update_ir
         self.update_dr = tap_v.update_dr
-        self.cs = tap_v.cs
-        self.ns = tap_v.ns
+        # self.cs = tap_v.cs
+        # self.ns = tap_v.ns
         self.sigs = tap_v
 
     #This would be useful to be a fault helper function
@@ -35,7 +36,7 @@ class TAPDriver:
 
         #set inputs
         for sig, val in poke_map.items():
-            print(sig, val)
+            #print(sig, val)
             self.tester.poke(sig, val)
         self.tester.eval()
         #negedge
@@ -73,7 +74,7 @@ class TAPDriver:
         if (bits < 32):
             assert (value >> bits) == 0  #Check only 'size' bits are set
         in_bv = BitVector(value, bits)
-        print("shift_val", in_bv)
+        #print("shift_val", in_bv)
         if expect:
             expect_bv = BitVector(expect, bits)
         for i in range(bits):  #lsb first
@@ -111,15 +112,104 @@ class TAPDriver:
         self.next({self.TMS: 0}, {self.update_dr: 1})  # idle
 
 
+
+
+TEST_LOGIC_RESET = bits(0, 4)
+RUN_TEST_IDLE = bits(1, 4)
+SELECT_DR_SCAN = bits(2, 4)
+CAPTURE_DR = bits(3, 4)
+SHIFT_DR = bits(4, 4)
+EXIT1_DR = bits(5, 4)
+PAUSE_DR = bits(6, 4)
+EXIT2_DR = bits(7, 4)
+UPDATE_DR = bits(8, 4)
+SELECT_IR_SCAN = bits(9, 4)
+CAPTURE_IR = bits(10, 4)
+SHIFT_IR = bits(11, 4)
+EXIT1_IR = bits(12, 4)
+PAUSE_IR = bits(13, 4)
+EXIT2_IR = bits(14, 4)
+UPDATE_IR = bits(15, 4)
+
+@si.coroutine
+def SilicaTAP(TMS : Bit, TDI : Bit):
+    CS = bits(TEST_LOGIC_RESET,4)
+    IR = bits(0, 4)
+    regA = bits(0, 5)
+    regB = bits(0, 7)
+    TMS, TDI = yield
+    while True:
+        NS = TEST_LOGIC_RESET
+        if CS == TEST_LOGIC_RESET:
+            NS = TEST_LOGIC_RESET if TMS else RUN_TEST_IDLE
+        elif CS == RUN_TEST_IDLE:
+            NS = SELECT_DR_SCAN if TMS else RUN_TEST_IDLE
+        elif CS == SELECT_DR_SCAN:
+            NS = SELECT_IR_SCAN if TMS else CAPTURE_DR
+        elif CS == CAPTURE_DR:
+            NS = EXIT1_DR if TMS else SHIFT_DR
+        elif CS == SHIFT_DR:
+            NS = EXIT1_DR if TMS else SHIFT_DR
+        elif CS == EXIT1_DR:
+            NS = UPDATE_DR if TMS else PAUSE_DR
+        elif CS == PAUSE_DR:
+            NS = EXIT2_DR if TMS else PAUSE_DR
+        elif CS == EXIT2_DR:
+            NS = UPDATE_DR if TMS else SHIFT_DR
+        elif CS == UPDATE_DR:
+            NS = SELECT_DR_SCAN if TMS else RUN_TEST_IDLE
+        elif CS == SELECT_IR_SCAN:
+            NS = TEST_LOGIC_RESET if TMS else CAPTURE_IR
+        elif CS == CAPTURE_IR:
+            NS = EXIT1_IR if TMS else SHIFT_IR
+        elif CS == SHIFT_IR:
+            NS = EXIT1_IR if TMS else SHIFT_IR
+        elif CS == EXIT1_IR:
+            NS = UPDATE_IR if TMS else PAUSE_IR
+        elif CS == PAUSE_IR:
+            NS = EXIT2_IR if TMS else PAUSE_IR
+        elif CS == EXIT2_IR:
+            NS = UPDATE_IR if TMS else SHIFT_IR
+        # elif CS == UPDATE_IR:
+        else:
+            NS = SELECT_IR_SCAN if TMS else RUN_TEST_IDLE
+        
+        update_dr = (CS == UPDATE_DR)
+        update_ir = (CS == UPDATE_IR)
+        shift_dr = (CS == SHIFT_DR)
+        shift_ir = (CS == SHIFT_IR)
+        shift_regA = shift_dr & (IR == 2) #2 is address of regA
+        shift_regB = shift_dr & (IR == 14) #14 is address of regB
+        TDO = bit(0) #Can this just be 0?
+        if shift_ir:
+            TDO = IR[0]
+        elif shift_regA:
+            TDO = regA[0]
+        elif shift_regB:
+            TDO = regB[0]
+        
+        if shift_ir:
+            # emulating {TDI,IR[3:1]}   
+            IR = (IR>>1 & ((1<<4)-1)) | (bits(TDI, 4) << 3) #TODO how to concat?
+        if shift_regA:
+            # emulating {TDI,regA[4:1]}   
+            regA = (regA>>1 & ((1<<5)-1)) | (bits(TDI, 5) << 4)
+        if shift_regB:
+            # emulating {TDI,regB[3:1]}   
+            regB = (regB>>1 & ((1<<7)-1)) | (bits(TDI, 7) << 6)
+
+        CS = NS
+        TMS, TDI = yield TDO, update_dr,update_ir
+
 def test_tap():
+    tap = SilicaTAP()
+    si_tap = si.compile(tap, file_name="tests/build/si_tap.v")
+    # si_tap = m.DefineFromVerilogFile(
+    #     "tests/build/si_tap.v", type_map={"CLK": m.In(m.Clock)})[0]
 
-    shutil.copy("verilog/tap.v", "tests/build/tap_verilog.v")
-    tap_v = m.DefineFromVerilogFile(
-        "tests/build/tap_verilog.v", type_map={"TCK": m.In(m.Clock)})[0]
+    tester = fault.Tester(si_tap, si_tap.CLK)
 
-    v_tester = fault.Tester(tap_v, tap_v.TCK)
-
-    tap_driver = TAPDriver(v_tester, tap_v)
+    tap_driver = TAPDriver(tester, si_tap, si_tap.CLK)
     tap_driver.init_tap()
 
     tap_driver.write_IR("REGA")
@@ -132,21 +222,27 @@ def test_tap():
     tap_driver.write_DR(100, 7)
     tap_driver.write_DR(50, 7, dr_exp=100)
 
-    #full_step({TMS:0},{cs:1})
+    tester.compile_and_run(
+        target="verilator", directory="tests/build", flags=['-Wno-fatal'])
 
-    v_tester.expect(tap_v.update_dr, 0)
-    #v_tester = tester.retarget(serializer_verilog, serializer_verilog.CLK)
+
+    shutil.copy("verilog/tap.v", "tests/build/verilog_tap.v")
+    tap_v = m.DefineFromVerilogFile(
+        "tests/build/verilog_tap.v", type_map={"CLK": m.In(m.Clock)})[0]
+
+    v_tester = tester.retarget(tap_v, tap_v.CLK)
     v_tester.compile_and_run(
         target="verilator", directory="tests/build", flags=['-Wno-fatal'])
 
-    #if __name__ == '__main__':
-    #    print("===== BEGIN : SILICA RESULTS =====")
-    #    evaluate_circuit("serializer_si", "Serializer4")
-    #    print("===== END   : SILICA RESULTS =====")
 
-    #    print("===== BEGIN : VERILOG RESULTS =====")
-    #    evaluate_circuit("serializer_verilog", "serializer")
-    #    print("===== END   : VERILOG RESULTS =====")
+    if __name__ == '__main__':
+        print("===== BEGIN : SILICA RESULTS =====")
+        evaluate_circuit("si_tap", "SilicaTAP")
+        print("===== END   : SILICA RESULTS =====")
+
+        print("===== BEGIN : VERILOG RESULTS =====")
+        evaluate_circuit("verilog_tap", "tap")
+        print("===== END   : VERILOG RESULTS =====")
 
 
 if __name__ == '__main__':

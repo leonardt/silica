@@ -8,11 +8,17 @@ class PromoteWidths(ast.NodeTransformer):
         self.type_table = type_table
 
     def check_valid(self, int_length, expected_length):
-        if int_length > expected_length:
-            raise TypeError("Cannot promote integer with greater width than other operand")
+        if expected_length is None and int_length <= 1:
+            return
+        if int_length <= expected_length:
+            return
+        raise TypeError("Cannot promote integer with greater width than other operand")
 
     def make(self, value, width, type_):
-        return ast.parse(f"{type_}({value}, {width})").body[0].value
+        if type_ == "bit":
+            return ast.parse(f"{type_}({value})").body[0].value
+        else:
+            return ast.parse(f"{type_}({value}, {width})").body[0].value
 
     def get_type(self, node):
         if isinstance(node, ast.Name):
@@ -21,15 +27,23 @@ class PromoteWidths(ast.NodeTransformer):
             if isinstance(node.value, ast.Name):
                 type_ = self.type_table[node.value.id]
                 if type_ == "uint" and isinstance(node.slice, ast.Index):
-                    return 1
+                    return "bit"
                 elif type_ == "uint" and isinstance(node.slice, ast.Slice):
                     if node.slice.lower is None and isinstance(node.slice.upper, ast.Num):
                         if node.slice.step is not None:
                             raise NotImplementedError()
-                        return node.slice.upper.n
+                        # return node.slice.upper.n
+                        return "bits"
                 else:
                     raise NotImplementedError(ast.dump(node))
-        raise NotImplementedError(node)
+        elif isinstance(node, ast.BinOp):
+            left_type = self.get_type(node.left)
+            right_type = self.get_type(node.right)
+            assert left_type == right_type, (left_type, right_type)
+            return left_type
+        elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in ["bits"]:
+            return node.func.id
+        raise NotImplementedError(ast.dump(node))
 
     def visit_Assign(self, node):
         node.value = self.visit(node.value)
@@ -55,11 +69,19 @@ class PromoteWidths(ast.NodeTransformer):
         node.right = self.visit(node.right)
         if isinstance(node.left, ast.Num):
             right_width = get_width(node.right, self.width_table)
-            self.check_valid(node.left.n.bit_length(), right_width)
+            try:
+                self.check_valid(node.left.n.bit_length(), right_width)
+            except TypeError as e:
+                print(f"Error type checking node {ast.dump(node)}")
+                raise e
             node.left = self.make(node.left.n, right_width, self.get_type(node.right))
         elif isinstance(node.right, ast.Num):
             left_width = get_width(node.left, self.width_table)
-            self.check_valid(node.right.n.bit_length(), left_width)
+            try:
+                self.check_valid(node.right.n.bit_length(), left_width)
+            except TypeError as e:
+                print(f"Error type checking node {ast.dump(node)}")
+                raise e
             node.right = self.make(node.right.n, left_width, self.get_type(node.left))
         return node
 

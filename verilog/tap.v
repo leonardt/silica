@@ -1,5 +1,5 @@
 module tap(
-  input TCK,
+  input CLK,
   input TMS,
   input TDI,
   output TDO,
@@ -40,7 +40,7 @@ module tap(
   assign cs = CS;
   assign ns = NS;
 
-  always @(posedge TCK) begin
+  always @(posedge CLK) begin
     CS <= NS;
   end
 
@@ -83,19 +83,19 @@ module tap(
 
   assign TDO = shift_ir ? IR[0] : (shift_regA ? regA[0] : (shift_regB ? regB[0] : 1'b0 ));
 
-  always @(posedge TCK) begin
+  always @(posedge CLK) begin
     if (shift_ir) begin
       IR <= {TDI,IR[3:1]};
     end
   end
   
-  always @(posedge TCK) begin
+  always @(posedge CLK) begin
     if (shift_regA) begin
       regA <= {TDI,regA[4:1]};
     end
   end
   
-  always @(posedge TCK) begin
+  always @(posedge CLK) begin
     if (shift_regB) begin
       regB <= {TDI,regB[6:1]};
     end

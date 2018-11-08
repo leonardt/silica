@@ -18,18 +18,16 @@ from silica.visitors import collect_names, collect_stores, collect_loads
 from silica.cfg.types import BasicBlock, Yield, Branch, HeadBlock, State
 from silica.cfg.ssa import SSAReplacer, convert_to_ssa, parse_expr
 from .liveness import liveness_analysis
+from .util import find_branch_join
 from ..memory import MemoryType
 import silica.ast_utils as ast_utils
 
 def get_constant(node):
-    if isinstance(node, ast.Num) and len(stmt.targets) == 1:
+    if isinstance(node, ast.Num):
         return node.n
     elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and \
-         node.func.id in {"bits", "uint"}:
-        return node.args[0].n
-    elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and \
-         node.func.id == "bit":
-        return int(node.args[0].n)
+         node.func.id in {"bits", "uint", "bit"}:
+        return get_constant(node.args[0])
     elif isinstance(node, ast.NameConstant):
         return int(node.value)
 
@@ -104,28 +102,6 @@ class IOCollector(ast.NodeVisitor):
 
 def get_io(tree):
     return IOCollector().run(tree)
-
-
-def get_next_block(block):
-    if isinstance(block, Branch):
-        return find_branch_join(block)
-    elif isinstance(block, (BasicBlock, Yield)):
-        return block.outgoing_edge[0]
-    raise NotImplementedError(block)
-
-
-def find_branch_join(branch):
-    curr_false_block = branch.false_edge
-    curr_true_block = branch.true_edge
-    while curr_false_block != curr_true_block:
-        next_true_block = get_next_block(curr_true_block)
-        if next_true_block == curr_false_block:
-            break
-        next_false_block = get_next_block(curr_false_block)
-        if next_false_block == curr_true_block:
-            break
-        curr_true_block, curr_false_block = next_true_block, next_false_block
-    return curr_false_block
 
 
 def get_stores_on_branch(curr_block, join_block, var_counter):
@@ -204,7 +180,7 @@ class ControlFlowGraph:
     def __init__(self, tree, width_table, func_locals, func_globals):
         self.blocks = []
         self.curr_block = None
-        self.curr_yield_id = 0
+        self.curr_yield_id = 1
         self.local_vars = set()
         self.width_table = width_table
         self.func_locals = func_locals
@@ -297,6 +273,7 @@ class ControlFlowGraph:
         """
         assert isinstance(func_def, ast.FunctionDef)
         self.head_block = HeadBlock()
+        self.head_block.yield_id = 0
         self.blocks.append(self.head_block)
         self.curr_block = self.head_block
         # self.curr_block = self.gen_new_block()
@@ -1082,6 +1059,13 @@ def build_state_info(paths, outputs, inputs):
                 # state.statements.append(ast.parse(f"__silica_cond_{__unique_cond_id} = {astor.to_source(cond).rstrip()}").body[0])
                 # state.conds.append(ast.parse(f"__silica_cond_{__unique_cond_id}").body[0].value)
                 state.conds.append(cond)
+                # join_block = find_branch_join(block)
+                # skip_cond = True
+                # for path_ in paths:
+                #     if block in path and join_block not in path or path.index(join_block) < path.index(block):
+                #         skip_cond = False
+                # if not skip_cond:
+                #     state.conds.append(cond)
             elif isinstance(block, BasicBlock):
                 state.statements.extend(block.statements)
             elif isinstance(block, HeadBlock):
