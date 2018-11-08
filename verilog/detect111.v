@@ -12,8 +12,8 @@ module detect111(
   end
 
   // mealey version
-  assign cnt_next = I ? (cnt==3 ? cnt : cnt+1) : 0;
-  assign O = (cnt_next==3);
+  assign cnt_next = I ? (cnt==2'h3 ? cnt : cnt+1'b1) : 2'h0;
+  assign O = (cnt_next==2'h3);
   /* assign O = (cnt==3); */
 
 endmodule
