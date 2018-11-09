@@ -78,7 +78,10 @@ def get_width(node, width_table, func_locals={}, func_globals={}):
         if isinstance(node.slice, ast.Index):
             width = get_width(node.value, width_table)
             if isinstance(width, tuple):
-                return width[1]
+                if len(width) == 2:
+                    return width[1]
+                else:
+                    return width[1:]
             elif isinstance(width, MemoryType):
                 return width.width
             return None

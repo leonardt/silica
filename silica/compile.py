@@ -5,6 +5,11 @@ import magma as m
 import magma
 import os
 import sys
+import logging
+import functools
+import operator
+
+logging.basicConfig(level=logging.DEBUG)
 
 import silica
 from silica.coroutine import Coroutine
@@ -46,12 +51,26 @@ def specialize_list_comps(tree, globals, locals):
     ListCompSpecializer().visit(tree)
 
 
-def get_input_width(type_):
+def get_io_type(type_):
+    if isinstance(type_, m.BitKind):
+        type_ = "bit"
+    elif isinstance(type_, m.UIntKind):
+        type_ = "uint"
+    elif isinstance(type_, m.BitsKind):
+        type_ = "bits"
+    elif isinstance(type_, m.ArrayKind):
+        type_ = "array"
+    else:
+        raise NotImplementedError(type_)
+    return type_
+
+
+def get_io_width(type_):
     if type_ is magma.Bit:
         return None
     elif isinstance(type_, magma.ArrayKind):
         if isinstance(type_.T, magma.ArrayKind):
-            elem_width = get_input_width(type_.T)
+            elem_width = get_io_width(type_.T)
             if isinstance(elem_width, tuple):
                 return (type_.N, ) + elem_width
             else:
@@ -86,18 +105,13 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
 
     width_table = {}
     type_table = {}
-    if coroutine._inputs:
-        for input_, type_ in coroutine._inputs.items():
-            width_table[input_] = get_input_width(type_)
-            if isinstance(type_, m.BitKind):
-                type_ = "bit"
-            elif isinstance(type_, m.UIntKind):
-                type_ = "uint"
-            elif isinstance(type_, m.BitsKind):
-                type_ = "bits"
-            else:
-                raise NotImplementedError(type_)
-            type_table[input_] = type_
+    for input_, type_ in coroutine._inputs.items():
+        width_table[input_] = get_io_width(type_)
+        type_table[input_] = get_io_type(type_)
+
+    for output_, type_ in coroutine._outputs.items():
+        width_table[output_] = get_io_width(type_)
+        type_table[output_] = get_io_type(type_)
 
     for name,width in loopvars:
         width_table[name] = width
@@ -107,6 +121,8 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     for name,_ in loopvars:
         type_table[name] = 'uint'
 
+    # logging.debug("width_table = {width_table}")
+    # logging.debug("\n" + astor.to_source(tree))
     CollectInitialWidthsAndTypes(width_table, type_table, func_locals, func_globals).visit(tree)
     PromoteWidths(width_table, type_table).visit(tree)
     tree, loopvars = get_final_widths(tree, width_table, func_locals, func_globals)
@@ -127,13 +143,12 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
         return compile_magma(coroutine, file_name, mux_strategy, output)
 
     registers = set()
-    outputs = tuple()
     for path in cfg.paths:
-        outputs += (collect_names(path[-1].value, ctx=ast.Load), )
         registers |= (path[0].live_ins & path[0].live_outs)
 
-    assert all(outputs[1] == output for output in outputs[1:]), "Yield statements must all have the same outputs except for the first"
-    outputs = outputs[1]
+    # assert all(outputs[1] == output for output in outputs[1:]), "Yield statements must all have the same outputs except for the first"
+    # outputs = outputs[1]
+    outputs = tuple(coroutine._outputs.keys())
     states = cfg.states
     num_yields = cfg.curr_yield_id
     num_states = len(states)
@@ -175,7 +190,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
         except Exception:
             return 1
 
-    inputs = { i : get_len(t) for i,t in coroutine._inputs.items() }
+    inputs = { i : width_table.get(i, 1) or 1 for i in coroutine._inputs }
     inputs["CLK"] = 1
     outputs = { o : width_table.get(o, 1) or 1 for o in outputs }
     ctx.declare_ports(inputs, outputs)
@@ -193,9 +208,15 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     for var, width in width_table.items():
         if isinstance(width, Coroutine):
             continue
+        if var in inputs or var in outputs:
+            continue
         if var not in registers:
             if isinstance(width, MemoryType):
                 ctx.declare_wire(var, width.width, width.height)
+            elif isinstance(width, tuple):
+                height = functools.reduce(operator.mul, width[1:])
+                width = width[0]
+                ctx.declare_wire(var, width, height)
             else:
                 ctx.declare_wire(var, width)
 

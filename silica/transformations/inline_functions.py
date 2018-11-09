@@ -27,6 +27,12 @@ class YieldFromFunctionInliner(ast.NodeTransformer):
             return node
         return super().visit(node)
 
+    def visit_Expr(self, node):
+        node.value = self.visit(node.value)
+        if isinstance(node.value, list):
+            return node.value
+        return node
+
     def visit_Assign(self, node):
         """
         If node.value is a YieldFrom that is inlined, it will return a list, so

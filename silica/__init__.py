@@ -26,6 +26,12 @@ class Memory(list):
             key = key.as_int()
         return super().__setitem__(key, value)
 
+class List(list):
+    def __getitem__(self, index):
+        if isinstance(index, BitVector):
+            index = index.as_uint()
+        return list.__getitem__(self, index)
+
 def memory(height, width):
     return Memory(bits(0, width) for _ in range(height))
 

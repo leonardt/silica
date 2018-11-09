@@ -9,6 +9,8 @@ import magma
 from .visitors.collect_stores import collect_stores
 from .cfg.types import HeadBlock
 from .memory import MemoryType
+from functools import reduce
+import operator
 
 class Context:
     def __init__(self, name, sub_coroutines):
@@ -24,6 +26,8 @@ class Context:
                     self.module.Output(o)
         if inputs:
             for i,n in inputs.items():
+                if isinstance(n, tuple):
+                    n = reduce(operator.mul, n)
                 if n > 1:
                     self.module.Input(i, n)
                 else:
@@ -74,23 +78,6 @@ class Context:
             return vg.Srl
         elif is_l_shift(stmt):
             return vg.Sll
-        elif is_assign(stmt) and is_call(stmt.value) and is_name(stmt.value.func) and stmt.value.func.id == "phi":
-            conds = [self.translate(x) for x in stmt.value.args[0].elts]
-            values = [self.translate(x) for x in stmt.value.args[1].elts]
-            block = vg.If(conds[0])(
-                self.translate_assign(stmt.targets[0], values[0])
-            )
-            for cond, value in zip(conds[1:-1], values[1:-1]):
-                block.Elif(cond)(
-                    self.translate_assign(stmt.targets[0], value)
-                )
-            block.Else(
-                self.translate_assign(stmt.targets[0], values[-1])
-            )
-            return block
-        elif is_assign(stmt):
-            # blk = not self.is_reg(target)
-            return self.translate_assign(stmt.targets[0], self.translate(stmt.value))
         elif is_bool_op(stmt):
             result = self.translate(stmt.op)(
                 self.translate(stmt.values[0]),
@@ -161,6 +148,8 @@ class Context:
             return vg.NotEq
         elif is_num(stmt):
             return vg.Int(stmt.n)
+        elif is_not(stmt):
+            return vg.Unot
         elif is_sub(stmt):
             return vg.Sub
         elif is_subscript(stmt):
@@ -191,9 +180,46 @@ class Context:
             for key, arg in zip(inputs, stmt.value.args):
                 subs.append(vg.Subst(self.get_by_name("_si_" + coroutine + "_" + key), self.get_by_name(arg.id), 1))
             return subs
+        elif isinstance(stmt, ast.Assign) and is_call(stmt.value) and is_attribute(stmt.value.func) and stmt.value.func.attr == "send":
+            coroutine = stmt.value.func.value.id
+            subs = []
+            inputs = []
+            outputs = []
+            for key, value in self.sub_coroutines[coroutine].IO.ports.items():
+                if key == "CLK":
+                    continue
+                if value.isinput():
+                    inputs.append(key)
+                elif value.isoutput():
+                    outputs.append(key)
+            assert len(stmt.value.args) == 1, "Expect one argument as tuple"
+            for key, arg in zip(inputs, stmt.value.args[0].elts):
+                subs.append(vg.Subst(self.get_by_name("_si_" + coroutine + "_" + key), self.translate(arg), 1))
+            if len(outputs) == 1:
+                subs.append(vg.Subst(self.get_by_name(outputs[0]), self.translate(arg), 1))
+            else:
+                raise NotImplementedError("Iterate over output tuple")
+            return subs
         elif is_attribute(stmt):
             coroutine = stmt.value.id
             return self.get_by_name("_si_" + coroutine + "_" + stmt.attr)
+        elif is_assign(stmt) and is_call(stmt.value) and is_name(stmt.value.func) and stmt.value.func.id == "phi":
+            conds = [self.translate(x) for x in stmt.value.args[0].elts]
+            values = [self.translate(x) for x in stmt.value.args[1].elts]
+            block = vg.If(conds[0])(
+                self.translate_assign(stmt.targets[0], values[0])
+            )
+            for cond, value in zip(conds[1:-1], values[1:-1]):
+                block.Elif(cond)(
+                    self.translate_assign(stmt.targets[0], value)
+                )
+            block.Else(
+                self.translate_assign(stmt.targets[0], values[-1])
+            )
+            return block
+        elif is_assign(stmt):
+            # blk = not self.is_reg(target)
+            return self.translate_assign(stmt.targets[0], self.translate(stmt.value))
         raise NotImplementedError(ast.dump(stmt))
 
     def to_verilog(self):
