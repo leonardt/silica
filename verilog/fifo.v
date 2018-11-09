@@ -8,8 +8,8 @@ module fifo(
   output empty
 ); 
 
-  reg [2:0] waddr = 0;
-  reg [2:0] raddr = 0;
+  reg [2:0] waddr = 3'h0;
+  reg [2:0] raddr = 3'h0;
   
   reg [3:0] data [0:3];
   
@@ -19,11 +19,11 @@ module fifo(
   assign rvalid = ren & ~empty;
 
   always @(posedge CLK) begin
-    if (wvalid) waddr <= waddr+1;
+    if (wvalid) waddr <= waddr+1'b1;
   end
 
   always @(posedge CLK) begin
-    if (rvalid) raddr <= raddr+1;
+    if (rvalid) raddr <= raddr+1'b1;
   end
 
   always @(posedge CLK) begin
