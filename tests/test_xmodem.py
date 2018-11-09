@@ -41,8 +41,7 @@ def send_byte(uart, value) -> {"tx": si.Bit}:
 
 
 @si.generator
-def send_message(data_num : si.Bits(8), data: si.Bits(8)) 
-    -> {"data_addr" : si.Bits(8),"byte_addr": si.Bits(7)}:
+def send_message(data_num : si.Bits(8), data: si.Bits(8)) -> {"data_addr" : si.Bits(8),"byte_addr": si.Bits(7)}:
     uart_t = coroutine_create(uart_tx)
     yield from send_byte(uart_t, SOH)
     yield from send_byte(uart_t, data_num)
@@ -73,30 +72,29 @@ def uart_rx(rx : si.Bit) -> {"valid" : si.Bit, "data": si.Bits(8)}:
 #This should either receiver a byte or time out
 MAX_TIME = bits(1<<16-1,16)
 @si.generator
-def receive_byte() -> {}
+def receive_byte() -> {}:
     uart_r = coroutine_create(uart_rx)
     valid,data = uart_r.send(rx)
     yield
     #assert !valid
     timeout_cnt = bits(0,16)
     rx = yield 
-    while (!valid and timout_cnt != MAX_TIME):
+    while (not valid and timout_cnt != MAX_TIME):
         valid,data = uart_r.send(rx)
         rx = yield
     return timeout_cnt==MAX_TIME, data
 
 
 @si.coroutine
-def xmodem_host(send : si.Bit, data_len : si.Bits(10), data_byte : si.Bits(8), rx : si.Bit) 
-    -> {"data_addr" : si.Bits(10),"byte_addr": si.Bits(7), "done": si.Bit, "tx": si.Bit}:
+def xmodem_host(send : si.Bit, data_len : si.Bits(10), data_byte : si.Bits(8), rx : si.Bit) -> {"data_addr" : si.Bits(10),"byte_addr": si.Bits(7), "done": si.Bit, "tx": si.Bit}:
     send, data_len, _,_ = yield 
     while True:
         #Wait for host to decide to send
-        while(!send):
+        while(not send):
             send,data_len,_,_ = yield 0,0,0,1
         #Wait for client to be ready
         timeout, response = yield from receive_byte()
-        while (timeout or response!= C)
+        while (timeout or response != C):
             timeout,response = yield from receive_byte() 
         #Send all data
         i = bits(0,10)
