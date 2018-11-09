@@ -107,7 +107,7 @@ def xmodem_host(send : si.Bit, data_len : si.Bits(10), data_byte : si.Bits(8), r
                 continue
             elif response == ACK:
                 i = i + 1
-            #assert resposne == NAK
+            #assert true #Bad response
         #Send done bit
         send,data_len,_,_ = yield 0,0,1,1
 
