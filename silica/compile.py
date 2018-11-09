@@ -9,7 +9,7 @@ import logging
 import functools
 import operator
 
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 
 import silica
 from silica.coroutine import Coroutine
