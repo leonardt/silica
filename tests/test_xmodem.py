@@ -9,6 +9,9 @@ import functools
 
 SOH = bits(0x01, 8)
 EOT = bits(0x04, 8)
+ACK = bits(0x06, 8)
+NAK = bits(0x15, 8)
+C = bits(0x43, 8)
 
 MESSAGE_BUFFER_SIZE = 12
 
@@ -28,43 +31,85 @@ def uart_tx(data : si.Bits(8), valid : si.Bit) -> {"tx": si.Bit}:
 
 
 @si.generator
-def send_byte(uart, value) -> {"idle": si.Bit, "tx": si.Bit}:
+def send_byte(uart, value) -> {"tx": si.Bit}:
     tx = uart.send((value, 1))
-    message, length, send = yield 0, tx
+    message, length, send = yield tx
     for j in range(9):
-    # i = bits(0, 4)
-    # while i != 9:
-        # i = i + 1
         tx = uart.send((value, 0))
-        message, length, send = yield 0, tx
+        message, length, send = yield tx
     return
 
 
+@si.generator
+def send_message(data_num : si.Bits(8), data: si.Bits(8)) 
+    -> {"data_addr" : si.Bits(8),"byte_addr": si.Bits(7)}:
+    uart_t = coroutine_create(uart_tx)
+    yield from send_byte(uart_t, SOH)
+    yield from send_byte(uart_t, data_num)
+    yield from send_byte(uart_t, ~data_num)
+    checksum = uint(0, 8)
+    b = bits(0, 8)
+    while b != bits(128, 8):
+        checksum = checksum + data
+        yield from send_byte(uart, data)
+        b = b + 1
+    yield from send_byte(uart, checksum)
+    yield from send_byte(uart, EOT)
+    return
+
 @si.coroutine
-def XModemTx(message: si.Array(MESSAGE_BUFFER_SIZE,
-                               si.Array(128, si.Bits(8))),
-             length: si.Bits(m.bitutils.clog2(MESSAGE_BUFFER_SIZE)),
-             send: si.Bit) -> {"idle": si.Bit, "tx": si.Bit}:
-    uart = coroutine_create(uart_tx)
+def uart_rx(rx : si.Bit) -> {"valid" : si.Bit, "data": si.Bits(8)}:
+    rx = yield
+    while (True):
+        data = bits(0,8)
+        while (rx):
+            rx = yield 0, data 
+        for i in range(8):
+            rx = yield 0, data 
+            data[i] = rx
+        rx = yield 1, data
+        #assert rx == 1 TODO it would be cool to add in assertions that would materialize somehow
+
+#This should either receiver a byte or time out
+MAX_TIME = bits(1<<16-1,16)
+@si.generator
+def receive_byte() -> {}
+    uart_r = coroutine_create(uart_rx)
+    valid,data = uart_r.send(rx)
+    yield
+    #assert !valid
+    timeout_cnt = bits(0,16)
+    rx = yield 
+    while (!valid and timout_cnt != MAX_TIME):
+        valid,data = uart_r.send(rx)
+        rx = yield
+    return timeout_cnt==MAX_TIME, data
+
+
+@si.coroutine
+def xmodem_host(send : si.Bit, data_len : si.Bits(10), data_byte : si.Bits(8), rx : si.Bit) 
+    -> {"data_addr" : si.Bits(10),"byte_addr": si.Bits(7), "done": si.Bit, "tx": si.Bit}:
+    send, data_len, _,_ = yield 
     while True:
-        message, length, send = yield 1, 1
-        if not send: continue
-        yield from send_byte(uart, SOH)
-        # for i in range(0, length):
-        i = bits(0, eval(m.bitutils.clog2(MESSAGE_BUFFER_SIZE)))
-        while i != length:
-            yield from send_byte(uart, bits(i, 8))
-            yield from send_byte(uart, ~bits(i, 8))
-            checksum = uint(0, 8)
-            # for b in range(128):
-            b = bits(0, 8)
-            while b != bits(128, 8):
-                checksum = checksum + message[i][b]
-                yield from send_byte(uart, message[i][b])
-                b = b + 1
-            i = i + 1
-            yield from send_byte(uart, checksum)
-        yield from send_byte(uart, EOT)
+        #Wait for host to decide to send
+        while(!send):
+            send,data_len,_,_ = yield 0,0,0,1
+        #Wait for client to be ready
+        timeout, response = yield from receive_byte()
+        while (timeout or response!= C)
+            timeout,response = yield from receive_byte() 
+        #Send all data
+        i = bits(0,10)
+        while i != data_len:
+            yield from send_message(i,data)
+            timeout,response = yield from receive_byte()
+            if timeout or response == NAK:
+                continue
+            elif response == ACK:
+                i = i + 1
+            #assert resposne == NAK
+        #Send done bit
+        send,data_len,_,_ = yield 0,0,1,1
 
 
 def get_output(xmodem_tx, message, length):
