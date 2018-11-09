@@ -12,8 +12,7 @@ EOT = bits(0x04, 8)
 ACK = bits(0x06, 8)
 NAK = bits(0x15, 8)
 C = bits(0x43, 8)
-
-MESSAGE_BUFFER_SIZE = 12
+MAX_TIME = bits(1<<16-1,16)
 
 
 @si.coroutine
@@ -39,7 +38,6 @@ def send_byte(uart, value) -> {"tx": si.Bit}:
         message, length, send = yield tx
     return
 
-
 @si.generator
 def send_message(data_num : si.Bits(8), data: si.Bits(8)) -> {"data_addr" : si.Bits(8),"byte_addr": si.Bits(7)}:
     uart_t = coroutine_create(uart_tx)
@@ -47,11 +45,12 @@ def send_message(data_num : si.Bits(8), data: si.Bits(8)) -> {"data_addr" : si.B
     yield from send_byte(uart_t, data_num)
     yield from send_byte(uart_t, ~data_num)
     checksum = uint(0, 8)
-    b = bits(0, 8)
-    while b != bits(128, 8):
+    byte_addr = bits(0, 8)
+    while byte_addr != bits(128, 8):
+        data = yield data_num, byte_addr #TODO this is adding an extra cycle :(
         checksum = checksum + data
         yield from send_byte(uart, data)
-        b = b + 1
+        byte_addr = byte_addr + 1
     yield from send_byte(uart, checksum)
     yield from send_byte(uart, EOT)
     return
@@ -70,7 +69,6 @@ def uart_rx(rx : si.Bit) -> {"valid" : si.Bit, "data": si.Bits(8)}:
         #assert rx == 1 TODO it would be cool to add in assertions that would materialize somehow
 
 #This should either receiver a byte or time out
-MAX_TIME = bits(1<<16-1,16)
 @si.generator
 def receive_byte() -> {}:
     uart_r = coroutine_create(uart_rx)
@@ -80,6 +78,7 @@ def receive_byte() -> {}:
     timeout_cnt = bits(0,16)
     rx = yield 
     while (not valid and timout_cnt != MAX_TIME):
+        timeout_cnt = timeout_cnt + 1
         valid,data = uart_r.send(rx)
         rx = yield
     return timeout_cnt==MAX_TIME, data
