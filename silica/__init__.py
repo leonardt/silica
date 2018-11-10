@@ -18,12 +18,12 @@ class BitVector(BitVector):
 class Memory(list):
     def __getitem__(self, key):
         if isinstance(key, bit_vector.BitVector):
-            key = key.as_int()
+            key = key.as_uint()
         return super().__getitem__(key)
 
     def __setitem__(self, key, value):
         if isinstance(key, bit_vector.BitVector):
-            key = key.as_int()
+            key = key.as_uint()
         return super().__setitem__(key, value)
 
 def memory(height, width):
