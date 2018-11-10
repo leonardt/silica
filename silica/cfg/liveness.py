@@ -64,7 +64,7 @@ def analyze(node):
             analyzer.visit(statement)
     return analyzer.gen, analyzer.kill
 
-def do_analysis(block, cfg):
+def do_analysis(block, cfg, seen=set()):
     block.gen, block.kill = analyze(block)
     if not isinstance(block, Yield):
         if isinstance(block, Branch):
@@ -72,15 +72,15 @@ def do_analysis(block, cfg):
             false_edge_seen = False
             for path in cfg.paths:
                 if block in path and block.true_edge in path and not true_edge_seen:
-                    block.live_outs |= do_analysis(block.true_edge, cfg)
+                    block.live_outs |= do_analysis(block.true_edge, cfg, seen)
                     true_edge_seen = True
                 if block in path and block.false_edge in path and not false_edge_seen:
-                    block.live_outs |= do_analysis(block.false_edge, cfg)
+                    block.live_outs |= do_analysis(block.false_edge, cfg, seen)
                     false_edge_seen = True
                 if true_edge_seen and false_edge_seen:
                     break
         else:
-            block.live_outs |= do_analysis(block.outgoing_edge[0], cfg)
+            block.live_outs |= do_analysis(block.outgoing_edge[0], cfg, seen)
     still_live = block.live_outs - block.kill
     block.live_ins = block.gen | still_live
     return block.live_ins
@@ -88,12 +88,18 @@ def do_analysis(block, cfg):
 def liveness_analysis(cfg):
     last_live_outs = None
     curr_live_outs = [copy.copy(block.live_outs) for block in cfg.blocks]
-    while last_live_outs != curr_live_outs:
-        for block in cfg.blocks:
-            if isinstance(block, (HeadBlock, Yield)):
-                block.live_outs = do_analysis(block.outgoing_edge[0], cfg)
+    last_live_ins = None
+    curr_live_ins = [copy.copy(block.live_ins) for block in cfg.blocks]
+    while last_live_outs != curr_live_outs or last_live_ins != curr_live_ins:
+        for path in cfg.paths:
+            for i in reversed(range(len(path))):
+                block = path[i]
                 block.gen, block.kill = analyze(block)
+                if i != len(path) - 1:
+                    block.live_outs |= path[i + 1].live_ins
                 still_live = block.live_outs - block.kill
-                block.live_ins = block.gen | still_live
+                block.live_ins |= block.gen | still_live
         last_live_outs = curr_live_outs
         curr_live_outs = [copy.copy(block.live_outs) for block in cfg.blocks]
+        last_live_ins = curr_live_ins
+        curr_live_ins = [copy.copy(block.live_ins) for block in cfg.blocks]

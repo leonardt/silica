@@ -13,7 +13,7 @@ module lbmem(
 
   reg state = 1'b0;
   
-  reg [4:0] cnt = 5'h0;
+  reg [2:0] cnt = 5'h0;
 
   always @(posedge CLK) begin
     if (state==1'b0) begin
@@ -26,13 +26,13 @@ module lbmem(
 
   always @(posedge CLK) begin
     if (state==1'b0) begin
-      state <= (cnt==5'h7 & wen); //cnt will be 8 on transition
+      state <= (cnt==3'h7 & wen); //cnt will be 8 on transition
     end
     else begin 
-      state <= (cnt!=5'h1 | wen);
+      state <= (cnt!=3'h1 | wen);
     end
   end
-  assign valid = (state & (cnt!=5'h1 | wen)) | (cnt == 5'h7 & wen); 
+  assign valid = (state & (cnt!=3'h1 | wen)) | (cnt == 3'h7 & wen); 
 
   reg [5:0] waddr = 6'h0;
   wire [5:0] raddr;

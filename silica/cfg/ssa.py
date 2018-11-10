@@ -178,7 +178,7 @@ class Replacer(ast.NodeTransformer):
         return (index, )
 
     def visit_Assign(self, node):
-        if isinstance(node.targets[0], ast.Subscript):
+        if False and isinstance(node.targets[0], ast.Subscript):
             assert isinstance(node.targets[0].value, ast.Name)
             node.targets[0].slice = self.visit(node.targets[0].slice)
             orig_name = self.get_name(node.targets[0])
@@ -226,7 +226,8 @@ class Replacer(ast.NodeTransformer):
             self.stores[orig_id] = node.id
             self.width_table[node.id] = self.width_table[orig_id]
         else:
-            node.id = self.stores[node.id]
+            if node.id in self.stores:
+                node.id = self.stores[node.id]
         return node
 
 
@@ -298,6 +299,7 @@ def convert_to_ssa(cfg):
                         width = cfg.width_table[var]
                         cfg.width_table[ssa_var] = width
                         if isinstance(width, MemoryType):
+                            continue
                             for i in range(width.height):
                                 loads.append(parse_stmt(f"{ssa_var}[{i}] = {var}[{i}]"))
                         else:
@@ -316,6 +318,8 @@ def convert_to_ssa(cfg):
                     phi_conds = []
                     for predecessor, _ in block.incoming_edges:
                         if var in predecessor.live_outs:
+                            if isinstance(cfg.width_table[var], MemoryType):
+                                continue
                             conds = set()
                             conds = {}
                             for path in cfg.paths:
@@ -344,6 +348,7 @@ def convert_to_ssa(cfg):
                                 var_to_curr_id_map[var] += 1
                                 width = cfg.width_table[var]
                                 if isinstance(width, MemoryType):
+                                    continue
                                     for i in range(width.height):
                                         loads.append(parse_stmt(f"{ssa_var}[{i}] = {var}[{i}]"))
                                 else:
@@ -355,11 +360,13 @@ def convert_to_ssa(cfg):
                                 to_mux.append(predecessor)
                                 phi_values.append(f"{predecessor._ssa_stores[var]}")
 
-                    assert phi_conds, var
+                    if not phi_conds:
+                        continue
                     ssa_var = f"{var}_{var_to_curr_id_map[var]}"
                     var_to_curr_id_map[var] += 1
                     width = cfg.width_table[var]
                     if isinstance(width, MemoryType):
+                        continue
                         for i in range(width.height):
                             _phi_values = [f"{val}[{i}]" for val in phi_values]
                             if all(x == phi_values[0] for x in phi_values):
@@ -390,6 +397,7 @@ def convert_to_ssa(cfg):
                     if ssa_var not in arrays_loaded:
                         width = cfg.width_table[var]
                         if isinstance(width, MemoryType):
+                            continue
                             for i in range(width.height):
                                 loads.append(parse_stmt(f"{ssa_var}[{i}] = {block._ssa_stores[var]}[{i}]"))
                         else:
@@ -436,6 +444,8 @@ def convert_to_ssa(cfg):
                     for var in block.live_ins:
                         if var in cfg.sub_coroutines:
                             continue
+                        if isinstance(cfg.width_table[var], MemoryType):
+                            continue
                         # new_block.statements.append(parse_stmt(f"{var} = {block._ssa_stores[var]}"))
                         block.stores[block._ssa_stores[var]] = var
             for successor, _ in block.outgoing_edges:
@@ -443,4 +453,6 @@ def convert_to_ssa(cfg):
                     continue
                 if all(isinstance(edge, Yield) or edge in processed for edge, _ in successor.incoming_edges):
                     blocks_to_process.append(successor)
+    for block in cfg.blocks:
+        assert block in processed, processed
     return var_to_curr_id_map

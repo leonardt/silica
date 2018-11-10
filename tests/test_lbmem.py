@@ -1,10 +1,11 @@
 import silica as si
-from silica import uint, eval, memory, bit, bits
+from silica import uint, eval, memory, bit, bits, coroutine_create
 import math
 import fault
 import magma as m
 from bit_vector import BitVector
 from tests.common import evaluate_circuit
+from collections import OrderedDict as OD
 
 
 # @si.combinational
@@ -61,57 +62,73 @@ def DrainingState(lbmem_width, depth, lbmem, raddr, waddr, wdata, wen):
     return waddr, raddr
 
 def SILbMem(depth=64, lbmem_width=8):
+    addr_width = eval(math.ceil(math.log2(depth)))
     @si.coroutine
-    def mem(wdata : si.Bits(8), wen : si.Bit):
-        lbmem = memory(depth, lbmem_width)
-        waddr = uint(0, eval(math.ceil(math.log2(depth))))
-        count = uint(0, 4)
-        state = bit(0)
-        wdata, wen = yield
+    def WAddrCounter(wen : si.Bit) -> {"waddr": si.Bits(addr_width)}:
+        count = uint(0, addr_width)
+        wen = yield
         while True:
+            waddr = count
             if wen:
-                raddr = waddr - uint(count, 6)
-            else:
-                raddr = waddr - uint(count - 1, 6)
-            rdata = lbmem[raddr]
-            valid = (state & (bit(count != 1) | wen)) | (bit(count == 7) & wen)
-            if state == 0:
-                state = (count == 7) & wen
-                if wen:
-                    count = count + 1
-            else:
-                state = (count != 1) | wen
-                if ~wen:
-                    count = count - 1
+                count = count + 1
+            wen = yield waddr
+
+    @si.coroutine
+    def WriteController(wen : si.Bit, incr : si.Bit, wdata: si.Bits(8), waddr: si.Bits(addr_width), count: si.Bits(3)) -> {"rdata": si.Bits(8)}:
+        lbmem = memory(depth, lbmem_width)
+        wen, incr, wdata, waddr, count = yield
+        while True:
+            rdata = lbmem[waddr - uint(count, 6)]
             if wen:
                 lbmem[waddr] = wdata
-                waddr = waddr + 1
-            wdata, wen = yield rdata, valid
+            wen, incr, wdata, waddr, count = yield rdata
 
+    @si.coroutine
+    def mem(wdata : si.Bits(8), wen : si.Bit):
+        waddr_counter = coroutine_create(WAddrCounter)
+        write_controller = coroutine_create(WriteController)
+        count = uint(0, 3)
+        state = bit(0)
+        waddr = uint(0, addr_width)
+        rdata = bits(0, 8)
+        wdata, wen = yield
+        while True:
+            while True:
+                waddr = waddr_counter.send(wen)
+                valid = bit(0)
+                rdata = write_controller.send((wen, 1, wdata, waddr, count))
+                count = count + bits(wen, 3)
+                wdata, wen = yield rdata, valid
+                if ~((count < uint(7, 3)) | ~wen):
+                    break
+            while True:
+                valid = bit(1)
+                waddr = waddr_counter.send(wen)
+                rdata = write_controller.send((wen, 0, wdata, waddr, count))
+                count = count - bits(wen == 0, 3)
+                wdata, wen = yield rdata, valid
+                if count == 0:
+                    break
 
         # while True:
-        #     while (count < uint(7, 3)) | ~wen:
-        #         rdata = lbmem[waddr - uint(count, 6)]
-        #         valid = bit(0)
+        #     if wen:
+        #         raddr = waddr - uint(count, 6)
+        #     else:
+        #         raddr = waddr - uint(count - 1, 6)
+        #     rdata = lbmem[raddr]
+        #     valid = (state & (bit(count != 1) | wen)) | (bit(count == 7) & wen)
+        #     if state == 0:
+        #         state = (count == 7) & wen
         #         if wen:
-        #             lbmem[waddr] = wdata
         #             count = count + 1
-        #             waddr = waddr + 1
-        #         wdata, wen = yield rdata, valid
-        #     lbmem[waddr] = wdata
-        #     rdata = lbmem[waddr - uint(count, 6)]
-        #     waddr = waddr + 1
-        #     valid = bit(1)
-        #     wdata, wen = yield rdata, valid
-        #     while count > 0:
-        #         valid = bit(1)
-        #         rdata = lbmem[waddr - uint(count, 6)]
+        #     else:
+        #         state = (count != 1) | wen
         #         if ~wen:
         #             count = count - 1
-        #         if wen:
-        #             lbmem[waddr] = wdata
-        #             waddr = waddr + 1
-        #         wdata, wen = yield rdata, valid
+        #     if wen:
+        #         lbmem[waddr] = wdata
+        #         waddr = waddr + 1
+        #     wdata, wen = yield rdata, valid
 
             # while True:
             #     waddr = yield from FillingState(lbmem_width, depth, lbmem, raddr, waddr, wdata, wen)
@@ -130,7 +147,7 @@ def test_lbmem():
     lbmem = SILbMem()
     si_lbmem = si.compile(lbmem, "tests/build/si_lbmem.v")
     # si_lbmem = m.DefineFromVerilogFile("tests/build/si_lbmem.v",
-    #                                    type_map={"CLK": m.In(m.Clock)})[0]
+    #                                    type_map={"CLK": m.In(m.Clock)}, target_modules=["mem"])[0]
     tester = fault.Tester(si_lbmem, si_lbmem.CLK)
     # wdata = [BitVector(i, 16) for i in range(40)]
     # wen =   [BitVector(i%2) for i in range(40)]

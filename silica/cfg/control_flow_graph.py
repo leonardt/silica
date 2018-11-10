@@ -221,7 +221,6 @@ class ControlFlowGraph:
         # self.paths = promote_live_variables(self.paths)
         liveness_analysis(self)
         # render_paths_between_yields(self.paths)
-        # self.render()
         self.ssa_var_to_curr_id_map = convert_to_ssa(self)
         # self.render()
         self.states, self.state_vars = build_state_info(self.paths, outputs, inputs)
@@ -1062,7 +1061,7 @@ def build_state_info(paths, outputs, inputs):
                 # join_block = find_branch_join(block)
                 # skip_cond = True
                 # for path_ in paths:
-                #     if block in path and join_block not in path or path.index(join_block) < path.index(block):
+                #     if block in path_ and (join_block not in path_ or path_.index(join_block) < path_.index(block)):
                 #         skip_cond = False
                 # if not skip_cond:
                 #     state.conds.append(cond)

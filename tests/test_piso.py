@@ -22,9 +22,7 @@ def DefinePISO(n):
                 values = PI
             else:
                 # values = [SI] + values[:-1]
-                for i in range(n - 1, 0, -1):
-                    values[i] = values[i - 1]
-                values[0] = SI
+                values = (bits(SI, n) | (values << 1))
             O = values[n-1]
             PI, SI, LOAD = yield O
     SIPISO._name = f"SIPISO{n}"
@@ -59,7 +57,7 @@ def test_PISO():
         actual_outputs = []
         expected_outputs = [False] + inputs.PI[:]
         expected_state = inputs.PI[:]
-        piso.send((inputs.PI, inputs.SI, inputs.LOAD))
+        piso.send((BitVector(inputs.PI), inputs.SI, inputs.LOAD))
         actual_outputs.insert(0, piso.O)
         # print(f"PI={inputs.PI}, SI={inputs.SI}, LOAD={inputs.LOAD}, O={piso.O}, values={piso.values}")
         tester.poke(si_piso.PI  , BitVector(inputs.PI))
@@ -72,8 +70,8 @@ def test_PISO():
             tester.poke(si_piso.PI  , BitVector(inputs.PI))
             tester.poke(si_piso.SI  , BitVector(inputs.SI))
             tester.poke(si_piso.LOAD, BitVector(inputs.LOAD))
-            assert piso.values == expected_state, (i, j)
-            piso.send((inputs.PI, inputs.SI, inputs.LOAD))
+            assert piso.values.bits() == expected_state, (i, j)
+            piso.send((BitVector(inputs.PI), inputs.SI, inputs.LOAD))
             actual_outputs.insert(0, piso.O)
             expected_state = [inputs.SI] + expected_state[:-1]
             tester.step(1)
