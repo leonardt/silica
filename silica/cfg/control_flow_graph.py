@@ -177,7 +177,7 @@ class ControlFlowGraph:
         * ``self.curr_block`` - the current block used by the construction
           algorithm
     """
-    def __init__(self, tree, width_table, func_locals, func_globals):
+    def __init__(self, tree, width_table, func_locals, func_globals, coroutine):
         self.blocks = []
         self.curr_block = None
         self.curr_yield_id = 1
@@ -186,6 +186,7 @@ class ControlFlowGraph:
         self.func_locals = func_locals
         self.breaks = []
         self.continues = []
+        self.coroutine = coroutine
 
         # inputs, outputs = parse_arguments(tree.args.args)
         inputs, outputs = get_io(tree)

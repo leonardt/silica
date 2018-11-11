@@ -9,7 +9,7 @@ import logging
 import functools
 import operator
 
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 
 import silica
 from silica.coroutine import Coroutine
@@ -134,7 +134,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     type_table = {}
     TypeChecker(width_table, type_table).check(tree)
     # DesugarArrays().run(tree)
-    cfg = ControlFlowGraph(tree, width_table, func_locals, func_globals)
+    cfg = ControlFlowGraph(tree, width_table, func_locals, func_globals, coroutine)
     # cfg.render()
     # render_paths_between_yields(cfg.paths)
 

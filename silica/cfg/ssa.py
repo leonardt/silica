@@ -51,6 +51,7 @@ import silica.ast_utils as ast_utils
 from collections import defaultdict
 from silica.cfg.types import BasicBlock, Yield, Branch, HeadBlock, State
 from .util import find_branch_join
+import itertools
 
 
 def parse_expr(expr):
@@ -300,6 +301,14 @@ def convert_to_ssa(cfg):
                         if isinstance(width, MemoryType):
                             for i in range(width.height):
                                 loads.append(parse_stmt(f"{ssa_var}[{i}] = {var}[{i}]"))
+                        elif var in cfg.coroutine._inputs and isinstance(width, tuple):
+                            for j, i in enumerate(itertools.product(*(range(i) for i in width[:-1]))):
+                                i_str = ""
+                                for elem in i:
+                                    i_str += f"[{elem}]"
+                                # i_str += f"[{width[-1]}:0]"
+                                j *= width[-1]
+                                loads.append(parse_stmt(f"{ssa_var}{i_str} = {var}[{j} + {width[-1]}:{j}]"))
                         else:
                             loads.append(parse_stmt(f"{ssa_var} = {var}"))
                         block._ssa_stores[var] = ssa_var
