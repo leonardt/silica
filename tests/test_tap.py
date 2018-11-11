@@ -139,64 +139,49 @@ def SilicaTAP(TMS : Bit, TDI : Bit):
     regB = bits(0, 7)
     TMS, TDI = yield
     while True:
-        NS = TEST_LOGIC_RESET
-        if CS == TEST_LOGIC_RESET:
-            NS = TEST_LOGIC_RESET if TMS else RUN_TEST_IDLE
-        elif CS == RUN_TEST_IDLE:
-            NS = SELECT_DR_SCAN if TMS else RUN_TEST_IDLE
-        elif CS == SELECT_DR_SCAN:
-            NS = SELECT_IR_SCAN if TMS else CAPTURE_DR
-        elif CS == CAPTURE_DR:
-            NS = EXIT1_DR if TMS else SHIFT_DR
-        elif CS == SHIFT_DR:
-            NS = EXIT1_DR if TMS else SHIFT_DR
-        elif CS == EXIT1_DR:
-            NS = UPDATE_DR if TMS else PAUSE_DR
-        elif CS == PAUSE_DR:
-            NS = EXIT2_DR if TMS else PAUSE_DR
-        elif CS == EXIT2_DR:
-            NS = UPDATE_DR if TMS else SHIFT_DR
-        elif CS == UPDATE_DR:
-            NS = SELECT_DR_SCAN if TMS else RUN_TEST_IDLE
-        elif CS == SELECT_IR_SCAN:
-            NS = TEST_LOGIC_RESET if TMS else CAPTURE_IR
-        elif CS == CAPTURE_IR:
-            NS = EXIT1_IR if TMS else SHIFT_IR
-        elif CS == SHIFT_IR:
-            NS = EXIT1_IR if TMS else SHIFT_IR
-        elif CS == EXIT1_IR:
-            NS = UPDATE_IR if TMS else PAUSE_IR
-        elif CS == PAUSE_IR:
-            NS = EXIT2_IR if TMS else PAUSE_IR
-        elif CS == EXIT2_IR:
-            NS = UPDATE_IR if TMS else SHIFT_IR
-        # elif CS == UPDATE_IR:
-        else:
-            NS = SELECT_IR_SCAN if TMS else RUN_TEST_IDLE
-        
+        if CS == TEST_LOGIC_RESET: NS = TEST_LOGIC_RESET if TMS else RUN_TEST_IDLE
+        elif CS == RUN_TEST_IDLE:  NS = SELECT_DR_SCAN if TMS else RUN_TEST_IDLE
+        elif CS == SELECT_DR_SCAN: NS = SELECT_IR_SCAN if TMS else CAPTURE_DR
+        elif CS == CAPTURE_DR:     NS = EXIT1_DR if TMS else SHIFT_DR
+        elif CS == SHIFT_DR:       NS = EXIT1_DR if TMS else SHIFT_DR
+        elif CS == EXIT1_DR:       NS = UPDATE_DR if TMS else PAUSE_DR
+        elif CS == PAUSE_DR:       NS = EXIT2_DR if TMS else PAUSE_DR
+        elif CS == EXIT2_DR:       NS = UPDATE_DR if TMS else SHIFT_DR
+        elif CS == UPDATE_DR:      NS = SELECT_DR_SCAN if TMS else RUN_TEST_IDLE
+        elif CS == SELECT_IR_SCAN: NS = TEST_LOGIC_RESET if TMS else CAPTURE_IR
+        elif CS == CAPTURE_IR:     NS = EXIT1_IR if TMS else SHIFT_IR
+        elif CS == SHIFT_IR:       NS = EXIT1_IR if TMS else SHIFT_IR
+        elif CS == EXIT1_IR:       NS = UPDATE_IR if TMS else PAUSE_IR
+        elif CS == PAUSE_IR:       NS = EXIT2_IR if TMS else PAUSE_IR
+        elif CS == EXIT2_IR:       NS = UPDATE_IR if TMS else SHIFT_IR
+        elif CS == UPDATE_IR:      NS = SELECT_IR_SCAN if TMS else RUN_TEST_IDLE
         update_dr = (CS == UPDATE_DR)
         update_ir = (CS == UPDATE_IR)
         shift_dr = (CS == SHIFT_DR)
         shift_ir = (CS == SHIFT_IR)
-        shift_regA = shift_dr & (IR == 2) #2 is address of regA
-        shift_regB = shift_dr & (IR == 14) #14 is address of regB
-        TDO = bit(0) #Can this just be 0?
+        shift_regA = shift_dr & (IR == 2)  # 2 is address of regA
+        shift_regB = shift_dr & (IR == 14)  # 14 is address of regB
+        TDO = bit(0)  # Can this just be 0?
         if shift_ir:
             TDO = IR[0]
+            # emulating {TDI,IR[3:1]}   
+            # IR = (IR>>1 & ((1<<4)-1)) | (bits(TDI, 4) << 3) #TODO how to concat?
+            for i in range(3):
+                IR[i] = IR[i + 1]
+            IR[3] = TDI
         elif shift_regA:
             TDO = regA[0]
+            # emulating {TDI,regA[4:1]}   
+            for i in range(4):
+                regA[i] = regA[i + 1]
+            regA[4] = TDI
         elif shift_regB:
             TDO = regB[0]
-        
-        if shift_ir:
-            # emulating {TDI,IR[3:1]}   
-            IR = (IR>>1 & ((1<<4)-1)) | (bits(TDI, 4) << 3) #TODO how to concat?
-        if shift_regA:
-            # emulating {TDI,regA[4:1]}   
-            regA = (regA>>1 & ((1<<5)-1)) | (bits(TDI, 5) << 4)
-        if shift_regB:
             # emulating {TDI,regB[3:1]}   
-            regB = (regB>>1 & ((1<<7)-1)) | (bits(TDI, 7) << 6)
+            for i in range(6):
+                regB[i] = regB[i + 1]
+            regB[6] = TDI
+
 
         CS = NS
         TMS, TDI = yield TDO, update_dr,update_ir

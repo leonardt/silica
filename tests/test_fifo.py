@@ -17,10 +17,12 @@ def SilicaFifo(wdata: si.Bits(4), wen: si.Bit, ren: si.Bit):
         full = (waddr[:2] == raddr[:2]) & (waddr[2] != raddr[2])
         empty = waddr == raddr
         rdata = buffer[raddr[:2]]
-        if wen & ~full:
+        w_valid = wen & ~full
+        r_valid = ren & ~empty
+        if w_valid:
             buffer[waddr[:2]] = wdata
             waddr = waddr + uint(1, 3)
-        if ren & ~empty:
+        if r_valid:
             raddr = raddr + uint(1, 3)
         wdata, wen, ren = yield rdata, empty, full
 

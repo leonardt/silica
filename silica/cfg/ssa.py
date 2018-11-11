@@ -178,10 +178,18 @@ class Replacer(ast.NodeTransformer):
         return (index, )
 
     def visit_Assign(self, node):
-        if False and isinstance(node.targets[0], ast.Subscript):
+        if isinstance(node.targets[0], ast.Subscript):
             assert isinstance(node.targets[0].value, ast.Name)
             node.targets[0].slice = self.visit(node.targets[0].slice)
             orig_name = self.get_name(node.targets[0])
+            width = self.width_table[orig_name]
+            if isinstance(width, MemoryType):
+                width = width.width
+                node.value = self.visit(node.value)
+                node.targets = [self.visit(target) for target in node.targets]
+                return node
+            else:
+                width = None
             prev_name = orig_name + f"_{self.var_to_curr_id_map[orig_name]}"
             name = orig_name + f"_{self.var_to_curr_id_map[orig_name]}"
             index = self.get_index(node.targets[0])
@@ -196,11 +204,6 @@ class Replacer(ast.NodeTransformer):
             if index_hash not in self.index_map:
                 self.index_map[index_hash] = len(self.index_map)
             node.targets[0].value.id = f"{name}_si_tmp_val_{num}_i{self.index_map[index_hash]}"
-            width = self.width_table[orig_name]
-            if isinstance(width, MemoryType):
-                width = width.width
-            else:
-                width = None
             self.width_table[node.targets[0].value.id] = width
             node.targets[0] = node.targets[0].value
             node.targets[0].ctx = ast.Store()
