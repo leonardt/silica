@@ -12,8 +12,8 @@ module xmodem_sender(
  
     //Interface to outside world.
     input send_data,
-    input [9:0] data_length, //in multiples of 128 bytes. Available on the clock cycle that send_data is valid. 
-    output [9:0] data_addr, //Which of the 'data_length' 128 byte chuncks
+    input [7:0] data_length, //in multiples of 128 bytes. Available on the clock cycle that send_data is valid. 
+    output [7:0] data_addr, //Which of the 'data_length' 128 byte chuncks
     output [6:0] byte_addr, //Which byte of the 128 byte chunk
     input [7:0] data, //  0 latency available from data_addr, and byte_addr
     output done, //Indicates the data was successfully sent
@@ -50,7 +50,7 @@ module xmodem_sender(
             end
     end
 
-    reg [9:0] data_addr_cur;
+    reg [7:0] data_addr_cur;
     
     wire send_message;
     assign send_message = (CS==SEND_MESSAGE);
@@ -98,7 +98,7 @@ endmodule
 module message_tx(
     input clk,
     input send_message,
-    input [9:0] data_addr,
+    input [7:0] data_addr,
     output message_sent,
        
     output [6:0] byte_addr,
@@ -116,27 +116,99 @@ module message_tx(
     reg [6:0] data_cnt = 'h0;
     assign byte_addr = data_cnt;
     
+    reg [7:0] uart_byte;
     always @(*) begin
-        if (CS==SEND_DATA) begin
+        case(CS)
+            WAIT : begin
+                NS = send_message ? SEND_SOH : WAIT;
+                uart_send = send_message;
+                uart_byte = `SOH;
+            end
+            SEND_SOH : begin
+                NS = uart_ready ? SEND_DP1 : SEND_SOH;
+                uart_send = uart_ready;
+                uart_byte = data_addr;
+            end
+            SEND_DP1 : begin
+                NS = uart_ready ? SEND_DP2 : SEND_DP1;
+                uart_send = uart_ready;
+                uart_byte = ~data_addr;
+            end
+            SEND_DP2 : begin
+                NS = uart_ready ? SEND_DATA : SEND_DP2;
+                uart_send = uart_ready;
+                uart_byte = data;
+            end
+            SEND_DATA : begin
+                uart_send = uart_ready;
+                uart_byte = () ? 
+            end
+            SEND_CHECKSUM : begin
+            end
+        endcase
             
     end
 
+    wire uart_send;
+    wire uart_ready;
+    uart_tx uart_tx_inst (
+        .clk(), 
+        .data(), 
+        .valid(), 
+        .tx(tx), 
+        .ready(uart_ready)
+    );
 );
-
-
-module byte_tx(
-    input clk,
-    input send,
-    input [7:0] data,
-    output done,
-
-    output tx
-
-
-)
+    
+    
+);
 
 endmodule
 
+module uart_tx(
+    input clk, 
+    input [7:0] data, 
+    input valid, 
+    output tx, 
+    output ready
+);
+    reg [7:0] message;
+    reg [2:0] send_cnt = 3'h0; //Was not initialized. 
+    reg [1:0] state = 2'h0;
+    always @(posedge CLK) begin
+        case (state)
+            2'h0: 
+                if (valid) begin
+                    message <= data;
+                    tx <= 1'b0;  // start bit
+                    state <= 2'h1;
+                    send_cnt <= 3'h7;
+                    ready <= 1'b0;
+                end else begin
+                    tx <= 1'b1;
+                    state <= 2'h0;
+                    ready <= 1'b1;
+                end
+            2'h1:
+                begin
+                    ready <= 1'b0;
+                    tx <= message[send_cnt];
+                    send_cnt <= send_cnt - 1'b1;
+                    state <= (send_cnt > 0) ? 2'h1 : 2'h2;
+                end
+            2'h2:
+                begin
+                    ready <= 1'b0;
+                    tx <= 1'b1; // end bit
+                    state <= 2'h0;
+                end
+        endcase
+        /* $display("valid=%d", valid); */
+        /* $display("tx=%d", tx); */
+        /* $display("send_cnt=%d", send_cnt); */
+    end
+    /* assign ready = state == 0 & ~valid; */
+endmodule
 
 //module xmodem_rx(
 //  input clk,
