@@ -1,4 +1,4 @@
-import silica
+import silica as si
 from silica import bits, add
 import magma as m
 m.set_mantle_target('ice40')
@@ -8,8 +8,8 @@ import shutil
 
 
 def SilicaCounter(width, init=0, incr=1):
-    @silica.coroutine
-    def counter():
+    @si.coroutine
+    def counter() -> {"O": si.Bits(width)}:
         count = bits(init, width)
         while True:
             O = count
@@ -25,7 +25,7 @@ def test_counter():
             assert counter.O == i
             next(counter)
 
-    si_counter = silica.compile(counter, file_name="tests/build/counter_si.v")
+    si_counter = si.compile(counter, file_name="tests/build/counter_si.v")
     tester = fault.Tester(si_counter, si_counter.CLK)
     for i in range(0, 1 << N):
         tester.expect(si_counter.O, i)

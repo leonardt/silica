@@ -103,3 +103,16 @@ def liveness_analysis(cfg):
         curr_live_outs = [copy.copy(block.live_outs) for block in cfg.blocks]
         last_live_ins = curr_live_ins
         curr_live_ins = [copy.copy(block.live_ins) for block in cfg.blocks]
+
+    for block in cfg.blocks:
+        for name, sub_coroutine in cfg.sub_coroutines.items():
+            for key, port in sub_coroutine.IO.ports.items():
+                if key in "CLK":
+                    continue
+                wire_name = f"_si_sub_co_{name}_{key}"
+                if port.isinput():
+                    block.live_ins.add(wire_name)
+                    block.live_outs.add(wire_name)
+                else:
+                    block.live_ins = set(filter(lambda x: x != wire_name, block.live_ins))
+                    block.live_outs = set(filter(lambda x: x != wire_name, block.live_outs))

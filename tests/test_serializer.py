@@ -8,7 +8,7 @@ import fault
 
 
 @coroutine
-def Serializer4(I0 : Bits(16), I1 : Bits(16), I2 : Bits(16), I3 : Bits(16)):
+def Serializer4(I0 : Bits(16), I1 : Bits(16), I2 : Bits(16), I3 : Bits(16)) -> {"O": si.Bits(16)}:
     i = bits(0, 2)
     data = memory(3, 16)
     I0, I1, I2, I3 = yield

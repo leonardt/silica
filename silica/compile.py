@@ -18,9 +18,10 @@ import silica.verilog as verilog
 from .memory import MemoryType
 from silica.transformations.specialize_arguments import specialize_arguments
 from silica.type_check import TypeChecker
-from silica.analysis import CollectInitialWidthsAndTypes
+from silica.analysis import CollectInitialWidthsAndTypes, collect_sub_coroutines
 from silica.transformations.promote_widths import PromoteWidths
 from silica.transformations.desugar_for_loops import propagate_types, get_final_widths
+from silica.transformations.desugar_send_calls import desugar_send_calls
 
 import veriloggen as vg
 
@@ -46,12 +47,12 @@ def specialize_list_comps(tree, globals, locals):
     ListCompSpecializer().visit(tree)
 
 
-def get_input_width(type_):
+def get_io_width(type_):
     if type_ is magma.Bit:
         return None
     elif isinstance(type_, magma.ArrayKind):
         if isinstance(type_.T, magma.ArrayKind):
-            elem_width = get_input_width(type_.T)
+            elem_width = get_io_width(type_.T)
             if isinstance(elem_width, tuple):
                 return (type_.N, ) + elem_width
             else:
@@ -60,6 +61,37 @@ def get_input_width(type_):
             return type_.N
     else:
         raise NotImplementedError(type_)
+
+
+def add_coroutine_to_tables(coroutine, width_table, type_table, sub_coroutine_name=None):
+    if coroutine._inputs:
+        for input_, type_ in coroutine._inputs.items():
+            if sub_coroutine_name:
+                input_ = "_si_sub_co_" + sub_coroutine_name + "_" + input_
+            width_table[input_] = get_io_width(type_)
+            if isinstance(type_, m.BitKind):
+                type_ = "bit"
+            elif isinstance(type_, m.UIntKind):
+                type_ = "uint"
+            elif isinstance(type_, m.BitsKind):
+                type_ = "bits"
+            else:
+                raise NotImplementedError(type_)
+            type_table[input_] = type_
+    if coroutine._outputs:
+        for output, type_ in coroutine._outputs.items():
+            if sub_coroutine_name:
+                output = "_si_sub_co_" + sub_coroutine_name + "_" + output
+            width_table[output] = get_io_width(type_)
+            if isinstance(type_, m.BitKind):
+                type_ = "bit"
+            elif isinstance(type_, m.UIntKind):
+                type_ = "uint"
+            elif isinstance(type_, m.BitsKind):
+                type_ = "bits"
+            else:
+                raise NotImplementedError(type_)
+            type_table[output] = type_
 
 
 def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog', strategy="by_statement"):
@@ -86,18 +118,8 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
 
     width_table = {}
     type_table = {}
-    if coroutine._inputs:
-        for input_, type_ in coroutine._inputs.items():
-            width_table[input_] = get_input_width(type_)
-            if isinstance(type_, m.BitKind):
-                type_ = "bit"
-            elif isinstance(type_, m.UIntKind):
-                type_ = "uint"
-            elif isinstance(type_, m.BitsKind):
-                type_ = "bits"
-            else:
-                raise NotImplementedError(type_)
-            type_table[input_] = type_
+
+    add_coroutine_to_tables(coroutine, width_table, type_table)
 
     for name,width in loopvars:
         width_table[name] = width
@@ -117,8 +139,15 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     # Desugar(width_table).visit(tree)
     type_table = {}
     TypeChecker(width_table, type_table).check(tree)
+    sub_coroutines = {}
+    for var, name in collect_sub_coroutines(tree).items():
+        sub_coroutine = eval(name, func_globals, func_locals)()
+        sub_coroutines[var] = compile(sub_coroutine)
+        add_coroutine_to_tables(sub_coroutine, width_table, type_table, var)
+    tree = desugar_send_calls(tree, sub_coroutines)
+    # print(astor.to_source(tree))
     # DesugarArrays().run(tree)
-    cfg = ControlFlowGraph(tree, width_table, func_locals, func_globals)
+    cfg = ControlFlowGraph(tree, width_table, func_locals, func_globals, sub_coroutines)
     # cfg.render()
     # render_paths_between_yields(cfg.paths)
 
@@ -132,6 +161,8 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
         outputs += (collect_names(path[-1].value, ctx=ast.Load), )
         registers |= (path[0].live_ins & path[0].live_outs)
 
+    registers = set(filter(lambda x: "_si_sub_co_" not in x, registers))
+
     assert all(outputs[1] == output for output in outputs[1:]), "Yield statements must all have the same outputs except for the first"
     outputs = outputs[1]
     states = cfg.states
@@ -139,16 +170,17 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     num_states = len(states)
     initial_values = {}
     initial_basic_block = False
-    sub_coroutines = {}
+    # sub_coroutines = {}
     # cfg.render()
     for node in cfg.paths[0][:-1]:
         if isinstance(node, HeadBlock):
             for statement in node:
                 if ast_utils.is_call(statement.value) and ast_utils.is_name(statement.value.func) and statement.value.func.id == "coroutine_create":
-                    sub_coroutine = eval(astor.to_source(statement.value.args[0]), func_globals, func_locals)
+                    pass
+                    # sub_coroutine = eval(astor.to_source(statement.value.args[0]), func_globals, func_locals)
                     # statement.value.func = ast.Name(sub_coroutine._name, ast.Load())
                     # statement.value.args = []
-                    sub_coroutines[statement.targets[0].id] = compile(sub_coroutine())
+                    # sub_coroutines[statement.targets[0].id] = compile(sub_coroutine())
                 else:
                     if ast_utils.is_name(statement.value) and statement.value.id in initial_values:
                         initial_values[statement.targets[0].id] = initial_values[statement.value.id]
@@ -226,15 +258,15 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
 
     init_body = [ctx.assign(ctx.get_by_name(key), value) for key,value in initial_values.items() if value is not None]
 
-    for sub_coroutine in sub_coroutines:
-        for key, type_ in sub_coroutines[sub_coroutine].interface.ports.items():
-            if key == "CLK":
-                continue
-            if isinstance(type_, m.BitType):
-                width = None
-            else:
-                width = len(type_)
-            ctx.declare_wire(f"_si_{sub_coroutine}_{key}", width)
+    # for sub_coroutine in sub_coroutines:
+    #     for key, type_ in sub_coroutines[sub_coroutine].interface.ports.items():
+    #         if key == "CLK":
+    #             continue
+    #         if isinstance(type_, m.BitType):
+    #             width = None
+    #         else:
+    #             width = len(type_)
+    #         ctx.declare_wire(f"_si_{sub_coroutine}_{key}", width)
 
     if cfg.curr_yield_id > 1:
         yield_state_width = (cfg.curr_yield_id - 1).bit_length()

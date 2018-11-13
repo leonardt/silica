@@ -1,5 +1,5 @@
 from magma import *
-import silica
+import silica as si
 import magma as m
 m.set_mantle_target("ice40")
 import mantle
@@ -12,8 +12,8 @@ from tests.common import evaluate_circuit
 
 
 def DefinePISO(n):
-    @silica.coroutine
-    def SIPISO(PI: silica.Bits(n), SI: silica.Bit, LOAD: silica.Bit):
+    @si.coroutine
+    def SIPISO(PI: si.Bits(n), SI: si.Bit, LOAD: si.Bit) -> {"O": si.Bit}:
         values = bits(0, n)
         # O = values[-1]
         PI, SI, LOAD = yield
@@ -30,7 +30,7 @@ def DefinePISO(n):
 
 
 def inputs_generator(message):
-    @silica.coroutine
+    @si.coroutine
     def gen():
         while True:
             for byte in message:
@@ -47,7 +47,7 @@ def inputs_generator(message):
 
 def test_PISO():
     piso = DefinePISO(10)()
-    si_piso = silica.compile(piso, "tests/build/si_piso.v")
+    si_piso = si.compile(piso, "tests/build/si_piso.v")
     # si_piso = m.DefineFromVerilogFile("tests/build/si_piso.v",
     #                                  type_map={"CLK": m.In(m.Clock)})[0]
     tester = fault.Tester(si_piso, si_piso.CLK)

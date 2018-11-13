@@ -1,59 +1,58 @@
 import magma as m
 m.set_mantle_target("ice40")
 import mantle
-import silica as si
-from silica import bit, bits
+from silica import bit, bits, coroutine_create
 import fault
 from tests.common import evaluate_circuit
+from tests.test_piso import DefinePISO
+import silica as si
 
-# @si.coroutine
-# def uart_transmitter(data : In(Array(8, Bit)), valid : In(Bit), 
-#                      tx : Out(Bit)):
-#     while True:
-#         if valid:
-#             tx = 0  # start bit
-#             yield
-#             for i in range(0, 8):
-#                 tx = data[i]
-#                 yield
-#             tx = 1  # end bit
-#             yield
-#         else:
-#             tx = 1
-#             yield
 
 @si.coroutine
-def uart_transmitter(data : si.Bits(8), valid : si.Bit) -> {"tx": si.Bit, "ready": si.Bit}:
+def PISO(PI: si.Bits(9), LOAD: si.Bit) -> {"O": si.Bit}:
+    values = bits(0xff, 9)
+    # O = values[-1]
+    PI, LOAD = yield
+    while True:
+        if LOAD:
+            values = PI
+        else:
+            # values = [SI] + values[:-1]
+            values = (bits(1, 9) | (values << 1))
+        O = values[8]
+        PI, LOAD = yield O
+
+@si.coroutine
+def uart_shift(data : si.Bits(8), valid : si.Bit) -> {"tx": si.Bit, "ready": si.Bit}:
+    piso = coroutine_create(PISO)
     data, valid = yield
     while True:
         if valid:
+            tx = bit(0)
+            ready = bit(0)
+            load = bit(1)
+            count = bits(0, 4)
             message = data
-            tx = bit(0)  # start bit
-            ready = bit(0)
-            data, valid = yield tx, ready
-            for i in range(7, -1, -1):
-                tx = message[i]
+            tx = piso.send((message, load))
+            # for i in range(10):
+            while count != bits(10, 4):
                 ready = bit(0)
+                count = count + bits(1, 4)
                 data, valid = yield tx, ready
-            tx = bit(1)  # end bit
-            ready = bit(0)
-            data, valid = yield tx, ready
+                load = bit(0)
+                message = data
+                tx = piso.send((message, load))
         else:
-            tx = bit(1)
+            message = data
+            load = bit(0)
+            tx = piso.send((message, load))
             ready = bit(1)
             data, valid = yield tx, ready
 
-        # Interestingly enough, this variant produces worse quality
-            # ready = bit(0)
-        # else:
-            # ready = bit(1)
-        # tx = bit(1)
-        # data, valid = yield tx, ready
-
 
 def test_UART():
-    uart = uart_transmitter()
-    si_uart = si.compile(uart, "tests/build/si_uart.v")
+    uart = uart_shift()
+    si_uart = si.compile(uart, "tests/build/si_uart_shift.v")
     # si_uart = m.DefineFromVerilogFile("tests/build/si_uart.v",
     #                                  type_map={"CLK": m.In(m.Clock)})[0]
     tester = fault.Tester(si_uart, si_uart.CLK)
@@ -81,7 +80,7 @@ def test_UART():
         tester.expect(si_uart.ready, 1)
 
     tester.compile_and_run(target="verilator", directory="tests/build",
-                           flags=['-Wno-fatal'])
+                           flags=['-Wno-fatal', '--trace'])
     verilog_uart = m.DefineFromVerilogFile(
         'verilog/uart.v', type_map={'CLK': m.In(m.Clock)})[0]
     verilog_tester = tester.retarget(verilog_uart, verilog_uart.CLK)
@@ -90,7 +89,7 @@ def test_UART():
                                    flags=['-Wno-fatal'])
     if __name__ == '__main__':
         print("===== BEGIN : SILICA RESULTS =====")
-        evaluate_circuit("si_uart", "uart_transmitter")
+        evaluate_circuit("si_uart_shift", "uart_shift")
         print("===== END   : SILICA RESULTS =====")
         import shutil
         shutil.copy('verilog/uart.v', 'tests/build/verilog_uart.v')

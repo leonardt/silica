@@ -177,7 +177,7 @@ class ControlFlowGraph:
         * ``self.curr_block`` - the current block used by the construction
           algorithm
     """
-    def __init__(self, tree, width_table, func_locals, func_globals):
+    def __init__(self, tree, width_table, func_locals, func_globals, sub_coroutines):
         self.blocks = []
         self.curr_block = None
         self.curr_yield_id = 1
@@ -212,12 +212,12 @@ class ControlFlowGraph:
             # Most likely infinite loop in CFG, TODO: should catch this with an analysis phase
             self.render()
             raise error
-        self.sub_coroutines = []
-        for node in self.paths[0][:-1]:
-            if isinstance(node, HeadBlock):
-                for statement in node:
-                    if ast_utils.is_call(statement.value) and ast_utils.is_name(statement.value.func) and statement.value.func.id == "coroutine_create":
-                        self.sub_coroutines.append(statement.targets[0].id)
+        self.sub_coroutines = sub_coroutines
+        # for node in self.paths[0][:-1]:
+        #     if isinstance(node, HeadBlock):
+        #         for statement in node:
+        #             if ast_utils.is_call(statement.value) and ast_utils.is_name(statement.value.func) and statement.value.func.id == "coroutine_create":
+        #                 self.sub_coroutines.append(statement.targets[0].id)
         # self.paths = promote_live_variables(self.paths)
         liveness_analysis(self)
         # render_paths_between_yields(self.paths)

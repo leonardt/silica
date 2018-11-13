@@ -1,5 +1,5 @@
 from silica import bit
-import silica
+import silica as si
 import magma as m
 m.set_mantle_target("ice40")
 import fault
@@ -8,8 +8,8 @@ from bit_vector import BitVector
 
 
 def TFF(init=0):
-    @silica.coroutine
-    def tff(I : silica.Bit):
+    @si.coroutine
+    def tff(I : si.Bit) -> {"O": si.Bit}:
         state = bit(init)
         I = yield
         while True:
@@ -22,7 +22,7 @@ def TFF(init=0):
 
 def test_TFF():
     tff = TFF()
-    si_tff = silica.compile(tff, file_name="tests/build/si_tff.v")
+    si_tff = si.compile(tff, file_name="tests/build/si_tff.v")
     # si_tff = m.DefineFromVerilogFile("tests/build/si_tff.v",
     #                                  type_map={"CLK": m.In(m.Clock)})[0]
     tester = fault.Tester(si_tff, si_tff.CLK)

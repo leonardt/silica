@@ -1,13 +1,13 @@
 import fault
-import silica
+import silica as si
 from silica import bits, Bit, uint, zext, bit
 import pytest
 import shutil
 import magma as m
 from tests.common import evaluate_circuit
 
-@silica.coroutine
-def SIDetect111(I : Bit):
+@si.coroutine
+def SIDetect111(I : Bit) -> {"O": si.Bit}:
     cnt = uint(0, 2)
     I = yield
     while True:
@@ -20,7 +20,7 @@ def SIDetect111(I : Bit):
         I = yield O
 
 def inputs_generator(inputs):
-    @silica.coroutine
+    @si.coroutine
     def gen():
         while True:
             for i in inputs:
@@ -32,7 +32,7 @@ def test_detect111():
     detect = SIDetect111()
     inputs =  list(map(bool, [1,1,0,1,1,1,0,1,0,1,1,1,1,1,1]))
     outputs = list(map(bool, [0,0,0,0,0,1,0,0,0,0,0,1,1,1,1]))
-    si_detect = silica.compile(detect, file_name="tests/build/si_detect.v")
+    si_detect = si.compile(detect, file_name="tests/build/si_detect.v")
     # si_detect = m.DefineFromVerilogFile("tests/build/si_detect.v",
     #                             type_map={"CLK": m.In(m.Clock)})[0]
     tester = fault.Tester(si_detect, si_detect.CLK)

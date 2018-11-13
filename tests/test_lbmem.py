@@ -84,7 +84,7 @@ def SILbMem(depth=64, lbmem_width=8):
             wen, incr, wdata, waddr, count = yield rdata
 
     @si.coroutine
-    def mem(wdata : si.Bits(8), wen : si.Bit):
+    def mem(wdata : si.Bits(8), wen : si.Bit) -> {"rdata": si.Bits(8), "valid": si.Bit}:
         waddr_counter = coroutine_create(WAddrCounter)
         write_controller = coroutine_create(WriteController)
         count = uint(0, 3)

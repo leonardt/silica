@@ -391,7 +391,7 @@ def compile_states(ctx, states, one_state, width_table, registers,
             if key == "CLK":
                 ports.append((key, ctx.get_by_name(f"CLK")))
             else:
-                ports.append((key, ctx.get_by_name(f"_si_{name}_{key}")))
+                ports.append((key, ctx.get_by_name(f"_si_sub_co_{name}_{key}")))
 
         module.Instance(def_.name, name, ports=ports)
 

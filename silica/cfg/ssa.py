@@ -220,7 +220,7 @@ class Replacer(ast.NodeTransformer):
             return node
 
     def visit_Name(self, node):
-        if node.id in ["uint", "bits", "bit", "memory", "coroutine_create"] + self.sub_coroutines:
+        if node.id in ["uint", "bits", "bit", "memory", "coroutine_create"] + list(self.sub_coroutines.keys()):
             return node
         orig_id = node.id
         if isinstance(node.ctx, ast.Store):
@@ -451,6 +451,14 @@ def convert_to_ssa(cfg):
                             continue
                         # new_block.statements.append(parse_stmt(f"{var} = {block._ssa_stores[var]}"))
                         block.stores[block._ssa_stores[var]] = var
+                    for name, sub_coroutine in cfg.sub_coroutines.items():
+                        for key, port in sub_coroutine.IO.ports.items():
+                            if port.isoutput():
+                                continue
+                            if key == "CLK":
+                                continue
+                            var = f"_si_sub_co_{name}_{key}"
+                            block.stores[block._ssa_stores[var]] = var
             for successor, _ in block.outgoing_edges:
                 if successor in processed or successor in blocks_to_process:
                     continue

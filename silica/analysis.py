@@ -1,5 +1,6 @@
 import ast
 from .width import get_width
+import silica.ast_utils as ast_utils
 
 
 class CollectInitialWidthsAndTypes(ast.NodeVisitor):
@@ -26,3 +27,18 @@ class CollectInitialWidthsAndTypes(ast.NodeVisitor):
                         self.type_table[node.targets[0].id] = "bit"
                     elif isinstance(node.value, ast.Name) and node.value.id in self.type_table:
                         self.type_table[node.targets[0].id] = self.type_table[node.value.id]
+
+
+class SubCoroutineCollector(ast.NodeVisitor):
+    def __init__(self):
+        self.sub_coroutines = {}
+
+    def visit_Assign(self, node):
+        if ast_utils.is_call(node.value) and ast_utils.is_name(node.value.func) and node.value.func.id == "coroutine_create":
+            assert len(node.value.args[0].id)
+            self.sub_coroutines[node.targets[0].id] = node.value.args[0].id
+
+def collect_sub_coroutines(tree):
+    collector = SubCoroutineCollector()
+    collector.visit(tree)
+    return collector.sub_coroutines
