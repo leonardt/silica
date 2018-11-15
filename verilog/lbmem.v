@@ -1,10 +1,5 @@
-module lbmem(
-  input CLK,
-  input [7:0] wdata,
-  input wen,
-  output [7:0] rdata,
-  output valid
-);
+module lbmem(input CLK, input [7:0] wdata, input wen, output [7:0] rdata,
+             output valid);
   
   //parameter LWIDTH = 8;
   //parameter DEPTH = 64;

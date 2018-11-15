@@ -74,7 +74,8 @@ def SILbMem(depth=64, lbmem_width=8):
             wen = yield waddr
 
     @si.coroutine
-    def WriteController(wen : si.Bit, incr : si.Bit, wdata: si.Bits(8), waddr: si.Bits(addr_width), count: si.Bits(3)) -> {"rdata": si.Bits(8)}:
+    def Memory(wen : si.Bit, incr : si.Bit, wdata: si.Bits(8),
+               waddr: si.Bits(addr_width), count: si.Bits(3)) -> {"rdata": si.Bits(8)}:
         lbmem = memory(depth, lbmem_width)
         wen, incr, wdata, waddr, count = yield
         while True:
@@ -84,13 +85,12 @@ def SILbMem(depth=64, lbmem_width=8):
             wen, incr, wdata, waddr, count = yield rdata
 
     @si.coroutine
-    def mem(wdata : si.Bits(8), wen : si.Bit) -> {"rdata": si.Bits(8), "valid": si.Bit}:
+    def Linebuffer(wdata : si.Bits(8), wen : si.Bit) -> {"rdata": si.Bits(8),
+                                                         "valid": si.Bit}:
         waddr_counter = coroutine_create(WAddrCounter)
-        write_controller = coroutine_create(WriteController)
+        write_controller = coroutine_create(Memory)
         count = uint(0, 3)
-        state = bit(0)
-        waddr = uint(0, addr_width)
-        rdata = bits(0, 8)
+        waddr = bits(0, addr_width)
         wdata, wen = yield
         while True:
             while True:
@@ -99,16 +99,14 @@ def SILbMem(depth=64, lbmem_width=8):
                 rdata = write_controller.send((wen, 1, wdata, waddr, count))
                 count = count + bits(wen, 3)
                 wdata, wen = yield rdata, valid
-                if ~((count < uint(7, 3)) | ~wen):
-                    break
+                if ~((count < uint(7, 3)) | ~wen): break
             while True:
                 valid = bit(1)
                 waddr = waddr_counter.send(wen)
                 rdata = write_controller.send((wen, 0, wdata, waddr, count))
                 count = count - bits(wen == 0, 3)
                 wdata, wen = yield rdata, valid
-                if count == 0:
-                    break
+                if count == 0: break
 
         # while True:
         #     if wen:
@@ -133,7 +131,7 @@ def SILbMem(depth=64, lbmem_width=8):
             # while True:
             #     waddr = yield from FillingState(lbmem_width, depth, lbmem, raddr, waddr, wdata, wen)
             #     waddr, raddr = yield from DrainingState(lbmem_width, depth, lbmem, raddr, waddr, wdata, wen)
-    return mem()
+    return Linebuffer()
 
 def inputs_generator(inputs):
     @si.coroutine
@@ -214,7 +212,7 @@ def test_lbmem():
                                    include_directories=["../../verilog"])
     if __name__ == '__main__':
         print("===== BEGIN : SILICA RESULTS =====")
-        evaluate_circuit("si_lbmem", "mem")
+        evaluate_circuit("si_lbmem", "Linebuffer")
         print("===== END   : SILICA RESULTS =====")
         import shutil
         shutil.copy('verilog/lbmem.v', 'tests/build/verilog_lbmem.v')
