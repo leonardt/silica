@@ -72,10 +72,8 @@ def SILbMem(depth=64, lbmem_width=8):
             if wen:
                 count = count + 1
             wen = yield waddr
-
     @si.coroutine
-    def Memory(wen : si.Bit, incr : si.Bit, wdata: si.Bits(8),
-               waddr: si.Bits(addr_width), count: si.Bits(3)) -> {"rdata": si.Bits(8)}:
+    def Memory(wen : si.Bit, incr : si.Bit, wdata: si.Bits(8), waddr: si.Bits(addr_width), count: si.Bits(3)) -> {"rdata": si.Bits(8)}:
         lbmem = memory(depth, lbmem_width)
         wen, incr, wdata, waddr, count = yield
         while True:
@@ -83,10 +81,8 @@ def SILbMem(depth=64, lbmem_width=8):
             if wen:
                 lbmem[waddr] = wdata
             wen, incr, wdata, waddr, count = yield rdata
-
     @si.coroutine
-    def Linebuffer(wdata : si.Bits(8), wen : si.Bit) -> {"rdata": si.Bits(8),
-                                                         "valid": si.Bit}:
+    def Linebuffer(wdata : si.Bits(8), wen : si.Bit) -> {"rdata": si.Bits(8), "valid": si.Bit}:
         waddr_counter = coroutine_create(WAddrCounter)
         write_controller = coroutine_create(Memory)
         count = uint(0, 3)

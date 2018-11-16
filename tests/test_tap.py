@@ -163,26 +163,20 @@ def SilicaTAP(TMS : Bit, TDI : Bit) -> {"TDO": Bit, "update_dr": Bit, "update_ir
         shift_regB = shift_dr & (IR == 14)  # 14 is address of regB
         TDO = bit(0)  # Can this just be 0?
         if shift_ir:
-            TDO = IR[0]
-            # emulating {TDI,IR[3:1]}   
-            # IR = (IR>>1 & ((1<<4)-1)) | (bits(TDI, 4) << 3) #TODO how to concat?
+            TDO = IR[0] # emulating {TDI,IR[3:1]}   
             for i in range(3):
                 IR[i] = IR[i + 1]
             IR[3] = TDI
         elif shift_regA:
-            TDO = regA[0]
-            # emulating {TDI,regA[4:1]}   
+            TDO = regA[0] # emulating {TDI,regA[4:1]}   
             for i in range(4):
                 regA[i] = regA[i + 1]
             regA[4] = TDI
         elif shift_regB:
-            TDO = regB[0]
-            # emulating {TDI,regB[3:1]}   
+            TDO = regB[0] # emulating {TDI,regB[3:1]}   
             for i in range(6):
                 regB[i] = regB[i + 1]
             regB[6] = TDI
-
-
         CS = NS
         TMS, TDI = yield TDO, update_dr, update_ir
 

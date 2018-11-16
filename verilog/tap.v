@@ -1,22 +1,4 @@
-module tap(
-  input CLK,
-  input TMS,
-  input TDI,
-  output TDO,
- 
-  output reg [3:0] IR, //Instruction Register
-  output reg [4:0] regA, //Register at IR=2, which is 5 bits wide
-  output reg [6:0] regB, //Register at IR=14, which is 7 bits wide
-  output update_dr,
-  output update_ir,
-
-  //Debug signals.
-  output [3:0] cs, 
-  output [3:0] ns, 
-  output shift_ir, 
-  output shift_dr 
-);
-
+module tap(input CLK, input TMS, input TDI, output TDO, output reg [3:0] IR, output reg [4:0] regA, output reg [6:0] regB, output update_dr, output update_ir);
   localparam TEST_LOGIC_RESET = 4'd0 ,
              RUN_TEST_IDLE = 4'd1 ,
              SELECT_DR_SCAN = 4'd2 ,
@@ -33,17 +15,13 @@ module tap(
              PAUSE_IR = 4'd13 ,
              EXIT2_IR = 4'd14 ,
              UPDATE_IR = 4'd15;
-  
   reg [3:0] CS = TEST_LOGIC_RESET;
   reg [3:0] NS;
-
   assign cs = CS;
   assign ns = NS;
-
   always @(posedge CLK) begin
     CS <= NS;
   end
-
   always @(*) begin
     case(CS)
       TEST_LOGIC_RESET : NS = TMS ? TEST_LOGIC_RESET : RUN_TEST_IDLE;
@@ -64,46 +42,26 @@ module tap(
       UPDATE_IR : NS = TMS ? SELECT_IR_SCAN : RUN_TEST_IDLE ;
     endcase
   end
-  
-  //wire update_dr;
-  assign update_dr = CS==UPDATE_DR;
-
-  //wire shift_dr;
-  assign shift_dr = CS==SHIFT_DR;
-
-  //Do not need this right now
-  //wire update_ir;
-  assign update_ir = CS==UPDATE_IR;
-
-  //wire shift_ir;
-  assign shift_ir = CS==SHIFT_IR;
-
+  assign update_dr = CS==UPDATE_DR; //wire update_dr;
+  assign shift_dr = CS==SHIFT_DR; //wire shift_dr;
+  assign update_ir = CS==UPDATE_IR; //wire update_ir;
+  assign shift_ir = CS==SHIFT_IR; //wire shift_ir;
   wire shift_regA = shift_dr & (IR==4'd2);
   wire shift_regB = shift_dr & (IR==4'd14);
-
   assign TDO = shift_ir ? IR[0] : (shift_regA ? regA[0] : (shift_regB ? regB[0] : 1'b0 ));
-
   always @(posedge CLK) begin
     if (shift_ir) begin
       IR <= {TDI,IR[3:1]};
     end
   end
-  
   always @(posedge CLK) begin
     if (shift_regA) begin
       regA <= {TDI,regA[4:1]};
     end
   end
-  
   always @(posedge CLK) begin
     if (shift_regB) begin
       regB <= {TDI,regB[6:1]};
     end
   end
-
-  //Registers required:
-  //BYPASS = all ones single bit register
-  //SAMPLE
-  //PRELOAD
-  //EXTEST
 endmodule
