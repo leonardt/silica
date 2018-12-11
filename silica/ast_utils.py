@@ -39,7 +39,7 @@ def is_generator(name):
 
     setattr(module_obj, "is_" + to_camel_case(name), f)
 
-for x in [m[0] for m in inspect.getmembers(ast, inspect.isclass) if m[1].__module__ == '_ast']:
+for x in (m[0] for m in inspect.getmembers(ast, inspect.isclass) if m[1].__module__ == '_ast'):
     is_generator(x)
 
 
