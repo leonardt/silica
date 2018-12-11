@@ -25,8 +25,8 @@ module_obj = sys.modules[__name__]
 
 _first_cap_re=re.compile(r'(.)([A-Z][a-z]+)')
 _all_cap_re=re.compile(r'([a-z0-9])([A-Z])')
-def to_camel_case(name):
-    """ Converts name from SnakeCase to camel_case
+def to_snake_case(name):
+    """ Converts name from CamelCase to snake_case
 
     https://stackoverflow.com/questions/1175208/elegant-python-function-to-convert-camelcase-to-snake-case
     """
@@ -37,9 +37,9 @@ def is_generator(name):
     def f(node):
         return isinstance(node, getattr(ast, name))
 
-    setattr(module_obj, "is_" + to_camel_case(name), f)
+    setattr(module_obj, "is_" + to_snake_case(name), f)
 
-for x in [m[0] for m in inspect.getmembers(ast, inspect.isclass) if m[1].__module__ == '_ast']:
+for x in (m[0] for m in inspect.getmembers(ast, inspect.isclass) if m[1].__module__ == '_ast'):
     is_generator(x)
 
 
