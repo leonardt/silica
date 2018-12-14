@@ -12,7 +12,7 @@ from .memory import MemoryType
 from .cfg.util import find_branch_join
 
 class Context:
-    def __init__(self, name, sub_coroutines):
+    def __init__(self, name, sub_coroutines=[]):
         self.module = vg.Module(name)
         self.sub_coroutines = sub_coroutines
 
@@ -117,9 +117,14 @@ class Context:
             return vg.Eq
         elif is_if(stmt):
             body = [self.translate(stmt) for stmt in stmt.body]
-            return vg.If(
+            if_ = vg.If(
                 self.translate(stmt.test),
             )(body)
+            if stmt.orelse:
+                if_.Else(
+                    [self.translate(stmt) for stmt in stmt.orelse]
+                )
+            return if_
         elif is_if_exp(stmt):
             return vg.Cond(
                 self.translate(stmt.test),

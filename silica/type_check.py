@@ -1,6 +1,18 @@
 import ast
 from .width import get_width
 import astor
+import magma as m
+
+
+def to_type_str(type_):
+    if isinstance(type_, m.BitKind):
+        type_ = "bit"
+    elif isinstance(type_, m.UIntKind):
+        type_ = "uint"
+    elif isinstance(type_, m.BitsKind):
+        type_ = "bits"
+    else:
+        raise NotImplementedError(type_)
 
 
 class TypeChecker(ast.NodeVisitor):
