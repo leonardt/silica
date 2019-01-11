@@ -1,4 +1,5 @@
 from .coroutine import coroutine, Coroutine, generator, Generator
+from .function import function, compile_function
 from .compile import compile
 from ._config import Config
 config = Config()

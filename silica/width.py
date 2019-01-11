@@ -116,3 +116,19 @@ def get_width(node, width_table, func_locals={}, func_globals={}):
 
 
     raise NotImplementedError(ast.dump(node))
+
+
+def get_io_width(type_):
+    if type_ is m.Bit:
+        return None
+    elif isinstance(type_, m.ArrayKind):
+        if isinstance(type_.T, m.ArrayKind):
+            elem_width = get_io_width(type_.T)
+            if isinstance(elem_width, tuple):
+                return (type_.N, ) + elem_width
+            else:
+                return (type_.N, elem_width)
+        else:
+            return type_.N
+    else:
+        raise NotImplementedError(type_)

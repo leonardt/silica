@@ -16,8 +16,9 @@ from silica.transformations import specialize_constants, replace_symbols, \
 from silica.visitors import collect_names
 import silica.verilog as verilog
 from .memory import MemoryType
+from .width import get_io_width
 from silica.transformations.specialize_arguments import specialize_arguments
-from silica.type_check import TypeChecker
+from silica.type_check import TypeChecker, to_type_str
 from silica.analysis import CollectInitialWidthsAndTypes, collect_sub_coroutines
 from silica.transformations.promote_widths import PromoteWidths
 from silica.transformations.desugar_for_loops import propagate_types, get_final_widths
@@ -47,51 +48,19 @@ def specialize_list_comps(tree, globals, locals):
     ListCompSpecializer().visit(tree)
 
 
-def get_io_width(type_):
-    if type_ is magma.Bit:
-        return None
-    elif isinstance(type_, magma.ArrayKind):
-        if isinstance(type_.T, magma.ArrayKind):
-            elem_width = get_io_width(type_.T)
-            if isinstance(elem_width, tuple):
-                return (type_.N, ) + elem_width
-            else:
-                return (type_.N, elem_width)
-        else:
-            return type_.N
-    else:
-        raise NotImplementedError(type_)
-
-
 def add_coroutine_to_tables(coroutine, width_table, type_table, sub_coroutine_name=None):
     if coroutine._inputs:
         for input_, type_ in coroutine._inputs.items():
             if sub_coroutine_name:
                 input_ = "_si_sub_co_" + sub_coroutine_name + "_" + input_
             width_table[input_] = get_io_width(type_)
-            if isinstance(type_, m.BitKind):
-                type_ = "bit"
-            elif isinstance(type_, m.UIntKind):
-                type_ = "uint"
-            elif isinstance(type_, m.BitsKind):
-                type_ = "bits"
-            else:
-                raise NotImplementedError(type_)
-            type_table[input_] = type_
+            type_table[input_] = to_type_str(type_)
     if coroutine._outputs:
         for output, type_ in coroutine._outputs.items():
             if sub_coroutine_name:
                 output = "_si_sub_co_" + sub_coroutine_name + "_" + output
             width_table[output] = get_io_width(type_)
-            if isinstance(type_, m.BitKind):
-                type_ = "bit"
-            elif isinstance(type_, m.UIntKind):
-                type_ = "uint"
-            elif isinstance(type_, m.BitsKind):
-                type_ = "bits"
-            else:
-                raise NotImplementedError(type_)
-            type_table[output] = type_
+            type_table[output] = to_type_str(type_)
 
 
 def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog', strategy="by_statement"):
