@@ -22,7 +22,7 @@ before_install:
 install:
   - pip install -r requirements.txt
   - pip install python-coveralls
-  - pip install pytest pytest-cov
+  - pip install --upgrade pytest pytest-cov
 
 script:
   - pip install -e .
