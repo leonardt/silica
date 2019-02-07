@@ -194,11 +194,17 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     for var, width in width_table.items():
         if isinstance(width, Coroutine):
             continue
-        if var not in registers:
+        if var not in registers and var not in inputs and var not in outputs:
+            # PROCASSWIRE
+            #     Error that a procedural assignment is setting a wire.
+            #     According to IEEE, a var/reg must be used as the target of
+            #     procedural assignments.
             if isinstance(width, MemoryType):
-                ctx.declare_wire(var, width.width, width.height)
+                # ctx.declare_wire(var, width.width, width.height)
+                ctx.declare_reg(var, width.width, width.height)
             else:
-                ctx.declare_wire(var, width)
+                # ctx.declare_wire(var, width)
+                ctx.declare_reg(var, width)
 
     for (name, index), (value, orig_value) in cfg.replacer.array_stores.items():
         width = width_table[name]
@@ -213,7 +219,12 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
             var = name + f"_si_tmp_val_{value}_i{i}"
             if var not in width_table:
                 width_table[var] = width
-                ctx.declare_wire(var, width)
+                # PROCASSWIRE
+                #     Error that a procedural assignment is setting a wire.
+                #     According to IEEE, a var/reg must be used as the target
+                #     of procedural assignments.
+                # ctx.declare_wire(var, width)
+                ctx.declare_reg(var, width)
 
     # declare regs
     for register in registers:
@@ -240,7 +251,16 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     if cfg.curr_yield_id > 1:
         yield_state_width = (cfg.curr_yield_id - 1).bit_length()
         ctx.declare_reg("yield_state", yield_state_width)
-        ctx.declare_wire(f"yield_state_next", yield_state_width)
+
+        # yield_state_next is a reg instead of wire because of the following
+        # verilator error:
+        # PROCASSWIRE
+        #     Error that a procedural assignment is setting a wire. According
+        #     to IEEE, a var/reg must be used as the target of procedural
+        #     assignments.
+        # ctx.declare_wire(f"yield_state_next", yield_state_width)
+        ctx.declare_reg(f"yield_state_next", yield_state_width)
+
         init_body.append(ctx.assign(ctx.get_by_name("yield_state"), 0))
 
     # if initial_basic_block:
