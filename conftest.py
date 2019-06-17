@@ -1,5 +1,4 @@
 import pytest
-from magma.circuit import magma_clear_circuit_database
 from magma import clear_cachedFunctions
 import os
 
@@ -13,7 +12,6 @@ def silica_test():
     # silica.config.compile_dir = 'callee_file_dir'
     import magma
     # magma.config.set_compile_dir('callee_file_dir')
-    magma_clear_circuit_database()
     clear_cachedFunctions()
 
     # os.system("rm -rf tests/build/*")
