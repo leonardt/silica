@@ -64,7 +64,7 @@ def DrainingState(lbmem_width, depth, lbmem, raddr, waddr, wdata, wen):
 def SILbMem(depth=64, lbmem_width=8):
     addr_width = eval(math.ceil(math.log2(depth)))
     @si.coroutine
-    def WAddrCounter(wen : si.Bit) -> {"waddr": si.Bits(addr_width)}:
+    def WAddrCounter(wen : si.Bit) -> {"waddr": si.Bits[addr_width]}:
         count = uint(0, addr_width)
         wen = yield
         while True:
@@ -73,7 +73,7 @@ def SILbMem(depth=64, lbmem_width=8):
                 count = count + 1
             wen = yield waddr
     @si.coroutine
-    def Memory(wen : si.Bit, incr : si.Bit, wdata: si.Bits(8), waddr: si.Bits(addr_width), count: si.Bits(3)) -> {"rdata": si.Bits(8)}:
+    def Memory(wen : si.Bit, incr : si.Bit, wdata: si.Bits[8], waddr: si.Bits[addr_width], count: si.Bits[3]) -> {"rdata": si.Bits[8]}:
         lbmem = memory(depth, lbmem_width)
         wen, incr, wdata, waddr, count = yield
         while True:
@@ -82,7 +82,7 @@ def SILbMem(depth=64, lbmem_width=8):
                 lbmem[waddr] = wdata
             wen, incr, wdata, waddr, count = yield rdata
     @si.coroutine
-    def Linebuffer(wdata : si.Bits(8), wen : si.Bit) -> {"rdata": si.Bits(8), "valid": si.Bit}:
+    def Linebuffer(wdata : si.Bits[8], wen : si.Bit) -> {"rdata": si.Bits[8], "valid": si.Bit}:
         waddr_counter = coroutine_create(WAddrCounter)
         write_controller = coroutine_create(Memory)
         count = uint(0, 3)

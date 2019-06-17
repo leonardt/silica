@@ -9,7 +9,7 @@ import silica as si
 
 
 @si.coroutine
-def PISO(PI: si.Bits(9), LOAD: si.Bit) -> {"O": si.Bit}:
+def PISO(PI: si.Bits[9], LOAD: si.Bit) -> {"O": si.Bit}:
     values = bits(0xff, 9)
     # O = values[-1]
     PI, LOAD = yield
@@ -23,7 +23,7 @@ def PISO(PI: si.Bits(9), LOAD: si.Bit) -> {"O": si.Bit}:
         PI, LOAD = yield O
 
 @si.coroutine
-def uart_shift(data : si.Bits(8), valid : si.Bit) -> {"tx": si.Bit, "ready": si.Bit}:
+def uart_shift(data : si.Bits[8], valid : si.Bit) -> {"tx": si.Bit, "ready": si.Bit}:
     piso = coroutine_create(PISO)
     data, valid = yield
     while True:

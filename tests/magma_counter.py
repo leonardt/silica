@@ -11,13 +11,13 @@ def DefineSilicaMux(height, width):
         if width is None:
             T = Bit
         else:
-            T = Bits(width)
+            T = Bits[width]
         inputs = []
         for i in range(height):
             inputs += [f"I{i}", In(T)]
         class OneHotMux(Circuit):
             name = "SilicaOneHotMux{}{}".format(height, width)
-            IO = inputs + ["S", In(Bits(height)), "O", Out(T)]
+            IO = inputs + ["S", In(Bits[height]), "O", Out(T)]
             @classmethod
             def definition(io):
                 or_ = Or(height, width)
@@ -36,7 +36,7 @@ def DefineSilicaMux(height, width):
         raise NotImplementedError()
 
 
-SilicaCounter = DefineCircuit("SilicaCounter", "COUT", Out(Bit), "O", Out(Bits(3)), *ClockInterface(has_ce=False))
+SilicaCounter = DefineCircuit("SilicaCounter", "COUT", Out(Bit), "O", Out(Bits[3]), *ClockInterface(has_ce=False))
 value = Register(3, has_ce=False)
 wireclock(SilicaCounter, value)
 value_next_0_tmp = [value.O[__silica_i] for __silica_i in range(3)]

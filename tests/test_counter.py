@@ -9,7 +9,7 @@ import shutil
 
 def SilicaCounter(width, init=0, incr=1):
     @si.coroutine
-    def counter() -> {"O": si.Bits(width)}:
+    def counter() -> {"O": si.Bits[width]}:
         count = bits(init, width)
         while True:
             O = count

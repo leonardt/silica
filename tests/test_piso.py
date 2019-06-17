@@ -13,7 +13,7 @@ from tests.common import evaluate_circuit
 
 def DefinePISO(n):
     @si.coroutine
-    def SIPISO(PI: si.Bits(n), SI: si.Bit, LOAD: si.Bit) -> {"O": si.Bit}:
+    def SIPISO(PI: si.Bits[n], SI: si.Bit, LOAD: si.Bit) -> {"O": si.Bit}:
         values = bits(0, n)
         # O = values[-1]
         PI, SI, LOAD = yield
@@ -86,7 +86,7 @@ def test_PISO():
     # mantle_PISO = mantle.DefinePISO(10)
     from mantle import Mux
     from mantle.common.register import _RegisterName, Register, FFs
-    T = Bits(10)
+    T = Bits[10]
     n = 10
     init = 0
     has_ce = False

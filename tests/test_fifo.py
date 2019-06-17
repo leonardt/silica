@@ -8,7 +8,7 @@ import magma as m
 
 
 @si.coroutine
-def SilicaFifo(wdata: si.Bits(4), wen: si.Bit, ren: si.Bit) -> {"rdata": si.Bits(4), "empty": si.Bit, "full": si.Bit}:
+def SilicaFifo(wdata: si.Bits[4], wen: si.Bit, ren: si.Bit) -> {"rdata": si.Bits[4], "empty": si.Bit, "full": si.Bit}:
     buffer = memory(4, 4)
     raddr = uint(0, 3)
     waddr = uint(0, 3)

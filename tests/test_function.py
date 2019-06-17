@@ -5,7 +5,7 @@ import silica as si
 # way to reuse test functions?
 def test_basic():
     @si.function
-    def basic_if(I: si.Bits(2), S: si.Bit) -> si.Bit:
+    def basic_if(I: si.Bits[2], S: si.Bit) -> si.Bit:
         if S:
             x = I[0]
         else:
@@ -46,7 +46,7 @@ endmodule
 
 def test_default():
     @si.function
-    def default(I: si.Bits(2), S: si.Bit) -> si.Bit:
+    def default(I: si.Bits[2], S: si.Bit) -> si.Bit:
         x = I[1]
         if S:
             x = I[0]
@@ -85,7 +85,7 @@ endmodule
 
 def test_nested():
     @si.function
-    def nested(I: si.Bits(4), S: si.Bits(2)) -> si.Bit:
+    def nested(I: si.Bits[4], S: si.Bits[2]) -> si.Bit:
         if S[0]:
             if S[1]:
                 x = I[0]

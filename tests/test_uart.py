@@ -23,7 +23,7 @@ from tests.common import evaluate_circuit
 #             yield
 
 @si.coroutine
-def uart_transmitter(data : si.Bits(8), valid : si.Bit) -> {"tx": si.Bit, "ready": si.Bit}:
+def uart_transmitter(data : si.Bits[8], valid : si.Bit) -> {"tx": si.Bit, "ready": si.Bit}:
     data, valid = yield
     while True:
         if valid:
