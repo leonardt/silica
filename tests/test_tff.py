@@ -4,7 +4,7 @@ import magma as m
 m.set_mantle_target("ice40")
 import fault
 from tests.common import evaluate_circuit
-from bit_vector import BitVector
+from hwtypes import BitVector
 
 
 def TFF(init=0):
@@ -42,7 +42,7 @@ def test_TFF():
         tester.step(2)
 
     tester.compile_and_run(target="verilator", directory="tests/build",
-                           flags=['-Wno-fatal'])
+                           flags=['-Wno-fatal'], magma_output="verilog")
     from mantle import FF, LUT2, I0, I1
     class MantleTFF(m.Circuit):
         IO = ["I", m.In(m.Bit), "O", m.Out(m.Bit)] + m.ClockInterface()
@@ -59,7 +59,8 @@ def test_TFF():
     mantle_tester = tester.retarget(MantleTFF, MantleTFF.CLK)
     mantle_tester.compile_and_run(target="verilator", directory="tests/build",
                                   flags=['-Wno-fatal'],
-                                  include_verilog_libraries=['../cells_sim.v'])
+                                  include_verilog_libraries=['../cells_sim.v'],
+                                  magma_output="verilog")
     if __name__ == '__main__':
         m.compile("tests/build/mantle_tff", MantleTFF)
         print("===== BEGIN : SILICA RESULTS =====")

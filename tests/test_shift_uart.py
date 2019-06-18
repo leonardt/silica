@@ -1,11 +1,11 @@
-import magma as m
-m.set_mantle_target("ice40")
-import mantle
 from silica import bit, bits, coroutine_create
 import fault
 from tests.common import evaluate_circuit
 from tests.test_piso import DefinePISO
 import silica as si
+import magma as m
+m.set_mantle_target("ice40")
+import mantle
 
 
 @si.coroutine
@@ -22,8 +22,10 @@ def PISO(PI: si.Bits[9], LOAD: si.Bit) -> {"O": si.Bit}:
         O = values[8]
         PI, LOAD = yield O
 
+
 @si.coroutine
-def uart_shift(data : si.Bits[8], valid : si.Bit) -> {"tx": si.Bit, "ready": si.Bit}:
+def uart_shift(data: si.Bits[8], valid: si.Bit) -> \
+        {"tx": si.Bit, "ready": si.Bit}:
     piso = coroutine_create(PISO)
     data, valid = yield
     while True:
@@ -58,20 +60,18 @@ def test_UART():
     tester = fault.Tester(si_uart, si_uart.CLK)
     tester.step(2)
     for message in [0xDE, 0xAD]:
-        tester.step(1)
         tester.expect(si_uart.ready, 1)
         tester.poke(si_uart.data, message)
         tester.poke(si_uart.valid, 1)
-        tester.step(2)
+        tester.eval()
         tester.expect(si_uart.tx, 0)
+        tester.expect(si_uart.ready, 0)
+        tester.step(2)
         tester.poke(si_uart.data, 0xFF)
         tester.poke(si_uart.valid, 0)
-        tester.expect(si_uart.ready, 0)
-        tester.step(1)
 
         # start bit
         for i in range(8):
-            tester.print(si_uart.CLK)
             tester.expect(si_uart.tx, (message >> (7-i)) & 1)
             tester.step(2)
         # end bit
@@ -80,13 +80,15 @@ def test_UART():
         tester.expect(si_uart.ready, 1)
 
     tester.compile_and_run(target="verilator", directory="tests/build",
-                           flags=['-Wno-fatal', '--trace'])
+                           flags=['-Wno-fatal', '--trace'],
+                           magma_output="verilog")
     verilog_uart = m.DefineFromVerilogFile(
         'verilog/uart.v', type_map={'CLK': m.In(m.Clock)})[0]
     verilog_tester = tester.retarget(verilog_uart, verilog_uart.CLK)
 
     verilog_tester.compile_and_run(target="verilator", directory="tests/build",
-                                   flags=['-Wno-fatal'])
+                                   flags=['-Wno-fatal'],
+                                   magma_output="verilog")
     if __name__ == '__main__':
         print("===== BEGIN : SILICA RESULTS =====")
         evaluate_circuit("si_uart_shift", "uart_shift")
@@ -96,6 +98,7 @@ def test_UART():
         print("===== BEGIN : MAGMA RESULTS =====")
         evaluate_circuit("verilog_uart", "uart_tx")
         print("===== END   : MAGMA RESULTS =====")
+
 
 if __name__ == '__main__':
     test_UART()

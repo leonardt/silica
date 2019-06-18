@@ -3,12 +3,13 @@ import silica as si
 from silica import bits, uint, memory, bit
 import shutil
 import pytest
-from bit_vector import BitVector
+from hwtypes import BitVector
 import magma as m
 
 
 @si.coroutine
-def SilicaFifo(wdata: si.Bits[4], wen: si.Bit, ren: si.Bit) -> {"rdata": si.Bits[4], "empty": si.Bit, "full": si.Bit}:
+def SilicaFifo(wdata: si.Bits[4], wen: si.Bit, ren: si.Bit) -> \
+        {"rdata": si.Bits[4], "empty": si.Bit, "full": si.Bit}:
     buffer = memory(4, 4)
     raddr = uint(0, 3)
     waddr = uint(0, 3)
@@ -42,37 +43,68 @@ def SilicaFifo(wdata: si.Bits[4], wen: si.Bit, ren: si.Bit) -> {"rdata": si.Bits
 
 expected_trace = [
     # Old trace without bit packing
-    # {'wdata': 1, 'wen': 0, 'ren': 1, 'rdata': 0, 'full': False, 'empty': True, 'buffer': [0, 0, 0, 0], 'raddr': 0, 'waddr': 0},
-    # {'wdata': 2, 'wen': 1, 'ren': 0, 'rdata': 2, 'full': False, 'empty': False, 'buffer': [2, 0, 0, 0], 'raddr': 0, 'waddr': 1},
-    # {'wdata': 3, 'wen': 1, 'ren': 1, 'rdata': 3, 'full': False, 'empty': False, 'buffer': [2, 3, 0, 0], 'raddr': 1, 'waddr': 2},
-    # {'wdata': 4, 'wen': 1, 'ren': 0, 'rdata': 3, 'full': False, 'empty': False, 'buffer': [2, 3, 4, 0], 'raddr': 1, 'waddr': 3},
-    # {'wdata': 5, 'wen': 0, 'ren': 1, 'rdata': 4, 'full': False, 'empty': False, 'buffer': [2, 3, 4, 0], 'raddr': 2, 'waddr': 3},
-    # {'wdata': 6, 'wen': 0, 'ren': 1, 'rdata': 0, 'full': False, 'empty': True, 'buffer': [2, 3, 4, 0], 'raddr': 3, 'waddr': 3},
-    # {'wdata': 7, 'wen': 1, 'ren': 0, 'rdata': 7, 'full': False, 'empty': False, 'buffer': [2, 3, 4, 7], 'raddr': 3, 'waddr': 0},
-    # {'wdata': 8, 'wen': 0, 'ren': 1, 'rdata': 2, 'full': False, 'empty': True, 'buffer': [2, 3, 4, 7], 'raddr': 0, 'waddr': 0},
-    # {'wdata': 9, 'wen': 1, 'ren': 1, 'rdata': 9, 'full': False, 'empty': False, 'buffer': [9, 3, 4, 7], 'raddr': 0, 'waddr': 1},
-    # {'wdata': 10, 'wen': 1, 'ren': 0, 'rdata': 9, 'full': False, 'empty': False, 'buffer': [9, 10, 4, 7], 'raddr': 0, 'waddr': 2},
-    # {'wdata': 11, 'wen': 1, 'ren': 0, 'rdata': 9, 'full': False, 'empty': False, 'buffer': [9, 10, 11, 7], 'raddr': 0, 'waddr': 3},
-    # {'wdata': 12, 'wen': 1, 'ren': 0, 'rdata': 9, 'full': True, 'empty': False, 'buffer': [9, 10, 11, 12], 'raddr': 0, 'waddr': 0},
-    # {'wdata': 13, 'wen': 1, 'ren': 0, 'rdata': 9, 'full': True, 'empty': False, 'buffer': [9, 10, 11, 12], 'raddr': 0, 'waddr': 0},
-    # {'wdata': 13, 'wen': 0, 'ren': 1, 'rdata': 10, 'full': False, 'empty': False, 'buffer': [9, 10, 11, 12], 'raddr': 1, 'waddr': 0},
-    # {'wdata': 14, 'wen': 1, 'ren': 1, 'rdata': 11, 'full': False, 'empty': False, 'buffer': [14, 10, 11, 12], 'raddr': 2, 'waddr': 1},
-    {'wdata': 1, 'wen': 0, 'ren': 1, 'rdata': 0, 'full': False, 'empty': True, 'buffer': [0, 0, 0, 0], 'raddr': 0, 'waddr': 0},
-    {'wdata': 2, 'wen': 1, 'ren': 0, 'rdata': 0, 'full': False, 'empty': True, 'buffer': [2, 0, 0, 0], 'raddr': 0, 'waddr': 1},
-    {'wdata': 3, 'wen': 1, 'ren': 1, 'rdata': 2, 'full': False, 'empty': False, 'buffer': [2, 3, 0, 0], 'raddr': 1, 'waddr': 2},
-    {'wdata': 4, 'wen': 1, 'ren': 0, 'rdata': 3, 'full': False, 'empty': False, 'buffer': [2, 3, 4, 0], 'raddr': 1, 'waddr': 3},
-    {'wdata': 5, 'wen': 0, 'ren': 1, 'rdata': 3, 'full': False, 'empty': False, 'buffer': [2, 3, 4, 0], 'raddr': 2, 'waddr': 3},
-    {'wdata': 6, 'wen': 0, 'ren': 1, 'rdata': 4, 'full': False, 'empty': False, 'buffer': [2, 3, 4, 0], 'raddr': 3, 'waddr': 3},
-    {'wdata': 7, 'wen': 1, 'ren': 0, 'rdata': 0, 'full': False, 'empty': True, 'buffer': [2, 3, 4, 7], 'raddr': 3, 'waddr': 4},
-    {'wdata': 8, 'wen': 0, 'ren': 1, 'rdata': 7, 'full': False, 'empty': False, 'buffer': [2, 3, 4, 7], 'raddr': 4, 'waddr': 4},
-    {'wdata': 9, 'wen': 1, 'ren': 1, 'rdata': 2, 'full': False, 'empty': True, 'buffer': [9, 3, 4, 7], 'raddr': 4, 'waddr': 5},
-    {'wdata': 10, 'wen': 1, 'ren': 0, 'rdata': 9, 'full': False, 'empty': False, 'buffer': [9, 10, 4, 7], 'raddr': 4, 'waddr': 6},
-    {'wdata': 11, 'wen': 1, 'ren': 0, 'rdata': 9, 'full': False, 'empty': False, 'buffer': [9, 10, 11, 7], 'raddr': 4, 'waddr': 7},
-    {'wdata': 12, 'wen': 1, 'ren': 0, 'rdata': 9, 'full': False, 'empty': False, 'buffer': [9, 10, 11, 12], 'raddr': 4, 'waddr': 0},
-    {'wdata': 13, 'wen': 1, 'ren': 0, 'rdata': 9, 'full': True, 'empty': False, 'buffer': [9, 10, 11, 12], 'raddr': 4, 'waddr': 0},
-    {'wdata': 13, 'wen': 0, 'ren': 1, 'rdata': 9, 'full': True, 'empty': False, 'buffer': [9, 10, 11, 12], 'raddr': 5, 'waddr': 0},
-    {'wdata': 14, 'wen': 1, 'ren': 1, 'rdata': 10, 'full': False, 'empty': False, 'buffer': [14, 10, 11, 12], 'raddr': 6, 'waddr': 1},
+    # {'wdata': 1, 'wen': 0, 'ren': 1, 'rdata': 0, 'full': False, 'empty':
+    # True, 'buffer': [0, 0, 0, 0], 'raddr': 0, 'waddr': 0},
+    # {'wdata': 2, 'wen': 1, 'ren': 0, 'rdata': 2, 'full': False, 'empty':
+    # False, 'buffer': [2, 0, 0, 0], 'raddr': 0, 'waddr': 1},
+    # {'wdata': 3, 'wen': 1, 'ren': 1, 'rdata': 3, 'full': False, 'empty':
+    # False, 'buffer': [2, 3, 0, 0], 'raddr': 1, 'waddr': 2},
+    # {'wdata': 4, 'wen': 1, 'ren': 0, 'rdata': 3, 'full': False, 'empty':
+    # False, 'buffer': [2, 3, 4, 0], 'raddr': 1, 'waddr': 3},
+    # {'wdata': 5, 'wen': 0, 'ren': 1, 'rdata': 4, 'full': False, 'empty':
+    # False, 'buffer': [2, 3, 4, 0], 'raddr': 2, 'waddr': 3},
+    # {'wdata': 6, 'wen': 0, 'ren': 1, 'rdata': 0, 'full': False, 'empty':
+    # True, 'buffer': [2, 3, 4, 0], 'raddr': 3, 'waddr': 3},
+    # {'wdata': 7, 'wen': 1, 'ren': 0, 'rdata': 7, 'full': False, 'empty':
+    # False, 'buffer': [2, 3, 4, 7], 'raddr': 3, 'waddr': 0},
+    # {'wdata': 8, 'wen': 0, 'ren': 1, 'rdata': 2, 'full': False, 'empty':
+    # True, 'buffer': [2, 3, 4, 7], 'raddr': 0, 'waddr': 0},
+    # {'wdata': 9, 'wen': 1, 'ren': 1, 'rdata': 9, 'full': False, 'empty':
+    # False, 'buffer': [9, 3, 4, 7], 'raddr': 0, 'waddr': 1},
+    # {'wdata': 10, 'wen': 1, 'ren': 0, 'rdata': 9, 'full': False, 'empty':
+    # False, 'buffer': [9, 10, 4, 7], 'raddr': 0, 'waddr': 2},
+    # {'wdata': 11, 'wen': 1, 'ren': 0, 'rdata': 9, 'full': False, 'empty':
+    # False, 'buffer': [9, 10, 11, 7], 'raddr': 0, 'waddr': 3},
+    # {'wdata': 12, 'wen': 1, 'ren': 0, 'rdata': 9, 'full': True, 'empty':
+    # False, 'buffer': [9, 10, 11, 12], 'raddr': 0, 'waddr': 0},
+    # {'wdata': 13, 'wen': 1, 'ren': 0, 'rdata': 9, 'full': True, 'empty':
+    # False, 'buffer': [9, 10, 11, 12], 'raddr': 0, 'waddr': 0},
+    # {'wdata': 13, 'wen': 0, 'ren': 1, 'rdata': 10, 'full': False, 'empty':
+    # False, 'buffer': [9, 10, 11, 12], 'raddr': 1, 'waddr': 0},
+    # {'wdata': 14, 'wen': 1, 'ren': 1, 'rdata': 11, 'full': False, 'empty':
+    # False, 'buffer': [14, 10, 11, 12], 'raddr': 2, 'waddr': 1},
+    {'wdata': 1, 'wen': 0, 'ren': 1, 'rdata': 0, 'full': False, 'empty': True,
+     'buffer': [0, 0, 0, 0], 'raddr': 0, 'waddr': 0},
+    {'wdata': 2, 'wen': 1, 'ren': 0, 'rdata': 0, 'full': False, 'empty': True,
+     'buffer': [2, 0, 0, 0], 'raddr': 0, 'waddr': 1},
+    {'wdata': 3, 'wen': 1, 'ren': 1, 'rdata': 2, 'full': False, 'empty': False,
+     'buffer': [2, 3, 0, 0], 'raddr': 1, 'waddr': 2},
+    {'wdata': 4, 'wen': 1, 'ren': 0, 'rdata': 3, 'full': False, 'empty': False,
+     'buffer': [2, 3, 4, 0], 'raddr': 1, 'waddr': 3},
+    {'wdata': 5, 'wen': 0, 'ren': 1, 'rdata': 3, 'full': False, 'empty': False,
+     'buffer': [2, 3, 4, 0], 'raddr': 2, 'waddr': 3},
+    {'wdata': 6, 'wen': 0, 'ren': 1, 'rdata': 4, 'full': False, 'empty': False,
+     'buffer': [2, 3, 4, 0], 'raddr': 3, 'waddr': 3},
+    {'wdata': 7, 'wen': 1, 'ren': 0, 'rdata': 0, 'full': False, 'empty': True,
+     'buffer': [2, 3, 4, 7], 'raddr': 3, 'waddr': 4},
+    {'wdata': 8, 'wen': 0, 'ren': 1, 'rdata': 7, 'full': False, 'empty': False,
+     'buffer': [2, 3, 4, 7], 'raddr': 4, 'waddr': 4},
+    {'wdata': 9, 'wen': 1, 'ren': 1, 'rdata': 2, 'full': False, 'empty': True,
+     'buffer': [9, 3, 4, 7], 'raddr': 4, 'waddr': 5},
+    {'wdata': 10, 'wen': 1, 'ren': 0, 'rdata': 9, 'full': False, 'empty':
+     False, 'buffer': [9, 10, 4, 7], 'raddr': 4, 'waddr': 6},
+    {'wdata': 11, 'wen': 1, 'ren': 0, 'rdata': 9, 'full': False, 'empty':
+     False, 'buffer': [9, 10, 11, 7], 'raddr': 4, 'waddr': 7},
+    {'wdata': 12, 'wen': 1, 'ren': 0, 'rdata': 9, 'full': False, 'empty':
+     False, 'buffer': [9, 10, 11, 12], 'raddr': 4, 'waddr': 0},
+    {'wdata': 13, 'wen': 1, 'ren': 0, 'rdata': 9, 'full': True, 'empty': False,
+     'buffer': [9, 10, 11, 12], 'raddr': 4, 'waddr': 0},
+    {'wdata': 13, 'wen': 0, 'ren': 1, 'rdata': 9, 'full': True, 'empty': False,
+     'buffer': [9, 10, 11, 12], 'raddr': 5, 'waddr': 0},
+    {'wdata': 14, 'wen': 1, 'ren': 1, 'rdata': 10, 'full': False, 'empty':
+     False, 'buffer': [14, 10, 11, 12], 'raddr': 6, 'waddr': 1},
 ]
+
 
 def inputs_generator(N):
     @si.coroutine
@@ -84,6 +116,7 @@ def inputs_generator(N):
                 ren = bool(trace["ren"])
                 yield wdata, wen, ren
     return gen()
+
 
 def test_fifo():
     fifo = SilicaFifo()
@@ -102,24 +135,27 @@ def test_fifo():
             tester.poke(si_fifo.interface.ports[input_], trace[input_])
             # tester.print(si_fifo.interface.ports[input_])
         fifo.send(args)
-        tester.step(1)
+        tester.eval()
         for output in outputs:
-            assert getattr(fifo, output) == trace[output], (i, output, getattr(fifo, output), trace[output])
+            assert getattr(fifo, output) == trace[output], \
+                (i, output, getattr(fifo, output), trace[output])
             tester.expect(si_fifo.interface.ports[output], trace[output])
             # tester.print(si_fifo.interface.ports[output])
-        tester.step(1)
+        tester.step(2)
         for state in states:
-            assert getattr(fifo, state) == trace[state], (i, state, getattr(fifo, state), trace[state])
+            assert getattr(fifo, state) == trace[state], \
+                (i, state, getattr(fifo, state), trace[state])
 
     tester.compile_and_run(target="verilator", directory="tests/build",
-                           flags=['-Wno-fatal'])
-    verilog_fifo = m.DefineFromVerilogFile("verilog/fifo.v",
-                                type_map={"CLK": m.In(m.Clock)})[0]
+                           flags=['-Wno-fatal'], magma_output="verilog")
+    verilog_fifo = m.DefineFromVerilogFile(
+        "verilog/fifo.v", type_map={"CLK": m.In(m.Clock)})[0]
 
     verilog_tester = tester.retarget(verilog_fifo, verilog_fifo.CLK)
     verilog_tester.compile_and_run(target="verilator", directory="tests/build",
                                    flags=['-Wno-fatal'],
-                                   include_directories=["../../verilog"])
+                                   include_directories=["../../verilog"],
+                                   magma_output="verilog")
     if __name__ == '__main__':
         from tests.common import evaluate_circuit
         print("===== BEGIN : SILICA RESULTS =====")

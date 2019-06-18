@@ -6,8 +6,8 @@ config = Config()
 
 import magma as m
 from magma import Bit, zext, concat, Array, Bits, UInt
-from bit_vector import BitVector
-import bit_vector
+from hwtypes import BitVector
+import hwtypes
 import operator
 
 
@@ -18,12 +18,12 @@ class BitVector(BitVector):
 
 class Memory(list):
     def __getitem__(self, key):
-        if isinstance(key, bit_vector.BitVector):
+        if isinstance(key, hwtypes.BitVector):
             key = key.as_uint()
         return super().__getitem__(key)
 
     def __setitem__(self, key, value):
-        if isinstance(key, bit_vector.BitVector):
+        if isinstance(key, hwtypes.BitVector):
             key = key.as_uint()
         return super().__setitem__(key, value)
 
@@ -31,24 +31,24 @@ def memory(height, width):
     return Memory(bits(0, width) for _ in range(height))
 
 def bit(value):
-    return BitVector(value, 1)
+    return BitVector[1](value)
 
 def bits(value, width):
-    return BitVector(value, width)
+    return BitVector[width](value)
 
 def uint(value, width):
-    return BitVector(value, num_bits=width)
+    return BitVector[width](value)
 
 def zext(value, n):
     assert isinstance(value, BitVector)
-    return BitVector(value, num_bits=n + value.num_bits)
+    return BitVector[n + len(value)](value)
 
 def add(a, b, cout=False):
-    assert isinstance(a, bit_vector.BitVector) and isinstance(b, bit_vector.BitVector)
+    assert isinstance(a, hwtypes.BitVector) and isinstance(b, hwtypes.BitVector)
     assert len(a) == len(b)
     if cout:
         width = len(a)
-        c = BitVector(a, width + 1) + BitVector(b, width + 1)
+        c = BitVector[width + 1](a) + BitVector[width + 1](b)
         return c[:-1], c[-1]
     else:
         return a + b

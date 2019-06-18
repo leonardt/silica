@@ -1,13 +1,15 @@
-import magma as m
-m.set_mantle_target("ice40")
-import mantle
+import logging
+logging.basicConfig(level=logging.DEBUG)
 import silica as si
 from silica import bit, bits
 import fault
 from tests.common import evaluate_circuit
+import magma as m
+m.set_mantle_target("ice40")
+import mantle
 
 # @si.coroutine
-# def uart_transmitter(data : In(Array(8, Bit)), valid : In(Bit), 
+# def uart_transmitter(data : In(Array(8, Bit)), valid : In(Bit),
 #                      tx : Out(Bit)):
 #     while True:
 #         if valid:
@@ -22,8 +24,10 @@ from tests.common import evaluate_circuit
 #             tx = 1
 #             yield
 
+
 @si.coroutine
-def uart_transmitter(data : si.Bits[8], valid : si.Bit) -> {"tx": si.Bit, "ready": si.Bit}:
+def uart_transmitter(data: si.Bits[8], valid: si.Bit) -> \
+        {"tx": si.Bit, "ready": si.Bit}:
     data, valid = yield
     while True:
         if valid:
@@ -59,20 +63,18 @@ def test_UART():
     tester = fault.Tester(si_uart, si_uart.CLK)
     tester.step(2)
     for message in [0xDE, 0xAD]:
-        tester.step(1)
         tester.expect(si_uart.ready, 1)
         tester.poke(si_uart.data, message)
         tester.poke(si_uart.valid, 1)
-        tester.step(2)
+        tester.eval()
         tester.expect(si_uart.tx, 0)
+        tester.expect(si_uart.ready, 0)
+        tester.step(2)
         tester.poke(si_uart.data, 0xFF)
         tester.poke(si_uart.valid, 0)
-        tester.expect(si_uart.ready, 0)
-        tester.step(1)
 
         # start bit
         for i in range(8):
-            tester.print(si_uart.CLK)
             tester.expect(si_uart.tx, (message >> (7-i)) & 1)
             tester.step(2)
         # end bit
@@ -81,13 +83,15 @@ def test_UART():
         tester.expect(si_uart.ready, 1)
 
     tester.compile_and_run(target="verilator", directory="tests/build",
-                           flags=['-Wno-fatal'])
+                           flags=['-Wno-fatal', "--trace"],
+                           magma_output="verilog")
     verilog_uart = m.DefineFromVerilogFile(
         'verilog/uart.v', type_map={'CLK': m.In(m.Clock)})[0]
     verilog_tester = tester.retarget(verilog_uart, verilog_uart.CLK)
 
     verilog_tester.compile_and_run(target="verilator", directory="tests/build",
-                                   flags=['-Wno-fatal'])
+                                   flags=['-Wno-fatal'],
+                                   magma_output="verilog")
     if __name__ == '__main__':
         print("===== BEGIN : SILICA RESULTS =====")
         evaluate_circuit("si_uart", "uart_transmitter")
@@ -97,6 +101,7 @@ def test_UART():
         print("===== BEGIN : MAGMA RESULTS =====")
         evaluate_circuit("verilog_uart", "uart_tx")
         print("===== END   : MAGMA RESULTS =====")
+
 
 if __name__ == '__main__':
     test_UART()

@@ -3,13 +3,14 @@ from silica import uint, eval, memory, bit, bits, coroutine_create
 import math
 import fault
 import magma as m
-from bit_vector import BitVector
+from hwtypes import BitVector
 from tests.common import evaluate_circuit
 from collections import OrderedDict as OD
 
 
 # @si.combinational
-# def saturating_add(a : si.UInt(7), b : si.UInt(7), max_ : si.UInt(7)) -> si.UInt(7):
+# def saturating_add(a : si.UInt(7), b : si.UInt(7), max_ : si.UInt(7)) ->
+#                    si.UInt(7):
 #     c = a + b
 #     if c == max_:
 #         c = 0
@@ -20,7 +21,8 @@ from collections import OrderedDict as OD
 def FillingState(lbmem_width, depth, lbmem, raddr, waddr, wdata, wen):
     # Linebuffer filling state
     # rdata is always invalid
-    # Remains in this state until `lbmem_width` writes have occured (wen is high for `lbmem` cycles)
+    # Remains in this state until `lbmem_width` writes have occured (wen is
+    # high for `lbmem` cycles)
     for i in range(lbmem_width):
         while ~wen:
             rdata = lbmem[raddr]
@@ -34,11 +36,13 @@ def FillingState(lbmem_width, depth, lbmem, raddr, waddr, wdata, wen):
         wdata, wen = yield rdata, valid
     return waddr
 
+
 @si.generator
 def DrainingState(lbmem_width, depth, lbmem, raddr, waddr, wdata, wen):
     # Linebuffer draining state
     # rdata is always valid
-    # Remains in this state until `lbmem_width` cycles without a write have occured
+    # Remains in this state until `lbmem_width` cycles without a write have
+    # occured
     not_drained = bits(lbmem_width - 1, 3)
     while (not_drained != 0):
         raddr = raddr + 1
@@ -61,10 +65,12 @@ def DrainingState(lbmem_width, depth, lbmem, raddr, waddr, wdata, wen):
     valid = bit(0)
     return waddr, raddr
 
+
 def SILbMem(depth=64, lbmem_width=8):
     addr_width = eval(math.ceil(math.log2(depth)))
+
     @si.coroutine
-    def WAddrCounter(wen : si.Bit) -> {"waddr": si.Bits[addr_width]}:
+    def WAddrCounter(wen: si.Bit) -> {"waddr": si.Bits[addr_width]}:
         count = uint(0, addr_width)
         wen = yield
         while True:
@@ -72,8 +78,11 @@ def SILbMem(depth=64, lbmem_width=8):
             if wen:
                 count = count + 1
             wen = yield waddr
+
     @si.coroutine
-    def Memory(wen : si.Bit, incr : si.Bit, wdata: si.Bits[8], waddr: si.Bits[addr_width], count: si.Bits[3]) -> {"rdata": si.Bits[8]}:
+    def Memory(wen: si.Bit, incr: si.Bit, wdata: si.Bits[8], waddr:
+               si.Bits[addr_width], count: si.Bits[3]) -> \
+            {"rdata": si.Bits[8]}:
         lbmem = memory(depth, lbmem_width)
         wen, incr, wdata, waddr, count = yield
         while True:
@@ -81,8 +90,10 @@ def SILbMem(depth=64, lbmem_width=8):
             if wen:
                 lbmem[waddr] = wdata
             wen, incr, wdata, waddr, count = yield rdata
+
     @si.coroutine
-    def Linebuffer(wdata : si.Bits[8], wen : si.Bit) -> {"rdata": si.Bits[8], "valid": si.Bit}:
+    def Linebuffer(wdata: si.Bits[8], wen: si.Bit) -> \
+            {"rdata": si.Bits[8], "valid": si.Bit}:
         waddr_counter = coroutine_create(WAddrCounter)
         write_controller = coroutine_create(Memory)
         count = uint(0, 3)
@@ -95,14 +106,16 @@ def SILbMem(depth=64, lbmem_width=8):
                 rdata = write_controller.send((wen, 1, wdata, waddr, count))
                 count = count + bits(wen, 3)
                 wdata, wen = yield rdata, valid
-                if ~((count < uint(7, 3)) | ~wen): break
+                if ~((count < uint(7, 3)) | ~wen):
+                    break
             while True:
                 valid = bit(1)
                 waddr = waddr_counter.send(wen)
                 rdata = write_controller.send((wen, 0, wdata, waddr, count))
                 count = count - bits(wen == 0, 3)
                 wdata, wen = yield rdata, valid
-                if count == 0: break
+                if count == 0:
+                    break
 
         # while True:
         #     if wen:
@@ -110,7 +123,8 @@ def SILbMem(depth=64, lbmem_width=8):
         #     else:
         #         raddr = waddr - uint(count - 1, 6)
         #     rdata = lbmem[raddr]
-        #     valid = (state & (bit(count != 1) | wen)) | (bit(count == 7) & wen)
+        #     valid = (state & (bit(count != 1) | wen)) | \
+        #             (bit(count == 7) & wen)
         #     if state == 0:
         #         state = (count == 7) & wen
         #         if wen:
@@ -125,9 +139,13 @@ def SILbMem(depth=64, lbmem_width=8):
         #     wdata, wen = yield rdata, valid
 
             # while True:
-            #     waddr = yield from FillingState(lbmem_width, depth, lbmem, raddr, waddr, wdata, wen)
-            #     waddr, raddr = yield from DrainingState(lbmem_width, depth, lbmem, raddr, waddr, wdata, wen)
+            #     waddr = yield from FillingState(lbmem_width, depth, lbmem,
+            #                                     raddr, waddr, wdata, wen)
+            #     waddr, raddr = yield from DrainingState(lbmem_width, depth,
+            #                                             lbmem, raddr, waddr,
+            #                                             wdata, wen)
     return Linebuffer()
+
 
 def inputs_generator(inputs):
     @si.coroutine
@@ -137,11 +155,13 @@ def inputs_generator(inputs):
                 yield wdata, wen
     return gen()
 
+
 def test_lbmem():
     lbmem = SILbMem()
     si_lbmem = si.compile(lbmem, "tests/build/si_lbmem.v")
     # si_lbmem = m.DefineFromVerilogFile("tests/build/si_lbmem.v",
-    #                                    type_map={"CLK": m.In(m.Clock)}, target_modules=["mem"])[0]
+    #                                    type_map={"CLK": m.In(m.Clock)},
+    #                                    target_modules=["mem"])[0]
     tester = fault.Tester(si_lbmem, si_lbmem.CLK)
     # wdata = [BitVector(i, 16) for i in range(40)]
     # wen =   [BitVector(i%2) for i in range(40)]
@@ -153,29 +173,32 @@ def test_lbmem():
         tester.poke(si_lbmem.wdata, i)
         tester.poke(si_lbmem.wen, 1)
         lbmem.send((i, BitVector(1)))
-        tester.step(1)
+        tester.eval()
         assert lbmem.valid == (i == 7), (lbmem.valid, i)
         # tester.print(si_lbmem.valid)
         tester.expect(si_lbmem.valid, i == 7), "Valid only on last write"
-        assert lbmem.rdata == 0, f"should be 0, even on first read, iter={i}, got {lbmem.rdata}"
+        assert lbmem.rdata == 0, \
+            f"should be 0, even on first read, iter={i}, got {lbmem.rdata}"
         tester.expect(si_lbmem.rdata, 0)
-        tester.step(1)
+        tester.step(2)
     for i in range(0, 8):
         tester.poke(si_lbmem.wdata, 0)
         tester.poke(si_lbmem.wen, 0)
         lbmem.send((0, BitVector(0)))
         # print(lbmem.lbmem)
-        tester.step(1)
+        tester.eval()
         # i + 1  because 0 was read on the final write, 7 when i == 7 because
         # there's nothing left to drain
         rdata = i + 1 if i < 7 else 0
         valid = i < 7
-        assert lbmem.rdata == rdata, (i, (lbmem.rdata, lbmem.valid), (rdata, valid))
-        assert lbmem.valid == valid, (i, (lbmem.rdata, lbmem.valid), (rdata, valid))
+        assert lbmem.rdata == rdata, \
+            (i, (lbmem.rdata, lbmem.valid), (rdata, valid))
+        assert lbmem.valid == valid, \
+            (i, (lbmem.rdata, lbmem.valid), (rdata, valid))
         tester.expect(si_lbmem.rdata, rdata)
         # tester.print(si_lbmem.valid)
         tester.expect(si_lbmem.valid, valid)
-        tester.step(1)
+        tester.step(2)
 
         # print(f"inputs={inputs}, rdata={lbmem.rdata}, valid={lbmem.valid}")
         # wen = inputs[1]
@@ -199,13 +222,14 @@ def test_lbmem():
         # print(drain_state)
 
     tester.compile_and_run(target="verilator", directory="tests/build",
-                           flags=['-Wno-fatal'])
+                           flags=['-Wno-fatal'], magma_output="verilog")
     verilog_lbmem = m.DefineFromVerilogFile("verilog/lbmem.v",
                                             type_map={"CLK": m.In(m.Clock)})[0]
     verilog_tester = tester.retarget(verilog_lbmem, verilog_lbmem.CLK)
     verilog_tester.compile_and_run(target="verilator", directory="tests/build",
                                    flags=['-Wno-fatal'],
-                                   include_directories=["../../verilog"])
+                                   include_directories=["../../verilog"],
+                                   magma_output="verilog")
     if __name__ == '__main__':
         print("===== BEGIN : SILICA RESULTS =====")
         evaluate_circuit("si_lbmem", "Linebuffer")

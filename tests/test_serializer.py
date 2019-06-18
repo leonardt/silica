@@ -1,5 +1,6 @@
 import silica as si
-from silica import coroutine, uint, Bit, BitVector, compile, Array, Bits, bits, memory
+from silica import coroutine, uint, Bit, BitVector, compile, Array, Bits, \
+    bits, memory
 import pytest
 import shutil
 from tests.common import evaluate_circuit
@@ -8,7 +9,8 @@ import fault
 
 
 @coroutine
-def Serializer4(I0 : Bits[16], I1 : Bits[16], I2 : Bits[16], I3 : Bits[16]) -> {"O": si.Bits[16]}:
+def Serializer4(I0: Bits[16], I1: Bits[16], I2: Bits[16], I3: Bits[16]) -> \
+        {"O": si.Bits[16]}:
     i = bits(0, 2)
     data = memory(3, 16)
     I0, I1, I2, I3 = yield
@@ -36,7 +38,9 @@ def inputs_generator(inputs):
                     yield I
     return gen()
 
-inputs = [[4,5,6,7],[10,16,8,3]]
+
+inputs = [[4, 5, 6, 7], [10, 16, 8, 3]]
+
 
 def test_ser4():
     ser = Serializer4()
@@ -48,35 +52,37 @@ def test_ser4():
         # tester.poke(serializer_si.valid, 1)
         for j in range(len(I)):
             tester.poke(getattr(serializer_si, f"I{j}"), I[j])
-        tester.step(1)
+        tester.eval()
         # ser.send([1] + I)
         ser.send(I)
         assert ser.O == I[0]
-        tester.print(serializer_si.O)
+        tester.print("serializer_si.O=%d", serializer_si.O)
         tester.expect(serializer_si.O, I[0])
-        tester.step(1)
+        tester.step(2)
         for i in range(3):
             # tester.poke(serializer_si.valid, 0)
             for j in range(len(I)):
                 tester.poke(getattr(serializer_si, f"I{j}"), 0)
-            tester.step(1)
+            tester.eval()
             # ser.send([0,0,0,0,0])
-            ser.send([0,0,0,0])
+            ser.send([0, 0, 0, 0])
             assert ser.O == I[i + 1]
             tester.expect(serializer_si.O, I[i + 1])
-            tester.step(1)
+            tester.step(2)
     tester.compile_and_run(target="verilator", directory="tests/build",
-                           flags=['-Wno-fatal', '--trace'])
-
+                           flags=['-Wno-fatal', '--trace'],
+                           magma_output="verilog")
 
     shutil.copy("verilog/serializer.v", "tests/build/serializer_verilog.v")
     serializer_verilog = \
         m.DefineFromVerilogFile("tests/build/serializer_verilog.v",
                                 type_map={"CLK": m.In(m.Clock)})[0]
 
-    verilog_tester = tester.retarget(serializer_verilog, serializer_verilog.CLK)
+    verilog_tester = tester.retarget(serializer_verilog,
+                                     serializer_verilog.CLK)
     verilog_tester.compile_and_run(target="verilator", directory="tests/build",
-                                   flags=['-Wno-fatal', '--trace'])
+                                   flags=['-Wno-fatal', '--trace'],
+                                   magma_output="verilog")
 
     if __name__ == '__main__':
         print("===== BEGIN : SILICA RESULTS =====")
@@ -86,6 +92,7 @@ def test_ser4():
         print("===== BEGIN : VERILOG RESULTS =====")
         evaluate_circuit("serializer_verilog", "serializer")
         print("===== END   : VERILOG RESULTS =====")
+
 
 if __name__ == '__main__':
     test_ser4()

@@ -201,18 +201,16 @@ def test_tap():
     tap_driver.write_DR(100, 7)
     tap_driver.write_DR(50, 7, dr_exp=100)
 
-    tester.compile_and_run(
-        target="verilator", directory="tests/build", flags=['-Wno-fatal'])
-
+    tester.compile_and_run(target="verilator", directory="tests/build",
+                           flags=['-Wno-fatal'], magma_output="verilog")
 
     shutil.copy("verilog/tap.v", "tests/build/verilog_tap.v")
     tap_v = m.DefineFromVerilogFile(
         "tests/build/verilog_tap.v", type_map={"CLK": m.In(m.Clock)})[0]
 
     v_tester = tester.retarget(tap_v, tap_v.CLK)
-    v_tester.compile_and_run(
-        target="verilator", directory="tests/build", flags=['-Wno-fatal'])
-
+    v_tester.compile_and_run(target="verilator", directory="tests/build",
+                             flags=['-Wno-fatal'], magma_output="verilog")
 
     if __name__ == '__main__':
         print("===== BEGIN : SILICA RESULTS =====")

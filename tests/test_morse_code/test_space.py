@@ -72,7 +72,8 @@ def test_space():
         tester.expect(si_space.is_, 0)
 
     tester.compile_and_run(target="verilator", directory="tests/build",
-                           flags=['-Wno-fatal', '--trace'])
+                           flags=['-Wno-fatal', '--trace'],
+                           magma_output="verilog")
 
     # verilog_dot = m.DefineFromVerilogFile("verilog/dot.v", type_map={"CLK": m.In(m.Clock)})[0]
     # verilog_tester = tester.retarget(verilog_dot, verilog_dot.CLK)

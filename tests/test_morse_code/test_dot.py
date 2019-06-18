@@ -53,32 +53,34 @@ def test_dot():
 
     for i in range(2):
         tester.poke(si_dot.I, True)
-        tester.step(1)
+        tester.eval()
         tester.expect(si_dot.cb, 1)
-        tester.step(1)
+        tester.step(2)
         tester.poke(si_dot.I, False)
-        tester.step(1)
+        tester.eval()
         tester.expect(si_dot.cb, 0)
         tester.expect(si_dot.is_, 1)
-        tester.step(1)
+        tester.step(2)
         tester.poke(si_dot.I, False)
-        tester.step(1)
+        tester.eval()
         tester.expect(si_dot.cb, 0)
         tester.expect(si_dot.is_, 0)
-        tester.step(1)
+        tester.step(2)
         tester.poke(si_dot.I, False)
-        tester.step(1)
+        tester.eval()
         tester.expect(si_dot.cb, 0)
         tester.expect(si_dot.is_, 0)
-        tester.step(1)
+        tester.step(2)
 
     tester.compile_and_run(target="verilator", directory="tests/build",
-                           flags=['-Wno-fatal'])
+                           flags=['-Wno-fatal'], magma_output="verilog")
 
-    verilog_dot = m.DefineFromVerilogFile("verilog/dot.v", type_map={"CLK": m.In(m.Clock)})[0]
+    verilog_dot = m.DefineFromVerilogFile("verilog/dot.v",
+                                          type_map={"CLK": m.In(m.Clock)})[0]
     verilog_tester = tester.retarget(verilog_dot, verilog_dot.CLK)
     verilog_tester.compile_and_run(target="verilator", directory="tests/build",
-                                  flags=['-Wno-fatal'])
+                                   flags=['-Wno-fatal'],
+                                   magma_output="verilog")
     if __name__ == '__main__':
         print("===== BEGIN : SILICA RESULTS =====")
         evaluate_circuit("si_dot", "Dot")

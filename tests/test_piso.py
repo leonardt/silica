@@ -7,7 +7,7 @@ from silica import bits
 from magma.bitutils import seq2int, int2seq
 from magma.testing.coroutine import check
 import fault
-from bit_vector import BitVector
+from hwtypes import BitVector
 from tests.common import evaluate_circuit
 
 
@@ -59,28 +59,30 @@ def test_PISO():
         expected_state = inputs.PI[:]
         piso.send((BitVector(inputs.PI), inputs.SI, inputs.LOAD))
         actual_outputs.insert(0, piso.O)
-        # print(f"PI={inputs.PI}, SI={inputs.SI}, LOAD={inputs.LOAD}, O={piso.O}, values={piso.values}")
-        tester.poke(si_piso.PI  , BitVector(inputs.PI))
-        tester.poke(si_piso.SI  , BitVector(inputs.SI))
+        # print(f"PI={inputs.PI}, SI={inputs.SI}, LOAD={inputs.LOAD}, "
+        #       f"O={piso.O}, values={piso.values}")
+        tester.poke(si_piso.PI, BitVector(inputs.PI))
+        tester.poke(si_piso.SI, BitVector(inputs.SI))
         tester.poke(si_piso.LOAD, BitVector(inputs.LOAD))
         next(inputs)
         tester.step(2)
         tester.expect(si_piso.O, piso.O)
         for j in range(10):
-            tester.poke(si_piso.PI  , BitVector(inputs.PI))
-            tester.poke(si_piso.SI  , BitVector(inputs.SI))
+            tester.poke(si_piso.PI, BitVector(inputs.PI))
+            tester.poke(si_piso.SI, BitVector(inputs.SI))
             tester.poke(si_piso.LOAD, BitVector(inputs.LOAD))
             assert piso.values.bits() == expected_state, (i, j)
             piso.send((BitVector(inputs.PI), inputs.SI, inputs.LOAD))
             actual_outputs.insert(0, piso.O)
             expected_state = [inputs.SI] + expected_state[:-1]
-            tester.step(1)
+            tester.eval()
             tester.expect(si_piso.O, piso.O)
-            tester.step(1)
+            tester.step(2)
             next(inputs)
         assert actual_outputs == expected_outputs
 
-    tester.compile_and_run(target="verilator", directory="tests/build", flags=['-Wno-fatal'])
+    tester.compile_and_run(target="verilator", directory="tests/build",
+                           flags=['-Wno-fatal'], magma_output="verilog")
     # check that they are the same
 
     # mantle_PISO = mantle.DefinePISO(10)
@@ -91,10 +93,12 @@ def test_PISO():
     init = 0
     has_ce = False
     has_reset = False
+
     class _PISO(Circuit):
         name = _RegisterName('PISO', n, init, has_ce, has_reset)
         IO = ['SI', In(Bit), 'PI', In(T), 'LOAD', In(Bit),
-              'O', Out(Bit)] + ClockInterface(has_ce,has_reset)
+              'O', Out(Bit)] + ClockInterface(has_ce, has_reset)
+
         @classmethod
         def definition(piso):
             def mux2(y):
@@ -103,7 +107,7 @@ def test_PISO():
             mux = braid(col(mux2, n), forkargs=['S'])
             reg = Register(n - 1, init, has_ce=has_ce, has_reset=has_reset)
 
-            si = concat(array(piso.SI),reg.O[0:n-1])
+            si = concat(array(piso.SI), reg.O[0:n-1])
             mux(si, piso.PI, piso.LOAD)
             reg(mux.O[:-1])
             wire(mux.O[-1], piso.O)
@@ -111,9 +115,9 @@ def test_PISO():
     mantle_tester = tester.retarget(_PISO, clock=_PISO.CLK)
     m.compile("tests/build/mantle_piso", _PISO)
     mantle_tester.compile_and_run(target="verilator", directory="tests/build",
-                                  include_verilog_libraries=['../cells_sim.v'])
+                                  include_verilog_libraries=['../cells_sim.v'],
+                                  magma_output="verilog")
     if __name__ == '__main__':
-
 
         print("===== BEGIN : SILICA RESULTS =====")
         evaluate_circuit("si_piso", "SIPISO")
@@ -121,6 +125,7 @@ def test_PISO():
         print("===== BEGIN : MANTLE RESULTS =====")
         evaluate_circuit("mantle_piso", "PISO10")
         print("===== END   : MANTLE RESULTS =====")
+
 
 if __name__ == '__main__':
     test_PISO()
