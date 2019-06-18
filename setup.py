@@ -7,7 +7,6 @@ setup(
     packages=["silica", "silica.cfg"],
     install_requires=[
         "orderedset",
-        "fault>=1.0.0, <=1.0.13",
         "python-constraint"
     ]
 )
