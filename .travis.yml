@@ -14,6 +14,7 @@ addons:
       - g++-4.9
 
 install:
+  - export CXX=g++-4.9
   - pip install -r requirements.txt
   - pip install python-coveralls
   - pip install --upgrade pytest pytest-cov
