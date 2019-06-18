@@ -282,7 +282,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     # cfg.render()
     verilog_str = ""
     for sub_coroutine in sub_coroutines.values():
-        verilog_str += sub_coroutine.verilogFile
+        verilog_str += sub_coroutine.verilogFile + "\n"
     verilog_str += ctx.to_verilog()
 
     if file_name is not None:

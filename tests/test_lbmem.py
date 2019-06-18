@@ -1,3 +1,5 @@
+import logging
+logging.basicConfig(level=logging.DEBUG)
 import silica as si
 from silica import uint, eval, memory, bit, bits, coroutine_create
 import math
