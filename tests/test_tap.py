@@ -73,10 +73,10 @@ class TAPDriver:
     def shift(self, value, bits, expect=None):
         if (bits < 32):
             assert (value >> bits) == 0  #Check only 'size' bits are set
-        in_bv = BitVector(value, bits)
+        in_bv = BitVector[bits](value)
         #print("shift_val", in_bv)
         if expect:
-            expect_bv = BitVector(expect, bits)
+            expect_bv = BitVector[bits](expect)
         for i in range(bits):  #lsb first
             tms = 1 if (i == bits - 1) else 0  #Exit on last
             tdi = in_bv[i]
