@@ -345,7 +345,7 @@ class ControlFlowGraph:
                                 return node
 
                         cond = Wrapper().visit(deepcopy(cond))
-                    _constraint = f"lambda {', '.join(args)}: ({astor.to_source(cond).rstrip()}) == BitVector({result}, 1)"
+                    _constraint = f"lambda {', '.join(args)}: ({astor.to_source(cond).rstrip()}) == BitVector[1]({result})"
                     # print(_constraint)
                     problem.addConstraint(
                         eval(_constraint, self.func_locals),

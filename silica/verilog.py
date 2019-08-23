@@ -69,6 +69,8 @@ class Context:
             return vg.Int(1 if stmt else 0)
         elif is_add(stmt):
             return vg.Add
+        elif isinstance(stmt, ast.Mod):
+            return vg.Mod
         elif is_or(stmt):
             return vg.Or
         elif is_r_shift(stmt):
