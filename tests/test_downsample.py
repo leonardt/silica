@@ -1,7 +1,10 @@
+import logging
+logging.basicConfig(level=logging.DEBUG)
 import random
 import silica as si
 from silica import bits
 import fault
+import magma as m
 
 
 @si.coroutine
@@ -45,33 +48,42 @@ def test_downsample_simple():
                                   file_name="tests/build/si_downsample.v")
 
     tester = fault.Tester(magma_downsample, magma_downsample.CLK)
-    tester.circuit.data_in_valid = 0
-    tester.circuit.data_in_data = 0xDEAD
-    tester.circuit.data_out_ready = 0
+    tester.poke(magma_downsample.data_in_valid, 0)
+    tester.poke(magma_downsample.data_in_data, 0xDEAD)
+    tester.poke(magma_downsample.data_out_ready, 0)
     tester.step(2)
-    tester.circuit.data_out_valid.expect(0)
-    tester.circuit.data_in_ready.expect(0)
+    tester.expect(magma_downsample.data_out_valid, 0)
+    tester.expect(magma_downsample.data_in_ready, 0)
     tester.step(2)
-    tester.circuit.data_out_valid.expect(0)
-    tester.circuit.data_in_ready.expect(0)
+    tester.expect(magma_downsample.data_out_valid, 0)
+    tester.expect(magma_downsample.data_in_ready, 0)
     tester.step(2)
-    tester.circuit.data_out_valid.expect(0)
-    tester.circuit.data_in_ready.expect(0)
-    tester.circuit.data_in_valid = 1
+    tester.expect(magma_downsample.data_out_valid, 0)
+    tester.expect(magma_downsample.data_in_ready, 0)
+    tester.poke(magma_downsample.data_in_valid, 1)
     tester.step(2)
-    tester.circuit.data_out_ready = 1
+    tester.poke(magma_downsample.data_out_ready, 1)
     tester.eval()
-    tester.circuit.data_out_valid.expect(1)
-    tester.circuit.data_in_ready.expect(1)
-    tester.circuit.data_out_data.expect(0xDEAD)
+    tester.expect(magma_downsample.data_out_valid, 1)
+    tester.expect(magma_downsample.data_in_ready, 1)
+    tester.expect(magma_downsample.data_out_data, 0xDEAD)
     tester.step(2)
-    tester.circuit.data_out_valid.expect(0)
+    tester.expect(magma_downsample.data_out_valid, 0)
     tester.step(2)
-    tester.circuit.data_out_valid.expect(1)
-    tester.circuit.data_out_data.expect(0xDEAD)
+    tester.expect(magma_downsample.data_out_valid, 1)
+    tester.expect(magma_downsample.data_out_data, 0xDEAD)
 
     tester.compile_and_run("verilator", flags=["-Wno-fatal"],
                            magma_output="verilog")
+
+    verilog_downsample = m.DefineFromVerilogFile(
+        "verilog/downsample.v", type_map={"CLK": m.In(m.Clock)})[0]
+    verilog_tester = tester.retarget(verilog_downsample,
+                                     verilog_downsample.CLK)
+    verilog_tester.compile_and_run(target="verilator",
+                                   flags=['-Wno-fatal'],
+                                   include_directories=["../../verilog"],
+                                   magma_output="verilog")
 
 
 def test_downsample_loops_simple():
@@ -83,22 +95,31 @@ def test_downsample_loops_simple():
     for i in range(2):
         for y in range(32):
             for x in range(32):
-                tester.circuit.data_in_valid = 1
-                tester.circuit.data_in_data = y * 32 + x
-                tester.circuit.data_out_ready = 1
+                tester.poke(magma_downsample.data_in_valid, 1)
+                tester.poke(magma_downsample.data_in_data, y * 32 + x)
+                tester.poke(magma_downsample.data_out_ready, 1)
                 tester.eval()
-                tester.circuit.data_out_data.expect(y * 32 + x)
-                tester.circuit.data_out_valid.expect((y % 2 == 0) &
-                                                     (x % 2 == 0))
+                tester.expect(magma_downsample.data_out_data, y * 32 + x)
+                tester.expect(magma_downsample.data_out_valid, (y % 2 == 0) &
+                                                               (x % 2 == 0))
                 tester.step(2)
-                tester.circuit.data_in_valid = 0
-                tester.circuit.data_out_ready = 0
+                tester.poke(magma_downsample.data_in_valid, 0)
+                tester.poke(magma_downsample.data_out_ready, 0)
                 tester.eval()
-                tester.circuit.data_out_valid.expect(0)
+                tester.expect(magma_downsample.data_out_valid, 0)
                 tester.step(2)
 
     tester.compile_and_run("verilator", flags=["-Wno-fatal"],
                            magma_output="verilog")
+
+    verilog_downsample = m.DefineFromVerilogFile(
+        "verilog/downsample.v", type_map={"CLK": m.In(m.Clock)})[0]
+    verilog_tester = tester.retarget(verilog_downsample,
+                                     verilog_downsample.CLK)
+    verilog_tester.compile_and_run(target="verilator",
+                                   flags=['-Wno-fatal'],
+                                   include_directories=["../../verilog"],
+                                   magma_output="verilog")
 
 
 def test_downsample_loops_simple_random_stalls():
@@ -111,19 +132,28 @@ def test_downsample_loops_simple_random_stalls():
         for y in range(32):
             for x in range(32):
                 while True:
-                    tester.circuit.data_in_valid = in_valid = \
-                        random.getrandbits(1)
-                    tester.circuit.data_in_data = y * 32 + x
-                    tester.circuit.data_out_ready = out_ready = \
-                        random.getrandbits(1)
+                    in_valid = random.getrandbits(1)
+                    tester.poke(magma_downsample.data_in_valid, in_valid)
+                    tester.poke(magma_downsample.data_in_data, y * 32 + x)
+                    out_ready = random.getrandbits(1)
+                    tester.poke(magma_downsample.data_out_ready, out_ready)
                     tester.eval()
-                    tester.circuit.data_out_data.expect(y * 32 + x)
-                    tester.circuit.data_out_valid.expect((y % 2 == 0) &
-                                                         (x % 2 == 0) &
-                                                         in_valid & out_ready)
+                    tester.expect(magma_downsample.data_out_data, y * 32 + x)
+                    tester.expect(magma_downsample.data_out_valid,
+                                  (y % 2 == 0) & (x % 2 == 0) &
+                                  in_valid & out_ready)
                     tester.step(2)
                     if in_valid & out_ready:
                         break
 
     tester.compile_and_run("verilator", flags=["-Wno-fatal"],
                            magma_output="verilog")
+
+    verilog_downsample = m.DefineFromVerilogFile(
+        "verilog/downsample.v", type_map={"CLK": m.In(m.Clock)})[0]
+    verilog_tester = tester.retarget(verilog_downsample,
+                                     verilog_downsample.CLK)
+    verilog_tester.compile_and_run(target="verilator",
+                                   flags=['-Wno-fatal'],
+                                   include_directories=["../../verilog"],
+                                   magma_output="verilog")
