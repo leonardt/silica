@@ -28,14 +28,14 @@ def test_TFF():
     tester = fault.Tester(si_tff, si_tff.CLK)
     # Should toggle
     for i in range(5):
-        tff.send(BitVector(1, 1))
+        tff.send(BitVector[1](1))
         assert tff.O == i % 2
         tester.poke(si_tff.I, 1)
         tester.expect(si_tff.O, i % 2)
         tester.step(2)
     # Should stay high
     for i in range(3):
-        tff.send(BitVector(0, 1))
+        tff.send(BitVector[1](0))
         assert tff.O == True
         tester.poke(si_tff.I, 0)
         tester.expect(si_tff.O, 1)
