@@ -25,9 +25,9 @@ def Downsample(
             while True:
                 data_out_valid = ((x % bits(2, 5)) == 0) & \
                                  ((y % bits(2, 5)) == 0) & \
-                                 data_in_valid & data_out_ready
+                                 data_in_valid
                 data_out_data = data_in_data
-                data_in_ready = data_in_valid & data_out_ready
+                data_in_ready = data_out_ready
                 if data_in_valid & data_out_ready:
                     if x == 31:
                         data_in_valid, data_in_data, data_out_ready = yield \
@@ -102,6 +102,7 @@ def test_downsample_loops_simple():
                 tester.expect(magma_downsample.data_out_data, y * 32 + x)
                 tester.expect(magma_downsample.data_out_valid, (y % 2 == 0) &
                                                                (x % 2 == 0))
+                tester.expect(magma_downsample.data_in_ready, 1)
                 tester.step(2)
                 tester.poke(magma_downsample.data_in_valid, 0)
                 tester.poke(magma_downsample.data_out_ready, 0)
@@ -141,7 +142,8 @@ def test_downsample_loops_simple_random_stalls():
                     tester.expect(magma_downsample.data_out_data, y * 32 + x)
                     tester.expect(magma_downsample.data_out_valid,
                                   (y % 2 == 0) & (x % 2 == 0) &
-                                  in_valid & out_ready)
+                                  in_valid)
+                    tester.expect(magma_downsample.data_in_ready, out_ready)
                     tester.step(2)
                     if in_valid & out_ready:
                         break
