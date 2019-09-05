@@ -3,6 +3,7 @@ import astor
 from .memory import MemoryType
 import silica.ast_utils as ast_utils
 import magma as m
+import silica
 
 def get_width(node, width_table, func_locals={}, func_globals={}):
     if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and \
@@ -48,6 +49,8 @@ def get_width(node, width_table, func_locals={}, func_globals={}):
                 return 2 ** get_width(node.args[0], width_table)
             else:
                 raise NotImplementedError(ast.dump(node))
+        elif isinstance(node.func, ast.Attribute) and node.func.attr == "pop":
+            return get_width(node.func.value, width_table)
         else:
             raise NotImplementedError(ast.dump(node))
     elif isinstance(node, ast.UnaryOp):
@@ -130,5 +133,7 @@ def get_io_width(type_):
                 return (type_.N, elem_width)
         else:
             return type_.N
+    elif isinstance(type_, silica.Channel):
+        return get_io_width(type_.type_)
     else:
         raise NotImplementedError(type_)

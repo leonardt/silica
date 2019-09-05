@@ -85,3 +85,8 @@ def combinational(fn):
     fn.__silica_combinational = True
     fn.__magma_circuit = m.circuit.combinational(fn).circuit_definition
     return fn
+
+
+class Channel:
+    def __init__(self, type_):
+        self.type_ = type_
