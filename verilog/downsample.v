@@ -12,9 +12,11 @@ reg [4:0] y;
 reg [4:0] x_next;
 reg [4:0] y_next;
 
+wire keep;
 
-assign data_out_valid = (x % 2 == 0) & (y % 2 == 0) & data_in_valid;
-assign data_in_ready = data_out_ready;
+assign keep = (x % 2 == 0) & (y % 2 == 0);
+assign data_out_valid = keep & data_in_valid;
+assign data_in_ready = data_out_ready | ~keep;
 assign data_out_data = data_in_data;
 
 always @(*) begin

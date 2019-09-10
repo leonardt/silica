@@ -5,6 +5,7 @@ import silica as si
 from silica import bits
 import fault
 import magma as m
+import hwtypes
 
 
 @si.coroutine
@@ -23,11 +24,10 @@ def Downsample(
         while True:
             x = 0
             while True:
-                data_out_valid = ((x % bits(2, 5)) == 0) & \
-                                 ((y % bits(2, 5)) == 0) & \
-                                 data_in_valid
+                keep = ((x % bits(2, 5)) == 0) & ((y % bits(2, 5)) == 0)
+                data_out_valid = keep & data_in_valid
                 data_out_data = data_in_data
-                data_in_ready = data_out_ready
+                data_in_ready = data_out_ready | ~keep
                 if data_in_valid & data_out_ready:
                     if x == 31:
                         data_in_valid, data_in_data, data_out_ready = yield \
@@ -140,10 +140,12 @@ def test_downsample_loops_simple_random_stalls():
                     tester.poke(magma_downsample.data_out_ready, out_ready)
                     tester.eval()
                     tester.expect(magma_downsample.data_out_data, y * 32 + x)
+                    keep = hwtypes.Bit((y % 2 == 0) & (x % 2 == 0))
                     tester.expect(magma_downsample.data_out_valid,
-                                  (y % 2 == 0) & (x % 2 == 0) &
+                                  keep &
                                   in_valid)
-                    tester.expect(magma_downsample.data_in_ready, out_ready)
+                    tester.expect(magma_downsample.data_in_ready,
+                                  hwtypes.Bit(out_ready) | ~keep)
                     tester.step(2)
                     if in_valid & out_ready:
                         break
