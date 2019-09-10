@@ -28,7 +28,7 @@ def Downsample(
                 data_out_valid = keep & data_in_valid
                 data_out_data = data_in_data
                 data_in_ready = data_out_ready | ~keep
-                if data_in_valid & data_out_ready:
+                if data_in_ready:
                     if x == 31:
                         data_in_valid, data_in_data, data_out_ready = yield \
                             data_in_ready, data_out_data, data_out_valid
@@ -108,7 +108,6 @@ def test_downsample_loops_simple():
                 tester.poke(magma_downsample.data_out_ready, 0)
                 tester.eval()
                 tester.expect(magma_downsample.data_out_valid, 0)
-                tester.step(2)
 
     tester.compile_and_run("verilator", flags=["-Wno-fatal"],
                            magma_output="verilog")
@@ -142,12 +141,12 @@ def test_downsample_loops_simple_random_stalls():
                     tester.expect(magma_downsample.data_out_data, y * 32 + x)
                     keep = hwtypes.Bit((y % 2 == 0) & (x % 2 == 0))
                     tester.expect(magma_downsample.data_out_valid,
-                                  keep &
-                                  in_valid)
+                                  keep & in_valid)
+                    in_ready = hwtypes.Bit(out_ready) | ~keep
                     tester.expect(magma_downsample.data_in_ready,
-                                  hwtypes.Bit(out_ready) | ~keep)
+                                  in_ready)
                     tester.step(2)
-                    if in_valid & out_ready:
+                    if in_ready:
                         break
 
     tester.compile_and_run("verilator", flags=["-Wno-fatal"],
