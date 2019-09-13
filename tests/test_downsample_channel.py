@@ -89,7 +89,9 @@ def test_downsample_loops_simple():
                                   file_name="tests/build/si_downsample_channel.v")
 
     tester = fault.Tester(magma_downsample, magma_downsample.CLK)
-    tester.circuit.CLK = 1
+    tester.poke(magma_downsample.data_in_valid, 0)
+    tester.poke(magma_downsample.data_out_ready, 0)
+    tester.step(2)
     for i in range(2):
         for y in range(32):
             for x in range(32):
@@ -121,12 +123,15 @@ def test_downsample_loops_simple():
                                    magma_output="verilog")
 
 
-def test_downsample_loops_simple_random_stalls():
+def test_downsample_loops_random_stalls():
     downsample = DownsampleChannel()
     magma_downsample = si.compile(downsample,
                                   file_name="tests/build/si_downsample_channel.v")
 
     tester = fault.Tester(magma_downsample, magma_downsample.CLK)
+    tester.poke(magma_downsample.data_in_valid, 0)
+    tester.poke(magma_downsample.data_out_ready, 0)
+    tester.step(2)
     for i in range(2):
         for y in range(32):
             for x in range(32):
