@@ -1,3 +1,4 @@
+import silica.types as types
 import ast
 import astor
 from .memory import MemoryType
@@ -130,5 +131,7 @@ def get_io_width(type_):
                 return (type_.N, elem_width)
         else:
             return type_.N
+    elif isinstance(type_, types.Channel):
+        return get_io_width(type_.type_)
     else:
         raise NotImplementedError(type_)

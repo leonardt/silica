@@ -20,7 +20,7 @@ assign data_in_ready = data_out_ready | ~keep;
 assign data_out_data = data_in_data;
 
 always @(*) begin
-    if (data_in_ready) begin
+    if (data_in_ready & data_in_valid) begin
         x_next = x + 1;
         if (x == 31) begin
             y_next = y + 1;

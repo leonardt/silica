@@ -2,6 +2,7 @@ import ast
 from .width import get_width
 import astor
 import magma as m
+import silica.types as types
 
 
 def to_type_str(type_):
@@ -11,6 +12,8 @@ def to_type_str(type_):
         return "uint"
     elif isinstance(type_, m.BitsKind):
         return "bits"
+    elif isinstance(type_, types.Channel):
+        return to_type_str(type_.type_)
     else:
         raise NotImplementedError(type_)
 
