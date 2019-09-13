@@ -28,7 +28,7 @@ def Downsample(
                 data_out_valid = keep & data_in_valid
                 data_out_data = data_in_data
                 data_in_ready = data_out_ready | ~keep
-                if data_in_ready:
+                if data_in_ready & data_in_valid:
                     if x == 31:
                         data_in_valid, data_in_data, data_out_ready = yield \
                             data_in_ready, data_out_data, data_out_valid
@@ -100,8 +100,9 @@ def test_downsample_loops_simple():
                 tester.poke(magma_downsample.data_out_ready, 1)
                 tester.eval()
                 tester.expect(magma_downsample.data_out_data, y * 32 + x)
-                tester.expect(magma_downsample.data_out_valid, (y % 2 == 0) &
-                                                               (x % 2 == 0))
+                if (y % 2 == 0) & (x % 2 == 0):
+                    tester.expect(magma_downsample.data_out_valid,
+                                  (y % 2 == 0) & (x % 2 == 0))
                 tester.expect(magma_downsample.data_in_ready, 1)
                 tester.step(2)
                 tester.poke(magma_downsample.data_in_valid, 0)
@@ -132,21 +133,26 @@ def test_downsample_loops_simple_random_stalls():
         for y in range(32):
             for x in range(32):
                 while True:
-                    in_valid = random.getrandbits(1)
+                    in_valid = hwtypes.Bit(random.getrandbits(1))
                     tester.poke(magma_downsample.data_in_valid, in_valid)
                     tester.poke(magma_downsample.data_in_data, y * 32 + x)
                     out_ready = random.getrandbits(1)
                     tester.poke(magma_downsample.data_out_ready, out_ready)
                     tester.eval()
-                    tester.expect(magma_downsample.data_out_data, y * 32 + x)
                     keep = hwtypes.Bit((y % 2 == 0) & (x % 2 == 0))
-                    tester.expect(magma_downsample.data_out_valid,
-                                  keep & in_valid)
+                    out_valid = keep & in_valid
+                    if out_ready:
+                        tester.expect(magma_downsample.data_out_valid,
+                                      out_valid)
+                    if out_valid & out_ready:
+                        tester.expect(magma_downsample.data_out_data,
+                                      y * 32 + x)
                     in_ready = hwtypes.Bit(out_ready) | ~keep
-                    tester.expect(magma_downsample.data_in_ready,
-                                  in_ready)
+                    if in_valid & in_ready:
+                        tester.expect(magma_downsample.data_in_ready,
+                                      in_ready)
                     tester.step(2)
-                    if in_ready:
+                    if in_ready & in_valid:
                         break
 
     tester.compile_and_run("verilator", flags=["-Wno-fatal"],

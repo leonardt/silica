@@ -7,6 +7,7 @@ import os
 import sys
 
 import silica
+from silica.channel import desugar_channels
 from silica.coroutine import Coroutine
 from silica.cfg import ControlFlowGraph, BasicBlock, HeadBlock
 from silica.cfg.control_flow_graph import render_paths_between_yields, build_state_info, render_fsm, get_constant
@@ -73,6 +74,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
 
     has_ce = coroutine.has_ce
     tree = ast_utils.get_ast(coroutine._definition).body[0]  # Get the first element of the ast.Module
+    tree, coroutine = desugar_channels(tree, coroutine)
     module_name = coroutine._name
     func_locals.update(coroutine._defn_locals)
     func_locals.update(func_globals)
