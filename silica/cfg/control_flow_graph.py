@@ -221,7 +221,7 @@ class ControlFlowGraph:
         # self.paths = promote_live_variables(self.paths)
         liveness_analysis(self)
         # render_paths_between_yields(self.paths)
-        self.ssa_var_to_curr_id_map = convert_to_ssa(self)
+        # self.ssa_var_to_curr_id_map = convert_to_ssa(self)
         # self.render()
         self.states, self.state_vars = build_state_info(self.paths, outputs, inputs)
 

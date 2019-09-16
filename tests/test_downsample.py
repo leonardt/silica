@@ -110,7 +110,7 @@ def test_downsample_loops_simple():
                 tester.eval()
                 tester.expect(magma_downsample.data_out_valid, 0)
 
-    tester.compile_and_run("verilator", flags=["-Wno-fatal"],
+    tester.compile_and_run("verilator", flags=["-Wno-fatal", "--trace"],
                            magma_output="verilog")
 
     verilog_downsample = m.DefineFromVerilogFile(

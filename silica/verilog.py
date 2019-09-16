@@ -7,9 +7,39 @@ from functools import *
 from .ast_utils import *
 import magma
 from .visitors.collect_stores import collect_stores
-from .cfg.types import HeadBlock
+from .cfg.types import HeadBlock, BasicBlock, Branch, Yield
 from .memory import MemoryType
 from .cfg.util import find_branch_join
+from .transformations.replace_symbols import replace_symbols
+
+def merge_ifs(block):
+    new_block = []
+    cond_map = {}
+    for stmt in block:
+        if isinstance(stmt, ast.If):
+            cond_str = astor.to_source(stmt.test)
+            if cond_str not in cond_map:
+                cond_map[cond_str] = stmt
+                new_block.append(stmt)
+            else:
+                for sub_stmt in stmt.body:
+                    if sub_stmt not in cond_map[cond_str].body:
+                        cond_map[cond_str].body.append(sub_stmt)
+        else:
+            new_block.append(stmt)
+    for stmt in block:
+        if isinstance(stmt, ast.If):
+            stmt.body = merge_ifs(stmt.body)
+    return new_block
+
+
+def replace_references_to_registers(stmt, registers):
+    replace_map = {}
+    for key in registers:
+        replace_map[key] = ast.Name(key + "_next")
+    return replace_symbols(stmt, replace_map)
+
+
 
 class Context:
     def __init__(self, name, sub_coroutines=[]):
@@ -388,7 +418,7 @@ def compile_statements(ctx, seq, comb_body, states, one_state, width_table,
 
 
 def compile_states(ctx, states, one_state, width_table, registers,
-                   sub_coroutines, strategy="by_statement"):
+                   sub_coroutines):
     module = ctx.module
     seq = vg.TmpSeq(module, module.get_ports()["CLK"])
     comb_body = []
@@ -402,154 +432,151 @@ def compile_states(ctx, states, one_state, width_table, registers,
 
         module.Instance(def_.name, name, ports=ports)
 
-    if strategy == "by_statement":
-        seen = set()
-        for i, state in enumerate(states):
-            if isinstance(state.path[0], HeadBlock):
-                continue
-            for target, value in state.path[0].loads.items():
-                if (target, value) not in seen:
-                    seen.add((target, value))
-                    width = width_table[value]
+    seen = set()
+    for i, state in enumerate(states):
+        if isinstance(state.path[0], HeadBlock):
+            continue
+        for target, value in state.path[0].loads.items():
+            if (target, value) not in seen:
+                seen.add((target, value))
+                width = width_table[value]
+                if isinstance(width, MemoryType):
+                    for i in range(width.height):
+                        comb_body.append(
+                            ctx.assign(vg.Pointer(ctx.get_by_name(target), i),
+                                       vg.Pointer(ctx.get_by_name(value), i)))
+                        comb_body[-1].blk = 1
+                else:
+                    comb_body.append(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
+                    comb_body[-1].blk = 1
+    statements = []
+    for state in states:
+        index = len(statements)
+        for statement in reversed(state.statements):
+            if statement in statements:
+                index = statements.index(statement)
+            else:
+                statements.insert(index, statement)
+    compile_statements(ctx, seq, comb_body, states, one_state, width_table, registers, statements)
+    for i, state in enumerate(states):
+        for value, target in state.path[-1].stores.items():
+            if (target, value) not in seen:
+                seen.add((target, value))
+                width = width_table[value]
+                if not one_state:
+                    # cond = ctx.get_by_name('yield_state_next') == state.start_yield_id
+                    all_conds = {}
+                    for _state in states:
+                        if _state.path[-1] is not state.path[-1]:
+                            continue
+                        conds = [ctx.translate(process_statement(cond)) for cond in _state.conds]
+                        cond = reduce(vg.Land, conds, ctx.get_by_name('yield_state') == _state.start_yield_id)
+                        all_conds[str(cond)] = cond
+                    all_conds = list(all_conds.values())
+                    cond = reduce(vg.Lor, all_conds)
+                    if isinstance(width, MemoryType):
+                        if_body = []
+                        for i in range(width.height):
+                            if_body.append(ctx.assign(vg.Pointer(ctx.get_by_name(target), i),
+                                                      vg.Pointer(ctx.get_by_name(value), i)))
+                        if if_body:
+                            if target in registers:
+                                seq.If(cond)(if_body)
+                            else:
+                                comb_body.append(vg.If(cond)(if_body))
+                    else:
+                        if target in registers:
+                            seq.If(cond)(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
+                        else:
+                            comb_body.append(vg.If(cond)(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value))))
+                else:
                     if isinstance(width, MemoryType):
                         for i in range(width.height):
-                            comb_body.append(
-                                ctx.assign(vg.Pointer(ctx.get_by_name(target), i),
-                                           vg.Pointer(ctx.get_by_name(value), i)))
-                            comb_body[-1].blk = 1
+                            if target in registers:
+                                seq(ctx.assign(vg.Pointer(ctx.get_by_name(target), i),
+                                               vg.Pointer(ctx.get_by_name(value), i)))
+                            else:
+                                comb_body.append(ctx.assign(vg.Pointer(ctx.get_by_name(target), i),
+                                                            vg.Pointer(ctx.get_by_name(value), i)))
                     else:
-                        comb_body.append(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
-                        comb_body[-1].blk = 1
-        statements = []
+                        if target in registers:
+                            seq(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
+                        else:
+                            comb_body.append(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
+    if not one_state:
+        started = False
+        yields = set()
         for state in states:
-            index = len(statements)
-            for statement in reversed(state.statements):
-                if statement in statements:
-                    index = statements.index(statement)
-                else:
-                    statements.insert(index, statement)
-        compile_statements(ctx, seq, comb_body, states, one_state, width_table, registers, statements)
-        for i, state in enumerate(states):
-            for value, target in state.path[-1].stores.items():
-                if (target, value) not in seen:
-                    seen.add((target, value))
-                    width = width_table[value]
-                    if not one_state:
-                        # cond = ctx.get_by_name('yield_state_next') == state.start_yield_id
-                        all_conds = {}
-                        for _state in states:
-                            if _state.path[-1] is not state.path[-1]:
-                                continue
-                            conds = [ctx.translate(process_statement(cond)) for cond in _state.conds]
-                            cond = reduce(vg.Land, conds, ctx.get_by_name('yield_state') == _state.start_yield_id)
-                            all_conds[str(cond)] = cond
-                        all_conds = list(all_conds.values())
-                        cond = reduce(vg.Lor, all_conds)
-                        if isinstance(width, MemoryType):
-                            if_body = []
-                            for i in range(width.height):
-                                if_body.append(ctx.assign(vg.Pointer(ctx.get_by_name(target), i),
-                                                          vg.Pointer(ctx.get_by_name(value), i)))
-                            if if_body:
-                                if target in registers:
-                                    seq.If(cond)(if_body)
-                                else:
-                                    comb_body.append(vg.If(cond)(if_body))
-                        else:
-                            if target in registers:
-                                seq.If(cond)(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
-                            else:
-                                comb_body.append(vg.If(cond)(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value))))
-                    else:
-                        if isinstance(width, MemoryType):
-                            for i in range(width.height):
-                                if target in registers:
-                                    seq(ctx.assign(vg.Pointer(ctx.get_by_name(target), i),
-                                                   vg.Pointer(ctx.get_by_name(value), i)))
-                                else:
-                                    comb_body.append(ctx.assign(vg.Pointer(ctx.get_by_name(target), i),
-                                                                vg.Pointer(ctx.get_by_name(value), i)))
-                        else:
-                            if target in registers:
-                                seq(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
-                            else:
-                                comb_body.append(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
-        if not one_state:
-            started = False
-            yields = set()
+            yields.add(state.path[0])
+            yields.add(state.path[-1])
+        next_yield_stmts = []
+        next_state = None
+        yields = list(yields)
+        for yield_ in yields:
+            next_yield = ctx.assign(ctx.get_by_name('yield_state_next'), yield_.yield_id)
+            all_conds = {}
             for state in states:
-                yields.add(state.path[0])
-                yields.add(state.path[-1])
-            next_yield_stmts = []
-            next_state = None
-            yields = list(yields)
-            for yield_ in yields:
-                next_yield = ctx.assign(ctx.get_by_name('yield_state_next'), yield_.yield_id)
-                all_conds = {}
-                for state in states:
-                    if state.end_yield_id == yield_.yield_id:
-                        cond = ctx.get_by_name('yield_state') == state.start_yield_id
-                        if state.conds:
-                            conds = (ctx.translate(process_statement(cond)) for cond in state.conds)
-                            cond = reduce(vg.Land, conds, cond)
-                        all_conds[str(cond)] = cond
-                if all_conds:
-                    all_conds = list(all_conds.values())
-                    if len(all_conds) > 1:
-                        cond = reduce(vg.Lor, all_conds[1:], all_conds[0])
-                    else:
-                        cond = all_conds[0]
-                    if next_state is None:
-                        next_state = vg.If(cond)(next_yield)
-                    elif yield_ == yields[-1]:
-                        next_state.Else(next_yield)
-                    else:
-                        next_state.Elif(cond)(next_yield)
-            assert next_state is not None
-            comb_body.insert(0, next_state)
-            for i, state in enumerate(states):
-                conds = []
-                if state.conds:
-                    conds = [ctx.translate(process_statement(cond)) for cond in state.conds]
-                cond = reduce(vg.Land, conds, ctx.get_by_name('yield_state') == state.start_yield_id)
+                if state.end_yield_id == yield_.yield_id:
+                    cond = ctx.get_by_name('yield_state') == state.start_yield_id
+                    if state.conds:
+                        conds = (ctx.translate(process_statement(cond)) for cond in state.conds)
+                        cond = reduce(vg.Land, conds, cond)
+                    all_conds[str(cond)] = cond
+            if all_conds:
+                all_conds = list(all_conds.values())
+                if len(all_conds) > 1:
+                    cond = reduce(vg.Lor, all_conds[1:], all_conds[0])
+                else:
+                    cond = all_conds[0]
+                if next_state is None:
+                    next_state = vg.If(cond)(next_yield)
+                elif yield_ == yields[-1]:
+                    next_state.Else(next_yield)
+                else:
+                    next_state.Elif(cond)(next_yield)
+        assert next_state is not None
+        comb_body.insert(0, next_state)
+        for i, state in enumerate(states):
+            conds = []
+            if state.conds:
+                conds = [ctx.translate(process_statement(cond)) for cond in state.conds]
+            cond = reduce(vg.Land, conds, ctx.get_by_name('yield_state') == state.start_yield_id)
 
 
-                output_stmts = []
-                for output, var in state.path[-1].output_map.items():
-                    output_stmts.append(ctx.assign(ctx.get_by_name(output), ctx.get_by_name(var)))
-                    output_stmts[-1].blk = 1
+            output_stmts = []
+            for output, var in state.path[-1].output_map.items():
+                output_stmts.append(ctx.assign(ctx.get_by_name(output), ctx.get_by_name(var)))
+                output_stmts[-1].blk = 1
 
-                stmts = []
-                for stmt in state.path[-1].array_stores_to_process:
-                    stmts.append(ctx.translate(process_statement(stmt)))
+            stmts = []
+            for stmt in state.path[-1].array_stores_to_process:
+                stmts.append(ctx.translate(process_statement(stmt)))
 
-                if stmts:
-                    if not started:
-                        if_stmt = seq.If(cond)
-                        started = True
-                    elif i == len(states) - 1:
-                        if_stmt = seq.Else()
-                    else:
-                        if_stmt = seq.Elif(cond)
-                    if_stmt(stmts)
-                comb_cond = reduce(
-                    vg.Land,
-                    conds, #  + [ctx.get_by_name('yield_state_next') == state.end_yield_id],
-                    ctx.get_by_name('yield_state') == state.start_yield_id)
-                if output_stmts:
-                    if not comb_body:
-                        comb_body.append(vg.If(comb_cond)(output_stmts))
-                    elif i == len(states) - 1:
-                        comb_body[-1] = comb_body[-1].Else(output_stmts)
-                    else:
-                        comb_body[-1] = comb_body[-1].Elif(comb_cond)(output_stmts)
+            if stmts:
+                if not started:
+                    if_stmt = seq.If(cond)
+                    started = True
+                elif i == len(states) - 1:
+                    if_stmt = seq.Else()
+                else:
+                    if_stmt = seq.Elif(cond)
+                if_stmt(stmts)
+            comb_cond = reduce(
+                vg.Land,
+                conds, #  + [ctx.get_by_name('yield_state_next') == state.end_yield_id],
+                ctx.get_by_name('yield_state') == state.start_yield_id)
+            if output_stmts:
+                if not comb_body:
+                    comb_body.append(vg.If(comb_cond)(output_stmts))
+                elif i == len(states) - 1:
+                    comb_body[-1] = comb_body[-1].Else(output_stmts)
+                else:
+                    comb_body[-1] = comb_body[-1].Elif(comb_cond)(output_stmts)
 
-        else:
-            for output, var in states[0].path[-1].output_map.items():
-                comb_body.append(vg.Subst(ctx.get_by_name(output),
-                                          ctx.get_by_name(var), 1))
     else:
-        raise NotImplementedError(strategy)
+        for output, var in states[0].path[-1].output_map.items():
+            comb_body.append(vg.Subst(ctx.get_by_name(output),
+                                      ctx.get_by_name(var), 1))
 
     ctx.module.Always(vg.SensitiveAll())(
         comb_body
@@ -558,3 +585,70 @@ def compile_states(ctx, states, one_state, width_table, registers,
         seq(
             ctx.assign(ctx.get_by_name('yield_state'), ctx.get_by_name('yield_state_next'))
         )
+
+
+def compile_by_path(ctx, paths, one_state, width_table, registers,
+                    sub_coroutines, strategy="by_statement"):
+    last_if = None
+    first_if = None
+    state_map = {}
+    for i, path in enumerate(paths):
+        state = path[0].yield_id
+        if state not in state_map:
+            state_map[state] = []
+        statements = []
+        for n, block in reversed(list(enumerate(path))[1:]):
+            if isinstance(block, HeadBlock):
+                continue
+            elif isinstance(block, BasicBlock):
+                statements = [
+                    replace_references_to_registers(process_statement(stmt),
+                                                    registers) for stmt in
+                    block.statements] + statements
+            elif isinstance(block, Branch):
+                cond = block.cond
+                if path[n + 1] is block.false_edge:
+                    cond = ast.UnaryOp(ast.Invert(), cond)
+                statements = [ast.If(
+                    replace_references_to_registers(process_statement(cond), registers),
+                    statements, None
+                )]
+            elif isinstance(block, Yield):
+                statements.append(ast.parse(f"yield_state_next = {block.yield_id}").body[0])
+            else:
+                raise NotImplementedError(block)
+        state_map[state].append(statements)
+
+    last_if = None
+    for state, statements in state_map.items():
+        body = []
+        for block in statements:
+            for stmt in block:
+                if stmt not in body:
+                    body.append(stmt)
+        body = merge_ifs(body)
+
+        body = [ctx.translate(stmt) for stmt in body]
+        if_ = vg.If(
+            (ctx.module.get_vars()["yield_state"] == state)
+        )(body)
+        if last_if is not None:
+            last_if.Else([if_])
+        else:
+            first_if = if_
+        last_if = if_
+    body = [first_if]
+    for reg in registers:
+        body.insert(0, ctx.assign(ctx.get_by_name(reg + "_next"), ctx.get_by_name(reg)))
+    ctx.module.Always(vg.SensitiveAll())(
+        body
+    )
+    seq = vg.TmpSeq(ctx.module, ctx.module.get_ports()["CLK"])
+    for reg in registers:
+        seq(
+            ctx.assign(ctx.get_by_name(reg), ctx.get_by_name(reg + "_next"))
+        )
+    seq(
+        ctx.assign(ctx.get_by_name('yield_state'), ctx.get_by_name('yield_state_next'))
+    )
+    print(ctx.to_verilog())
