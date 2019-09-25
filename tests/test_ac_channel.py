@@ -1,3 +1,4 @@
+import pytest
 import fault
 import magma as m
 import silica as si
@@ -97,10 +98,12 @@ def inputs_generator(N):
     return gen()
 
 
-def test_ac_channel():
+@pytest.mark.parametrize("strategy", ["by_path", "by_statement"])
+def test_ac_channel(strategy):
     ac_channel = gen_ac_channel(4, 4)()
     si_ac_channel = si.compile(ac_channel,
-                               file_name="tests/build/si_ac_channel.v")
+                               file_name="tests/build/si_ac_channel.v",
+                               strategy=strategy)
 
     inputs = ("read_ready", "write_valid", "write_data")
     outputs = ("read_data", "read_valid", "write_ready")
@@ -109,7 +112,7 @@ def test_ac_channel():
     for i, trace in enumerate(expected_trace):
         args = ()
         for input_ in inputs:
-            args += (BitVector(trace[input_]), )
+            args += (BitVector[4](trace[input_]), )
             tester.poke(si_ac_channel.interface.ports[input_], trace[input_])
         ac_channel.send(args)
         tester.eval()

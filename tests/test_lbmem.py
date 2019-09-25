@@ -1,3 +1,4 @@
+import pytest
 import logging
 logging.basicConfig(level=logging.DEBUG)
 import silica as si
@@ -158,9 +159,10 @@ def inputs_generator(inputs):
     return gen()
 
 
-def test_lbmem():
+@pytest.mark.parametrize("strategy", ["by_path", "by_statement"])
+def test_lbmem(strategy):
     lbmem = SILbMem()
-    si_lbmem = si.compile(lbmem, "tests/build/si_lbmem.v")
+    si_lbmem = si.compile(lbmem, "tests/build/si_lbmem.v", strategy=strategy)
     # si_lbmem = m.DefineFromVerilogFile("tests/build/si_lbmem.v",
     #                                    type_map={"CLK": m.In(m.Clock)},
     #                                    target_modules=["mem"])[0]
@@ -244,7 +246,8 @@ def test_lbmem():
 
 
 if __name__ == "__main__":
-    test_lbmem()
+    import sys
+    test_lbmem(sys.argv[1])
 
 
 """

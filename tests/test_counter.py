@@ -1,3 +1,4 @@
+import pytest
 import fault
 from tests.common import evaluate_circuit
 import shutil
@@ -18,7 +19,8 @@ def SilicaCounter(width, init=0, incr=1):
     return counter()
 
 
-def test_counter():
+@pytest.mark.parametrize("strategy", ["by_path", "by_statement"])
+def test_counter(strategy):
     N = 3
     counter = SilicaCounter(N)
     for _ in range(2):
@@ -26,7 +28,7 @@ def test_counter():
             assert counter.O == i
             next(counter)
 
-    si_counter = si.compile(counter, file_name="tests/build/counter_si.v")
+    si_counter = si.compile(counter, file_name="tests/build/counter_si.v", strategy=strategy)
     tester = fault.Tester(si_counter, si_counter.CLK)
     for i in range(0, 1 << N):
         tester.expect(si_counter.O, i)
@@ -62,4 +64,5 @@ def test_counter():
 
 
 if __name__ == '__main__':
-    test_counter()
+    import sys
+    test_counter(sys.argv[1])

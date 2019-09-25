@@ -177,7 +177,8 @@ class ControlFlowGraph:
         * ``self.curr_block`` - the current block used by the construction
           algorithm
     """
-    def __init__(self, tree, width_table, func_locals, func_globals, sub_coroutines):
+    def __init__(self, tree, width_table, func_locals, func_globals,
+                 sub_coroutines, strategy):
         self.blocks = []
         self.curr_block = None
         self.curr_yield_id = 1
@@ -221,7 +222,8 @@ class ControlFlowGraph:
         # self.paths = promote_live_variables(self.paths)
         liveness_analysis(self)
         # render_paths_between_yields(self.paths)
-        self.ssa_var_to_curr_id_map = convert_to_ssa(self)
+        if strategy == "by_statement":
+            self.ssa_var_to_curr_id_map = convert_to_ssa(self)
         # self.render()
         self.states, self.state_vars = build_state_info(self.paths, outputs, inputs)
 
@@ -467,9 +469,9 @@ class ControlFlowGraph:
 
         self.add_new_block()
 
-    def add_new_branch(self, cond):
+    def add_new_branch(self, if_node):
         """
-        Adds a new ``Branch`` node with the condition ``cond`` to the CFG and
+        Adds a new ``Branch`` node with the if_node ``if_node`` to the CFG and
         connects the current block to it
 
         Generates a new ``BasicBlock`` corresponding to the True edge of the
@@ -480,7 +482,7 @@ class ControlFlowGraph:
         """
         old_block = self.curr_block
         # First we create an explicit branch node
-        self.curr_block = Branch(cond)
+        self.curr_block = Branch(if_node)
         self.blocks.append(self.curr_block)
         add_edge(old_block, self.curr_block)
         branch = self.curr_block
@@ -496,7 +498,7 @@ class ControlFlowGraph:
         # orig_index_map = copy(self.replacer.index_map)
         # Emit new blocks for the branching instruction
         # self.replacer.visit(stmt.test)
-        branch = self.add_new_branch(stmt.test)
+        branch = self.add_new_branch(stmt)
         orig_bb = self.curr_block
         # true_stores = set()
         # for sub_stmt in stmt.body:

@@ -1,3 +1,4 @@
+import pytest
 from magma import *
 import silica as si
 import magma as m
@@ -45,9 +46,10 @@ def inputs_generator(message):
     return gen()
 
 
-def test_PISO():
+@pytest.mark.parametrize("strategy", ["by_path", "by_statement"])
+def test_PISO(strategy):
     piso = DefinePISO(10)()
-    si_piso = si.compile(piso, "tests/build/si_piso.v")
+    si_piso = si.compile(piso, "tests/build/si_piso.v", strategy=strategy)
     # si_piso = m.DefineFromVerilogFile("tests/build/si_piso.v",
     #                                  type_map={"CLK": m.In(m.Clock)})[0]
     tester = fault.Tester(si_piso, si_piso.CLK)
@@ -128,4 +130,5 @@ def test_PISO():
 
 
 if __name__ == '__main__':
-    test_PISO()
+    import sys
+    test_PISO(sys.argv[1])

@@ -64,7 +64,7 @@ def add_coroutine_to_tables(coroutine, width_table, type_table, sub_coroutine_na
             type_table[output] = to_type_str(type_)
 
 
-def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog', strategy="by_statement"):
+def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog', strategy="by_path"):
     if not isinstance(coroutine, Coroutine):
         raise ValueError("silica.compile expects a silica.Coroutine")
 
@@ -118,7 +118,8 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     tree = desugar_send_calls(tree, sub_coroutines)
     # print(astor.to_source(tree))
     # DesugarArrays().run(tree)
-    cfg = ControlFlowGraph(tree, width_table, func_locals, func_globals, sub_coroutines)
+    cfg = ControlFlowGraph(tree, width_table, func_locals, func_globals,
+                           sub_coroutines, strategy)
     # cfg.render()
     # render_paths_between_yields(cfg.paths)
 
@@ -235,10 +236,23 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
             continue
         if isinstance(width, MemoryType):
             ctx.declare_reg(register, width.width, width.height)
+            if strategy == "by_path":
+                ctx.declare_reg(register + "_next", width.width, width.height)
         else:
             ctx.declare_reg(register, width)
+            if strategy == "by_path":
+                ctx.declare_reg(register + "_next", width)
 
-    init_body = [ctx.assign(ctx.get_by_name(key), value) for key,value in initial_values.items() if value is not None]
+    if strategy == "by_path":
+        init_body = []
+        for key, value in initial_values.items():
+            if value is not None:
+                init_body.append(ctx.assign(ctx.get_by_name(key), value))
+                if key in registers:
+                    init_body.append(ctx.assign(ctx.get_by_name(key + "_next"), value))
+    else:
+        init_body = [ctx.assign(ctx.get_by_name(key), value) for key, value in
+                     initial_values.items() if value is not None]
 
     # for sub_coroutine in sub_coroutines:
     #     for key, type_ in sub_coroutines[sub_coroutine].interface.ports.items():
@@ -279,8 +293,12 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     wens = {}
     # if initial_basic_block:
     #     states = states[1:]
-    verilog.compile_states(ctx, states, cfg.curr_yield_id == 3, width_table,
-                           registers, sub_coroutines, strategy)
+    if strategy == "by_statement":
+        verilog.compile_states(ctx, states, cfg.curr_yield_id == 3, width_table,
+                               registers, sub_coroutines)
+    else:
+        verilog.compile_by_path(ctx, cfg.paths, cfg.curr_yield_id == 3, width_table,
+                                registers, sub_coroutines, strategy)
     # cfg.render()
     verilog_str = ""
     for sub_coroutine in sub_coroutines.values():

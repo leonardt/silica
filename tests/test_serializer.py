@@ -42,9 +42,11 @@ def inputs_generator(inputs):
 inputs = [[4, 5, 6, 7], [10, 16, 8, 3]]
 
 
-def test_ser4():
+@pytest.mark.parametrize("strategy", ["by_path", "by_statement"])
+def test_ser4(strategy):
     ser = Serializer4()
-    serializer_si = si.compile(ser, "tests/build/serializer_si.v")
+    serializer_si = si.compile(ser, "tests/build/serializer_si.v",
+                               strategy=strategy)
     # serializer_si = m.DefineFromVerilogFile("tests/build/serializer_si.v",
     #                             type_map={"CLK": m.In(m.Clock)})[0]
     tester = fault.Tester(serializer_si, serializer_si.CLK)
@@ -95,4 +97,5 @@ def test_ser4():
 
 
 if __name__ == '__main__':
-    test_ser4()
+    import sys
+    test_ser4(sys.argv[1])

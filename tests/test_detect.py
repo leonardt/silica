@@ -1,3 +1,4 @@
+import pytest
 import fault
 import silica as si
 from silica import bits, Bit, uint, zext, bit
@@ -31,11 +32,13 @@ def inputs_generator(inputs):
     return gen()
 
 
-def test_detect111():
+@pytest.mark.parametrize("strategy", ["by_path", "by_statement"])
+def test_detect111(strategy):
     detect = SIDetect111()
     inputs = list(map(bool, [1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1]))
     outputs = list(map(bool, [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1]))
-    si_detect = si.compile(detect, file_name="tests/build/si_detect.v")
+    si_detect = si.compile(detect, file_name="tests/build/si_detect.v",
+                           strategy=strategy)
     # si_detect = m.DefineFromVerilogFile("tests/build/si_detect.v",
     #                             type_map={"CLK": m.In(m.Clock)})[0]
     tester = fault.Tester(si_detect, si_detect.CLK)
@@ -68,4 +71,5 @@ def test_detect111():
 
 
 if __name__ == '__main__':
-    test_detect111()
+    import sys
+    test_detect111(sys.argv[1])

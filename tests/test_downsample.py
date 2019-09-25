@@ -1,6 +1,7 @@
 import logging
 logging.basicConfig(level=logging.DEBUG)
 import random
+import pytest
 import silica as si
 from silica import bits
 import fault
@@ -42,10 +43,12 @@ def Downsample(
             y = y + 1
 
 
-def test_downsample_simple():
+@pytest.mark.parametrize("strategy", ["by_path", "by_statement"])
+def test_downsample_simple(strategy):
     downsample = Downsample()
     magma_downsample = si.compile(downsample,
-                                  file_name="tests/build/si_downsample.v")
+                                  file_name="tests/build/si_downsample.v",
+                                  strategy=strategy)
 
     tester = fault.Tester(magma_downsample, magma_downsample.CLK)
     tester.poke(magma_downsample.data_in_valid, 0)
@@ -110,7 +113,7 @@ def test_downsample_loops_simple():
                 tester.eval()
                 tester.expect(magma_downsample.data_out_valid, 0)
 
-    tester.compile_and_run("verilator", flags=["-Wno-fatal"],
+    tester.compile_and_run("verilator", flags=["-Wno-fatal", "--trace"],
                            magma_output="verilog")
 
     verilog_downsample = m.DefineFromVerilogFile(

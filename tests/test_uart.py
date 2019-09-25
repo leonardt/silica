@@ -1,3 +1,4 @@
+import pytest
 import logging
 logging.basicConfig(level=logging.DEBUG)
 import silica as si
@@ -55,9 +56,10 @@ def uart_transmitter(data: si.Bits[8], valid: si.Bit) -> \
         # data, valid = yield tx, ready
 
 
-def test_UART():
+@pytest.mark.parametrize("strategy", ["by_path", "by_statement"])
+def test_UART(strategy):
     uart = uart_transmitter()
-    si_uart = si.compile(uart, "tests/build/si_uart.v")
+    si_uart = si.compile(uart, "tests/build/si_uart.v", strategy=strategy)
     # si_uart = m.DefineFromVerilogFile("tests/build/si_uart.v",
     #                                  type_map={"CLK": m.In(m.Clock)})[0]
     tester = fault.Tester(si_uart, si_uart.CLK)
@@ -104,4 +106,5 @@ def test_UART():
 
 
 if __name__ == '__main__':
-    test_UART()
+    import sys
+    test_UART(sys.argv[1])
