@@ -109,7 +109,7 @@ def test_ac_channel():
     for i, trace in enumerate(expected_trace):
         args = ()
         for input_ in inputs:
-            args += (BitVector[4](trace[input_]))
+            args += (BitVector[4](trace[input_]), )
             tester.poke(si_ac_channel.interface.ports[input_], trace[input_])
         ac_channel.send(args)
         tester.eval()
