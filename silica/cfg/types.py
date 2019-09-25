@@ -65,9 +65,10 @@ class BasicBlock(Block):
 
 
 class Branch(Block):
-    def __init__(self, cond):
+    def __init__(self, orig_node):
         super().__init__()
-        self.cond = cond
+        self.orig_node = orig_node
+        self.cond = orig_node.test
         self.true_edge = None
         self.false_edge = None
 

@@ -34,9 +34,10 @@ def test_BasicBlock():
 
 def test_Branch():
     from silica.cfg.types import Branch, Block
-    a = Branch("cond")
+    a = Branch(ast.parse("if cond: pass").body[0])
     assert isinstance(a, Block)
-    assert a.cond == "cond"
+    assert isinstance(a.cond, ast.Name)
+    assert a.cond.id == "cond"
     assert a.false_edge is None
     assert a.true_edge is None
 

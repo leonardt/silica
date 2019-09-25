@@ -17,19 +17,23 @@ def merge_ifs(block):
     cond_map = {}
     for stmt in block:
         if isinstance(stmt, ast.If):
-            cond_str = astor.to_source(stmt.test)
-            if cond_str not in cond_map:
-                cond_map[cond_str] = stmt
+            if stmt.orig_node not in cond_map:
+                cond_map[stmt.orig_node] = stmt
                 new_block.append(stmt)
             else:
                 for sub_stmt in stmt.body:
-                    if sub_stmt not in cond_map[cond_str].body:
-                        cond_map[cond_str].body.append(sub_stmt)
+                    if stmt.is_true:
+                        if sub_stmt not in cond_map[stmt.orig_node].body:
+                            cond_map[stmt.orig_node].body.append(sub_stmt)
+                    else:
+                        if sub_stmt not in cond_map[stmt.orig_node].orelse:
+                            cond_map[stmt.orig_node].orelse.append(sub_stmt)
         else:
             new_block.append(stmt)
     for stmt in block:
         if isinstance(stmt, ast.If):
             stmt.body = merge_ifs(stmt.body)
+            stmt.orelse = merge_ifs(stmt.orelse)
     return new_block
 
 
@@ -589,6 +593,17 @@ def compile_states(ctx, states, one_state, width_table, registers,
 
 def compile_by_path(ctx, paths, one_state, width_table, registers,
                     sub_coroutines, strategy="by_statement"):
+
+    for name, def_ in sub_coroutines.items():
+        ports = []
+        for key, type_ in def_.interface.ports.items():
+            if key == "CLK":
+                ports.append((key, ctx.get_by_name(f"CLK")))
+            else:
+                ports.append((key, ctx.get_by_name(f"_si_sub_co_{name}_{key}")))
+
+        ctx.module.Instance(def_.name, name, ports=ports)
+
     last_if = None
     first_if = None
     state_map = {}
@@ -611,8 +626,10 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
                     cond = ast.UnaryOp(ast.Invert(), cond)
                 statements = [ast.If(
                     replace_references_to_registers(process_statement(cond), registers),
-                    statements, None
+                    statements, []
                 )]
+                statements[0].orig_node = block.orig_node
+                statements[0].is_true = path[n + 1] is block.true_edge
             elif isinstance(block, Yield):
                 statements.append(ast.parse(f"yield_state_next = {block.yield_id}").body[0])
             else:
@@ -651,4 +668,3 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
     seq(
         ctx.assign(ctx.get_by_name('yield_state'), ctx.get_by_name('yield_state_next'))
     )
-    print(ctx.to_verilog())
