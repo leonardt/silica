@@ -172,4 +172,5 @@ def test_fifo(strategy):
 
 
 if __name__ == "__main__":
-    test_fifo()
+    import sys
+    test_fifo(sys.argv[1])

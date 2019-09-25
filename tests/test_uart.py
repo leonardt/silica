@@ -106,4 +106,5 @@ def test_UART(strategy):
 
 
 if __name__ == '__main__':
-    test_UART()
+    import sys
+    test_UART(sys.argv[1])

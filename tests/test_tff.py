@@ -74,4 +74,5 @@ def test_TFF(strategy):
         print("===== END   : MANTLE RESULTS =====")
 
 if __name__ == '__main__':
-    test_TFF()
+    import sys
+    test_TFF(sys.argv[1])

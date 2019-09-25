@@ -246,7 +246,8 @@ def test_lbmem(strategy):
 
 
 if __name__ == "__main__":
-    test_lbmem()
+    import sys
+    test_lbmem(sys.argv[1])
 
 
 """

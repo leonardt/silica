@@ -71,4 +71,5 @@ def test_detect111(strategy):
 
 
 if __name__ == '__main__':
-    test_detect111()
+    import sys
+    test_detect111(sys.argv[1])

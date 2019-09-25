@@ -130,4 +130,5 @@ def test_PISO(strategy):
 
 
 if __name__ == '__main__':
-    test_PISO()
+    import sys
+    test_PISO(sys.argv[1])

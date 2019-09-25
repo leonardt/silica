@@ -97,4 +97,5 @@ def test_ser4(strategy):
 
 
 if __name__ == '__main__':
-    test_ser4()
+    import sys
+    test_ser4(sys.argv[1])

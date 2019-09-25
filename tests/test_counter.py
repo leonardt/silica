@@ -64,4 +64,5 @@ def test_counter(strategy):
 
 
 if __name__ == '__main__':
-    test_counter()
+    import sys
+    test_counter(sys.argv[1])

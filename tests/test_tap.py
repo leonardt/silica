@@ -226,4 +226,5 @@ def test_tap(strategy):
 
 
 if __name__ == '__main__':
-    test_tap()
+    import sys
+    test_tap(sys.argv[1])
