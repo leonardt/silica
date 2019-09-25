@@ -177,7 +177,8 @@ class ControlFlowGraph:
         * ``self.curr_block`` - the current block used by the construction
           algorithm
     """
-    def __init__(self, tree, width_table, func_locals, func_globals, sub_coroutines):
+    def __init__(self, tree, width_table, func_locals, func_globals,
+                 sub_coroutines, strategy):
         self.blocks = []
         self.curr_block = None
         self.curr_yield_id = 1
@@ -221,7 +222,8 @@ class ControlFlowGraph:
         # self.paths = promote_live_variables(self.paths)
         liveness_analysis(self)
         # render_paths_between_yields(self.paths)
-        # self.ssa_var_to_curr_id_map = convert_to_ssa(self)
+        if strategy == "by_statement":
+            self.ssa_var_to_curr_id_map = convert_to_ssa(self)
         # self.render()
         self.states, self.state_vars = build_state_info(self.paths, outputs, inputs)
 

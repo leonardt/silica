@@ -1,3 +1,4 @@
+import pytest
 import silica as si
 from silica import bit, Bit
 import fault
@@ -30,9 +31,11 @@ def Space(I: Bit) -> {"cb": Bit, "is_": Bit}:
         I = yield cb, is_
 
 
-def test_space():
+@pytest.mark.parametrize("strategy", ["by_path", "by_statement"])
+def test_space(strategy):
     space = Space()
-    si_space = si.compile(space, file_name="tests/build/si_space.v")
+    si_space = si.compile(space, file_name="tests/build/si_space.v",
+                          strategy=strategy)
     # si_space = m.DefineFromVerilogFile("tests/build/si_space.v",
     #                                  type_map={"CLK": m.In(m.Clock)})[0]
     tester = fault.Tester(si_space, si_space.CLK)

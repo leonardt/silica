@@ -118,7 +118,8 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     tree = desugar_send_calls(tree, sub_coroutines)
     # print(astor.to_source(tree))
     # DesugarArrays().run(tree)
-    cfg = ControlFlowGraph(tree, width_table, func_locals, func_globals, sub_coroutines)
+    cfg = ControlFlowGraph(tree, width_table, func_locals, func_globals,
+                           sub_coroutines, strategy)
     # cfg.render()
     # render_paths_between_yields(cfg.paths)
 
@@ -235,17 +236,23 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
             continue
         if isinstance(width, MemoryType):
             ctx.declare_reg(register, width.width, width.height)
-            ctx.declare_reg(register + "_next", width.width, width.height)
+            if strategy == "by_path":
+                ctx.declare_reg(register + "_next", width.width, width.height)
         else:
             ctx.declare_reg(register, width)
-            ctx.declare_reg(register + "_next", width)
+            if strategy == "by_path":
+                ctx.declare_reg(register + "_next", width)
 
-    init_body = []
-    for key, value in initial_values.items():
-        if value is not None:
-            init_body.append(ctx.assign(ctx.get_by_name(key), value))
-            if key in registers:
-                init_body.append(ctx.assign(ctx.get_by_name(key + "_next"), value))
+    if strategy == "by_path":
+        init_body = []
+        for key, value in initial_values.items():
+            if value is not None:
+                init_body.append(ctx.assign(ctx.get_by_name(key), value))
+                if key in registers:
+                    init_body.append(ctx.assign(ctx.get_by_name(key + "_next"), value))
+    else:
+        init_body = [ctx.assign(ctx.get_by_name(key), value) for key, value in
+                     initial_values.items() if value is not None]
 
     # for sub_coroutine in sub_coroutines:
     #     for key, type_ in sub_coroutines[sub_coroutine].interface.ports.items():

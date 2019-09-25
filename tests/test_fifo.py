@@ -1,3 +1,4 @@
+import pytest
 import fault
 import silica as si
 from silica import bits, uint, memory, bit
@@ -118,9 +119,11 @@ def inputs_generator(N):
     return gen()
 
 
-def test_fifo():
+@pytest.mark.parametrize("strategy", ["by_path", "by_statement"])
+def test_fifo(strategy):
     fifo = SilicaFifo()
-    si_fifo = si.compile(fifo, file_name="tests/build/si_fifo.v")
+    si_fifo = si.compile(fifo, file_name="tests/build/si_fifo.v",
+                         strategy=strategy)
     # si_fifo = m.DefineFromVerilogFile("tests/build/si_fifo.v",
     #                             type_map={"CLK": m.In(m.Clock)})[0]
 

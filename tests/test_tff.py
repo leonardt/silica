@@ -1,3 +1,4 @@
+import pytest
 from silica import bit
 import silica as si
 import magma as m
@@ -20,9 +21,11 @@ def TFF(init=0):
     return tff()
 
 
-def test_TFF():
+@pytest.mark.parametrize("strategy", ["by_path", "by_statement"])
+def test_TFF(strategy):
     tff = TFF()
-    si_tff = si.compile(tff, file_name="tests/build/si_tff.v")
+    si_tff = si.compile(tff, file_name="tests/build/si_tff.v",
+                        strategy=strategy)
     # si_tff = m.DefineFromVerilogFile("tests/build/si_tff.v",
     #                                  type_map={"CLK": m.In(m.Clock)})[0]
     tester = fault.Tester(si_tff, si_tff.CLK)

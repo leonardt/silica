@@ -4,6 +4,7 @@ import fault
 import magma as m
 from tests.common import evaluate_circuit
 import shutil
+import pytest
 
 
 @si.coroutine
@@ -67,9 +68,11 @@ def Dash(I: Bit) -> {"cb": Bit, "is_": Bit}:
         # I = yield cb, is_
 
 
-def test_dash():
+@pytest.mark.parametrize("strategy", ["by_path", "by_statement"])
+def test_dash(strategy):
     dash = Dash()
-    si_dash = si.compile(dash, file_name="tests/build/si_dash.v")
+    si_dash = si.compile(dash, file_name="tests/build/si_dash.v",
+                         strategy=strategy)
     # si_dash = m.DefineFromVerilogFile("tests/build/si_dash.v",
     #                                  type_map={"CLK": m.In(m.Clock)})[0]
     tester = fault.Tester(si_dash, si_dash.CLK)

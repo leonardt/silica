@@ -1,3 +1,4 @@
+import pytest
 import silica as si
 from silica import coroutine, uint, Bit, BitVector, compile, Array, Bits, bits
 import pytest
@@ -180,9 +181,11 @@ def SilicaTAP(TMS : Bit, TDI : Bit) -> {"TDO": Bit, "update_dr": Bit, "update_ir
         CS = NS
         TMS, TDI = yield TDO, update_dr, update_ir
 
-def test_tap():
+@pytest.mark.parametrize("strategy", ["by_path", "by_statement"])
+def test_tap(strategy):
     tap = SilicaTAP()
-    si_tap = si.compile(tap, file_name="tests/build/si_tap.v")
+    si_tap = si.compile(tap, file_name="tests/build/si_tap.v",
+                        strategy=strategy)
     # si_tap = m.DefineFromVerilogFile(
     #     "tests/build/si_tap.v", type_map={"CLK": m.In(m.Clock)})[0]
 

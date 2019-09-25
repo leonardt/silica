@@ -4,6 +4,7 @@ import fault
 import magma as m
 from tests.common import evaluate_circuit
 import shutil
+import pytest
 
 
 @si.coroutine
@@ -32,9 +33,10 @@ def Dot(I: Bit) -> {"cb": Bit, "is_": Bit}:
         I = yield cb, is_
 
 
-def test_dot():
+@pytest.mark.parametrize("strategy", ["by_path", "by_statement"])
+def test_dot(strategy):
     dot = Dot()
-    si_dot = si.compile(dot, file_name="tests/build/si_dot.v")
+    si_dot = si.compile(dot, file_name="tests/build/si_dot.v", strategy=strategy)
     # si_dot = m.DefineFromVerilogFile("tests/build/si_dot.v",
     #                                  type_map={"CLK": m.In(m.Clock)})[0]
     tester = fault.Tester(si_dot, si_dot.CLK)
