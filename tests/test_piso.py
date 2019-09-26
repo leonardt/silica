@@ -59,22 +59,22 @@ def test_PISO(strategy):
         actual_outputs = []
         expected_outputs = [False] + inputs.PI[:]
         expected_state = inputs.PI[:]
-        piso.send((BitVector(inputs.PI), inputs.SI, inputs.LOAD))
+        piso.send((BitVector[10](inputs.PI), inputs.SI, inputs.LOAD))
         actual_outputs.insert(0, piso.O)
         # print(f"PI={inputs.PI}, SI={inputs.SI}, LOAD={inputs.LOAD}, "
         #       f"O={piso.O}, values={piso.values}")
-        tester.poke(si_piso.PI, BitVector(inputs.PI))
-        tester.poke(si_piso.SI, BitVector(inputs.SI))
-        tester.poke(si_piso.LOAD, BitVector(inputs.LOAD))
+        tester.poke(si_piso.PI, BitVector[10](inputs.PI))
+        tester.poke(si_piso.SI, BitVector[10](inputs.SI))
+        tester.poke(si_piso.LOAD, BitVector[10](inputs.LOAD))
         next(inputs)
         tester.step(2)
         tester.expect(si_piso.O, piso.O)
         for j in range(10):
-            tester.poke(si_piso.PI, BitVector(inputs.PI))
-            tester.poke(si_piso.SI, BitVector(inputs.SI))
-            tester.poke(si_piso.LOAD, BitVector(inputs.LOAD))
+            tester.poke(si_piso.PI, BitVector[10](inputs.PI))
+            tester.poke(si_piso.SI, BitVector[10](inputs.SI))
+            tester.poke(si_piso.LOAD, BitVector[10](inputs.LOAD))
             assert piso.values.bits() == expected_state, (i, j)
-            piso.send((BitVector(inputs.PI), inputs.SI, inputs.LOAD))
+            piso.send((BitVector[10](inputs.PI), inputs.SI, inputs.LOAD))
             actual_outputs.insert(0, piso.O)
             expected_state = [inputs.SI] + expected_state[:-1]
             tester.eval()

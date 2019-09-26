@@ -134,7 +134,7 @@ def test_fifo(strategy):
     for i, trace in enumerate(expected_trace):
         args = ()
         for input_ in inputs:
-            args += (BitVector(trace[input_]), )
+            args += (BitVector[4](trace[input_]), )
             tester.poke(si_fifo.interface.ports[input_], trace[input_])
             # tester.print(si_fifo.interface.ports[input_])
         fifo.send(args)

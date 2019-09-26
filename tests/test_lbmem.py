@@ -6,7 +6,7 @@ from silica import uint, eval, memory, bit, bits, coroutine_create
 import math
 import fault
 import magma as m
-from hwtypes import BitVector
+from hwtypes import BitVector, Bit
 from tests.common import evaluate_circuit
 from collections import OrderedDict as OD
 
@@ -176,7 +176,7 @@ def test_lbmem(strategy):
     for i in range(0, 8):
         tester.poke(si_lbmem.wdata, i)
         tester.poke(si_lbmem.wen, 1)
-        lbmem.send((i, BitVector(1)))
+        lbmem.send((i, Bit(1)))
         tester.eval()
         assert lbmem.valid == (i == 7), (lbmem.valid, i)
         # tester.print(si_lbmem.valid)
@@ -188,7 +188,7 @@ def test_lbmem(strategy):
     for i in range(0, 8):
         tester.poke(si_lbmem.wdata, 0)
         tester.poke(si_lbmem.wen, 0)
-        lbmem.send((0, BitVector(0)))
+        lbmem.send((0, Bit(0)))
         # print(lbmem.lbmem)
         tester.eval()
         # i + 1  because 0 was read on the final write, 7 when i == 7 because

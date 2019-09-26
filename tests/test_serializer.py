@@ -31,10 +31,10 @@ def inputs_generator(inputs):
     def gen():
         while True:
             for i in inputs:
-                I = [BitVector(x, 16) for x in i]
+                I = [BitVector[16](x) for x in i]
                 yield I
                 for _ in range(3):
-                    I = [BitVector((_ * len(i)) + j, 16) for j in range(len(i))]
+                    I = [BitVector[16]((_ * len(i)) + j) for j in range(len(i))]
                     yield I
     return gen()
 
