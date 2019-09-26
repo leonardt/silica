@@ -41,7 +41,8 @@ def test_counter(strategy):
     mantle_tester = tester.retarget(mantle_counter, mantle_counter.CLK)
     mantle_tester.compile_and_run(target="verilator", directory="tests/build",
                                   flags=['-Wno-fatal'],
-                                  include_verilog_libraries=['../cells_sim.v'])
+                                  include_verilog_libraries=['../cells_sim.v'],
+                                  magma_output="verilog")
 
     verilog_counter = m.DefineFromVerilogFile(
         "verilog/counter.v", type_map={"CLK": m.In(m.Clock)})[0]
