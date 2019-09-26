@@ -9,6 +9,7 @@ from magma.bitutils import seq2int, int2seq
 from magma.testing.coroutine import check
 import fault
 from hwtypes import BitVector
+import hwtypes as ht
 from tests.common import evaluate_circuit
 
 
@@ -64,15 +65,15 @@ def test_PISO(strategy):
         # print(f"PI={inputs.PI}, SI={inputs.SI}, LOAD={inputs.LOAD}, "
         #       f"O={piso.O}, values={piso.values}")
         tester.poke(si_piso.PI, BitVector[10](inputs.PI))
-        tester.poke(si_piso.SI, BitVector[10](inputs.SI))
-        tester.poke(si_piso.LOAD, BitVector[10](inputs.LOAD))
+        tester.poke(si_piso.SI, ht.Bit(inputs.SI))
+        tester.poke(si_piso.LOAD, ht.Bit(inputs.LOAD))
         next(inputs)
         tester.step(2)
         tester.expect(si_piso.O, piso.O)
         for j in range(10):
             tester.poke(si_piso.PI, BitVector[10](inputs.PI))
-            tester.poke(si_piso.SI, BitVector[10](inputs.SI))
-            tester.poke(si_piso.LOAD, BitVector[10](inputs.LOAD))
+            tester.poke(si_piso.SI, ht.Bit(inputs.SI))
+            tester.poke(si_piso.LOAD, ht.Bit(inputs.LOAD))
             assert piso.values.bits() == expected_state, (i, j)
             piso.send((BitVector[10](inputs.PI), inputs.SI, inputs.LOAD))
             actual_outputs.insert(0, piso.O)
