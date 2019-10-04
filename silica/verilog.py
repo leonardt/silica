@@ -103,6 +103,10 @@ class Context:
             return vg.Int(1 if stmt else 0)
         elif is_add(stmt):
             return vg.Add
+        elif is_floor_div(stmt):
+            return vg.Div
+        elif is_mult(stmt):
+            return vg.Mul
         elif isinstance(stmt, ast.Mod):
             return vg.Mod
         elif is_or(stmt):
