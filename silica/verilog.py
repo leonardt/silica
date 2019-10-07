@@ -641,7 +641,8 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
         state_map[state].append(statements)
 
     last_if = None
-    for state, statements in state_map.items():
+    items = list(state_map.items())
+    for state, statements in items:
         body = []
         for block in statements:
             for stmt in block:
@@ -654,7 +655,10 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
             (ctx.module.get_vars()["yield_state"] == state)
         )(body)
         if last_if is not None:
-            last_if.Else([if_])
+            if (state, statements) == items[-1]:
+                last_if.Else(body)
+            else:
+                last_if.Else([if_])
         else:
             first_if = if_
         last_if = if_
