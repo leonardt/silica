@@ -660,15 +660,33 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
         last_if = if_
     body = [first_if]
     for reg in registers:
-        body.insert(0, ctx.assign(ctx.get_by_name(reg + "_next"), ctx.get_by_name(reg)))
+        width = width_table[reg]
+        if isinstance(width, MemoryType):
+            for i in range(width.height):
+                body.insert(0, ctx.assign(
+                    vg.Pointer(ctx.get_by_name(reg + "_next"), vg.Int(i)),
+                    vg.Pointer(ctx.get_by_name(reg), vg.Int(i))
+                ))
+        else:
+            body.insert(0, ctx.assign(ctx.get_by_name(reg + "_next"), ctx.get_by_name(reg)))
     ctx.module.Always(vg.SensitiveAll())(
         body
     )
     seq = vg.TmpSeq(ctx.module, ctx.module.get_ports()["CLK"])
     for reg in registers:
-        seq(
-            ctx.assign(ctx.get_by_name(reg), ctx.get_by_name(reg + "_next"))
-        )
+        width = width_table[reg]
+        if isinstance(width, MemoryType):
+            for i in range(width.height):
+                seq(
+                    ctx.assign(
+                        vg.Pointer(ctx.get_by_name(reg), vg.Int(i)),
+                        vg.Pointer(ctx.get_by_name(reg + "_next"), vg.Int(i))
+                    )
+                )
+        else:
+            seq(
+                ctx.assign(ctx.get_by_name(reg), ctx.get_by_name(reg + "_next"))
+            )
     seq(
         ctx.assign(ctx.get_by_name('yield_state'), ctx.get_by_name('yield_state_next'))
     )

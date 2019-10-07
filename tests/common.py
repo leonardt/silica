@@ -19,7 +19,7 @@ def evaluate_circuit(verilog_file, top_name):
     if top_name not in results:
         results[top_name] = {}
     # Uncomment to generate dot files
-    # res = run(f"yosys -p 'synth_ice40 -top {top_name} -blif tests/build/{verilog_file}.blif; show -stretch -prefix {top_name} -format dot' tests/build/{verilog_file}.v | grep -A 16 \"2.27. Printing statistics.\"")
+    # res = run(f"yosys -p 'synth_ice40 -top {top_name} -blif tests/build/{verilog_file}.blif; show -stretch -prefix {top_name} -format dot' tests/build/{verilog_file}.v | grep -A 16 \"2.44. Printing statistics.\"")
     results[top_name]["SB_CARRY"] = 0
     results[top_name]["SB_DFF"] = 0
     results[top_name]["SB_LUT4"] = 0
@@ -33,7 +33,7 @@ def evaluate_circuit(verilog_file, top_name):
 
     num_trials = 5
     for i in range(0, num_trials):
-        res = run(f"yosys -p 'synth_ice40 -top {top_name} -blif tests/build/{verilog_file}.blif' tests/build/{verilog_file}.v | grep -A 20 \"2.27. Printing statistics.\"")
+        res = run(f"yosys -p 'synth_ice40 -top {top_name} -blif tests/build/{verilog_file}.blif' tests/build/{verilog_file}.v | grep -A 20 \"2.44. Printing statistics.\"")
         for line in res.out.splitlines():
             line = line.split()
             if not line:
