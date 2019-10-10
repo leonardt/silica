@@ -1,23 +1,38 @@
 import ast
 from .width import get_width
 import silica.ast_utils as ast_utils
+from silica.type_check import to_type_str
+from silica.width import get_io_width
 
 
 class CollectInitialWidthsAndTypes(ast.NodeVisitor):
-    def __init__(self, width_table, type_table, func_locals, func_globals):
+    def __init__(self, width_table, type_table, func_locals, func_globals,
+                 sub_coroutines):
         self.width_table = width_table
         self.type_table = type_table
         self.func_locals = func_locals
         self.func_globals = func_globals
+        self.sub_coroutines = sub_coroutines
 
     def visit_Assign(self, node):
         if len(node.targets) == 1:
-            if isinstance(node.targets[0], ast.Name):
+            if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Attribute) and \
+                 node.value.func.attr == "send":
+                assert isinstance(node.value.func.value, ast.Name)
+                assert node.value.func.value.id in self.sub_coroutines
+                outputs = self.sub_coroutines[node.value.func.value.id]._outputs
+                if isinstance(node.targets[0], ast.Tuple):
+                    for elt, type_ in zip(node.targets[0].elts, outputs.values()):
+                        self.width_table[elt.id] = get_io_width(type_)
+                        self.type_table[elt.id] = to_type_str(type_)
+                else:
+                    assert isinstance(node.targets[0], ast.Name)
+                    type_ = next(iter(outputs.values()))
+                    self.width_table[node.targets[0].id] = get_io_width(type_)
+                    self.type_table[node.targets[0].id] = to_type_str(type_)
+            elif isinstance(node.targets[0], ast.Name):
                 if isinstance(node.value, ast.Yield):
                     pass  # width specified at compile time
-                elif isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Attribute) and \
-                     node.value.func.attr == "send":
-                    pass
                 elif node.targets[0].id not in self.width_table:
                     self.width_table[node.targets[0].id] = get_width(node.value, self.width_table, self.func_locals, self.func_globals)
                     if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name) and \

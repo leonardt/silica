@@ -86,3 +86,11 @@ def combinational(fn):
     fn.__silica_combinational = True
     fn.__magma_circuit = m.circuit.combinational(fn).circuit_definition
     return fn
+
+
+class Wire:
+    def __enter__(self):
+        return None
+
+    def __exit__(self, *args):
+        return None

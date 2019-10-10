@@ -46,9 +46,10 @@ def replace_references_to_registers(stmt, registers):
 
 
 class Context:
-    def __init__(self, name, sub_coroutines=[]):
+    def __init__(self, name, sub_coroutines, width_table):
         self.module = vg.Module(name)
         self.sub_coroutines = sub_coroutines
+        self.width_table = width_table
 
     def declare_ports(self, inputs, outputs):
         if outputs:
@@ -268,6 +269,16 @@ class Context:
         elif isinstance(stmt, ast.Expr) and is_call(stmt.value) and is_name(stmt.value.func) and stmt.value.func.id == "print":
             # Skip print statements for now, maybe translate to display?
             return
+        elif isinstance(stmt, ast.With):
+            block = []
+            for sub_stmt in stmt.body:
+                result = self.translate(sub_stmt)
+                if isinstance(result, list):
+                    block += result
+                else:
+                    block.append(result)
+            return block
+
         raise NotImplementedError(ast.dump(stmt))
 
     def to_verilog(self):
@@ -425,12 +436,13 @@ def compile_statements(ctx, seq, comb_body, states, one_state, width_table,
                     comb_body.append(stmt)
 
 
-def compile_states(ctx, states, one_state, width_table, registers,
-                   sub_coroutines):
-    module = ctx.module
-    seq = vg.TmpSeq(module, module.get_ports()["CLK"])
-    comb_body = []
+
+def compile_sub_coroutines(ctx, sub_coroutines):
+    stub_modules = {}
     for name, def_ in sub_coroutines.items():
+        if def_.name not in stub_modules:
+            stub_modules[def_.name] = vg.StubModule(def_.name)
+        mod = stub_modules[def_.name]
         ports = []
         for key, type_ in def_.interface.ports.items():
             if key == "CLK":
@@ -438,7 +450,15 @@ def compile_states(ctx, states, one_state, width_table, registers,
             else:
                 ports.append((key, ctx.get_by_name(f"_si_sub_co_{name}_{key}")))
 
-        module.Instance(def_.name, name, ports=ports)
+        ctx.module.Instance(mod, name, ports=ports)
+
+
+def compile_states(ctx, states, one_state, width_table, registers,
+                   sub_coroutines):
+    module = ctx.module
+    seq = vg.TmpSeq(module, module.get_ports()["CLK"])
+    comb_body = []
+    compile_sub_coroutines(ctx, sub_coroutines)
 
     seen = set()
     for i, state in enumerate(states):
@@ -598,15 +618,7 @@ def compile_states(ctx, states, one_state, width_table, registers,
 def compile_by_path(ctx, paths, one_state, width_table, registers,
                     sub_coroutines, strategy="by_statement"):
 
-    for name, def_ in sub_coroutines.items():
-        ports = []
-        for key, type_ in def_.interface.ports.items():
-            if key == "CLK":
-                ports.append((key, ctx.get_by_name(f"CLK")))
-            else:
-                ports.append((key, ctx.get_by_name(f"_si_sub_co_{name}_{key}")))
-
-        ctx.module.Instance(def_.name, name, ports=ports)
+    compile_sub_coroutines(ctx, sub_coroutines)
 
     last_if = None
     first_if = None

@@ -56,7 +56,7 @@ def add_coroutine_to_tables(coroutine, width_table, type_table, sub_coroutine_na
                 input_ = "_si_sub_co_" + sub_coroutine_name + "_" + input_
             width_table[input_] = get_io_width(type_)
             type_table[input_] = to_type_str(type_)
-    if coroutine._outputs:
+    if coroutine._outputs is not inspect._empty:
         for output, type_ in coroutine._outputs.items():
             if sub_coroutine_name:
                 output = "_si_sub_co_" + sub_coroutine_name + "_" + output
@@ -100,7 +100,22 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     for name,_ in loopvars:
         type_table[name] = 'uint'
 
-    CollectInitialWidthsAndTypes(width_table, type_table, func_locals, func_globals).visit(tree)
+    sub_coroutines = {}
+    orig_sub_coroutines = {}
+    seen_sub_coroutines = {}
+    for var, name in collect_sub_coroutines(tree).items():
+        sub_coroutine = eval(name, func_globals, func_locals)()
+        orig_sub_coroutines[var] = sub_coroutine
+        if sub_coroutine._name not in seen_sub_coroutines:
+            sub_coroutines[var] = compile(sub_coroutine, strategy=strategy)
+            seen_sub_coroutines[sub_coroutine._name] = sub_coroutines[var]
+        else:
+            sub_coroutines[var] = seen_sub_coroutines[sub_coroutine._name]
+
+        add_coroutine_to_tables(sub_coroutine, width_table, type_table, var)
+
+    CollectInitialWidthsAndTypes(width_table, type_table, func_locals,
+                                 func_globals, orig_sub_coroutines).visit(tree)
     PromoteWidths(width_table, type_table).visit(tree)
     tree, loopvars = get_final_widths(tree, width_table, func_locals, func_globals)
 
@@ -110,11 +125,6 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     # Desugar(width_table).visit(tree)
     type_table = {}
     TypeChecker(width_table, type_table).check(tree)
-    sub_coroutines = {}
-    for var, name in collect_sub_coroutines(tree).items():
-        sub_coroutine = eval(name, func_globals, func_locals)()
-        sub_coroutines[var] = compile(sub_coroutine)
-        add_coroutine_to_tables(sub_coroutine, width_table, type_table, var)
     tree = desugar_send_calls(tree, sub_coroutines)
     # print(astor.to_source(tree))
     # DesugarArrays().run(tree)
@@ -171,7 +181,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
         raise NotImplementedError("add ce to module decl")
 
     # declare module and ports
-    ctx = verilog.Context(module_name, sub_coroutines)
+    ctx = verilog.Context(module_name, sub_coroutines, width_table)
 
     def get_len(t):
         try:
@@ -301,8 +311,8 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
                                 registers, sub_coroutines, strategy)
     # cfg.render()
     verilog_str = ""
-    for sub_coroutine in sub_coroutines.values():
-        verilog_str += sub_coroutine.verilogFile + "\n"
+    for defn in seen_sub_coroutines.values():
+        verilog_str += defn.verilogFile + "\n"
     verilog_str += ctx.to_verilog()
 
     if file_name is not None:

@@ -301,8 +301,7 @@ class ControlFlowGraph:
         Given a block, recursively build paths to yields
         """
         if isinstance(block, Yield):
-            if isinstance(block.value, ast.Yield) and block.value.value is None or \
-               isinstance(block.value, ast.Assign) and block.value.value.value is None:
+            if isinstance(initial_block, HeadBlock) and not hasattr(initial_block, "initial_yield"):
                 initial_block.initial_yield = block
                 return [path for path in self.find_paths(block.outgoing_edge[0], initial_block, conds)]
             else:
@@ -326,17 +325,9 @@ class ControlFlowGraph:
                         if special_func in args:
                             args.remove(special_func)
                     for arg in args:
-                        if arg in seen:
-                            continue
-                        seen.add(arg)
                         width = self.width_table[arg]
                         if width is None:
                             width = 1
-                        problem.addVariable(arg, range(0, 1 << width))
-                        if arg not in variables:
-                            variables[arg] = []
-                        variables[arg].append(arg)
-
                         class Wrapper(ast.NodeTransformer):
                             def __init__(self):
                                 super().__init__()
@@ -347,6 +338,13 @@ class ControlFlowGraph:
                                 return node
 
                         cond = Wrapper().visit(deepcopy(cond))
+                        if arg in seen:
+                            continue
+                        seen.add(arg)
+                        problem.addVariable(arg, range(0, 1 << width))
+                        if arg not in variables:
+                            variables[arg] = []
+                        variables[arg].append(arg)
                     _constraint = f"lambda {', '.join(args)}: ({astor.to_source(cond).rstrip()}) == BitVector[1]({result})"
                     # print(_constraint)
                     problem.addConstraint(
