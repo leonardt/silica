@@ -7,7 +7,7 @@ from silica.width import get_io_width
 
 class CollectInitialWidthsAndTypes(ast.NodeVisitor):
     def __init__(self, width_table, type_table, func_locals, func_globals,
-                 sub_coroutines):
+                 sub_coroutines={}):
         self.width_table = width_table
         self.type_table = type_table
         self.func_locals = func_locals
