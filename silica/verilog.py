@@ -46,7 +46,7 @@ def replace_references_to_registers(stmt, registers):
 
 
 class Context:
-    def __init__(self, name, sub_coroutines, width_table):
+    def __init__(self, name, sub_coroutines={}, width_table={}):
         self.module = vg.Module(name)
         self.sub_coroutines = sub_coroutines
         self.width_table = width_table
