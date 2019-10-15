@@ -1,13 +1,4 @@
-class State:
-    pass
-
-
-class Bit:
-    pass
-
-
-class FSM:
-    pass
+from compile import FSM, Bit, State
 
 
 class TAP(FSM):
