@@ -69,7 +69,7 @@ def specialize_init_methods(tree):
             for k0, v0 in attrs_to_specialize.items():
                 if not v0:
                     continue
-                self.replace_symbols(k0, v0)
+                self.replace_self_attr(k0, v0)
 
             for k0 in classes_to_specialize:
                 node.body.remove(self.class_defs[k0])
@@ -113,7 +113,7 @@ def specialize_init_methods(tree):
                     assert all(isinstance(k.value, ast.Num) for k in value.keywords)
                     new_name = orig_name + "_" + \
                         "_".join(str(k.value.n) for k in value.keywords)
-                    attr_map[attr] = new_name
+                    attr_map[attr] = ast.Name(new_name, ast.Load())
                     if value.func.id not in value_map:
                         value_map[value.func.id] = {}
                     value_map[value.func.id][new_name] = (args,
@@ -154,6 +154,21 @@ def specialize_init_methods(tree):
 
             return Transformer().visit(class_def)
 
+    return Transformer().visit(tree)
+
+
+def convert_to_class_methods(tree):
+    class Transformer(ast.NodeTransformer):
+        def visit_ClassDef(self, node):
+            for child in node.body:
+                if isinstance(child, ast.FunctionDef):
+                    child.decorator_list.append(ast.Name("classmethod",
+                                                         ast.Load()))
+                    child.args.args[0].arg = "cls"
+                    child.body = [self.replace_symbols(s, {"self": "cls"}) for
+                                  s in child.body]
+            return node
+
         def replace_symbols(self, tree, symbol_table):
             class Transformer(ast.NodeTransformer):
                 def visit_Name(self, node):
@@ -161,8 +176,61 @@ def specialize_init_methods(tree):
                         node.id = symbol_table[node.id]
                     return node
             return Transformer().visit(tree)
-
     return Transformer().visit(tree)
+
+
+def get_io(cls):
+    inputs = None
+    outputs = None
+    class Visitor(ast.NodeVisitor):
+        def visit_Assign(self, node):
+            if len(node.targets) == 1 and \
+                    isinstance(node.targets[0], ast.Name):
+                if node.targets[0].id == "inputs":
+                    inputs = node.value
+                elif node.targets[0].id == "outputs":
+                    outputs = node.value
+    Visitor().visit(cls)
+    return inputs, outputs
+
+
+def merge_classes(tree):
+    assert isinstance(tree, ast.Module)
+    new_body = []
+    first_class = None
+    for child in tree.body:
+        if not isinstance(child, ast.ClassDef):
+            new_body.append(child)
+        elif first_class is None:
+            new_body.append(child)
+            first_class = child
+        else:
+            assert get_io(first_class) == get_io(child)
+            for s in child.body:
+                if isinstance(s, ast.FunctionDef):
+                    s.name = child.name + "_" + s.name
+                    first_class.body.append(s)
+    tree.body = new_body
+    return tree
+
+
+def is_yield(node):
+    return isinstance(node, ast.Assign) and isinstance(node.value, ast.Yield)
+
+
+def collect_paths(block):
+    if is_yield(block.statements[0]):
+        return [[block]]
+    paths = []
+    if block.exits:
+        for exit_ in block.exits:
+            target = exit_.target
+            paths.extend([
+                [block] + s for s in collect_paths(target)
+            ])
+    else:
+        paths.append([block])
+    return paths
 
 
 def compile(file):
@@ -171,10 +239,48 @@ def compile(file):
         src = src_file.read()
         tree = ast.parse(src, mode='exec')
     tree = specialize_init_methods(tree)
+    tree = convert_to_class_methods(tree)
+    # tree = merge_classes(tree)
     print(astor.to_source(tree))
     cfg = CFGBuilder().build(name, tree)
     # cfg.build_visual(name, 'pdf')
     num_yields = sum(count_yields(s) for s in cfg.entryblock.statements)
+    paths = {}
+    for k, v in cfg.functioncfgs.items():
+        paths[k] = ([], [])  # entry paths, other paths
+        for block in v:
+            if block == v.entryblock:
+                if not is_yield(block.statements[0]):
+                    for exit_ in block.exits:
+                        target = exit_.target
+                        paths[k][0].extend([
+                            [block] + s for s in collect_paths(target)
+                        ])
+                else:
+                    paths[k][0].append([block])
+
+            if is_yield(block.statements[0]):
+                for exit_ in block.exits:
+                    target = exit_.target
+                    paths[k][1].extend([
+                        [block] + s for s in collect_paths(target)
+                    ])
+    for k, v in paths.items():
+        print(f"Function == {k}")
+        print(f"Entry paths")
+        for path in v[0]:
+            print("===== PATH START =====")
+            for block in path:
+                print(block.get_source().rstrip())
+            print("=====  PATH END  =====")
+            print()
+        print(f"Other paths")
+        for path in v[1]:
+            print("===== PATH START =====")
+            for block in path:
+                print(block.get_source().rstrip())
+            print("=====  PATH END  =====")
+            print()
     print(num_yields)
 
 
