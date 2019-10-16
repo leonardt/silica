@@ -17,16 +17,16 @@ class TAP(FSM):
     def test_logic_reset(self):
         while True:
             tms = yield 15
-            if ~tms:
-                break
-        yield from self.run_test_idle()
+            if tms == 0:
+                yield from self.run_test_idle()
+                return
 
     def run_test_idle(self):
         while True:
             tms = yield 12
-            if tms:
-                break
-        yield from self.select_dr_scan()
+            if tms == 1:
+                yield from self.select_dr_scan()
+                return
 
     def select_dr_scan(self):
         tms = yield 7
@@ -62,8 +62,8 @@ class Scan(FSM):
         while True:
             tms = yield self.encodings["shift"]
             if tms == 0:
-                break
-        yield from self.exit_1()
+                yield from self.exit_1()
+                return
 
     def exit_1(self):
         tms = yield self.encodings["exit_1"]

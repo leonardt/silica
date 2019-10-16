@@ -180,16 +180,24 @@ def convert_to_class_methods(tree):
 
 
 def get_io(cls):
-    inputs = None
-    outputs = None
+    inputs = {}
+    outputs = {}
     class Visitor(ast.NodeVisitor):
         def visit_Assign(self, node):
             if len(node.targets) == 1 and \
                     isinstance(node.targets[0], ast.Name):
                 if node.targets[0].id == "inputs":
-                    inputs = node.value
+                    assert isinstance(node.value, ast.Dict)
+                    for k, v in zip(node.value.keys, node.value.values):
+                        assert isinstance(k, ast.Str)
+                        assert isinstance(v, ast.Name)
+                        inputs[k.s] = v.id
                 elif node.targets[0].id == "outputs":
-                    outputs = node.value
+                    assert isinstance(node.value, ast.Dict)
+                    for k, v in zip(node.value.keys, node.value.values):
+                        assert isinstance(k, ast.Str)
+                        assert isinstance(v, ast.Name)
+                        outputs[k.s] = v.id
     Visitor().visit(cls)
     return inputs, outputs
 
@@ -310,7 +318,7 @@ def build_func_to_paths_map(cfg):
 
 
 def join_yield_froms(func_to_paths_map):
-    print(list(func_to_paths_map.keys()))
+    # print(list(func_to_paths_map.keys()))
     new_func_to_paths_map = {}
     for k, v in func_to_paths_map.items():
         new_entry_paths = []
@@ -328,7 +336,7 @@ def join_yield_froms(func_to_paths_map):
                     for node in block.statements:
                         if is_yield_from(node):
                             func = node.value.value
-                            print(astor.to_source(node.value.value))
+                            # print(astor.to_source(node.value.value))
                             if isinstance(func.func, ast.Attribute) and \
                                     isinstance(func.func.value, ast.Name) and \
                                     func.func.value.id == "cls":
@@ -349,37 +357,117 @@ def join_yield_froms(func_to_paths_map):
 
 
 def compile(file):
-    name = file[-3:]
+    name = file[:-3]
     with open(file, 'r') as src_file:
         src = src_file.read()
         tree = ast.parse(src, mode='exec')
     tree = specialize_init_methods(tree)
     tree = convert_to_class_methods(tree)
     tree = merge_classes(tree)
-    print(astor.to_source(tree))
-    raise Exception()
+    io = get_io(tree.body[-1])
+    # print(astor.to_source(tree))
     cfg = CFGBuilder().build(name, tree)
     # cfg.build_visual(name, 'pdf')
     num_yields = sum(count_yields(s) for s in cfg.entryblock.statements)
     func_to_paths_map = build_func_to_paths_map(cfg)
     join_yield_froms(func_to_paths_map)
+    # for k, v in func_to_paths_map.items():
+    #     print(f"Function == {k}")
+    #     print(f"Entry paths")
+    #     for path in v.entry_paths:
+    #         print("===== PATH START =====")
+    #         for block in path:
+    #             print(block.get_source().rstrip())
+    #         print("=====  PATH END  =====")
+    #         print()
+    #     print(f"Other paths")
+    #     for path in v.other_paths:
+    #         print("===== PATH START =====")
+    #         for block in path:
+    #             print(block.get_source().rstrip())
+    #         print("=====  PATH END  =====")
+    #         print()
+    # print(num_yields)
+    transitions = []
     for k, v in func_to_paths_map.items():
-        print(f"Function == {k}")
-        print(f"Entry paths")
-        for path in v.entry_paths:
-            print("===== PATH START =====")
-            for block in path:
-                print(block.get_source().rstrip())
-            print("=====  PATH END  =====")
-            print()
-        print(f"Other paths")
-        for path in v.other_paths:
-            print("===== PATH START =====")
-            for block in path:
-                print(block.get_source().rstrip())
-            print("=====  PATH END  =====")
-            print()
-    print(num_yields)
+        for path in v.entry_paths + v.other_paths:
+            # Ignore entry paths
+            if is_yield(path[0].statements[0]) and \
+                    is_yield(path[-1].statements[0]) and len(path) > 1:
+                start_state = path[0].statements[0].value.value.n
+                end_state = path[-1].statements[0].value.value.n
+                cases = set()
+                for i, block in enumerate(path):
+                    if i == len(path) - 1:
+                        continue
+                    for exit_ in block.exits:
+                        if exit_.target == path[i + 1]:
+                            break
+                    if exit_.exitcase:
+                        cases.add(exit_.get_exitcase().rstrip())
+                # print("cases:", cases)
+                # FIXME: Hack to remove impossible transitions
+                impossible = False
+                for case in cases:
+                    if "==" in case and case.replace("==", "!=") in cases or \
+                            "!=" in case and case.replace("!=", "==") in cases:
+                        impossible = True
+                if not impossible:
+                    if "True" in cases:
+                        cases.remove("True")
+                    transitions.append((start_state, end_state, cases))
+    print("\n".join(str(x) for x in transitions))
+    print(f"num_transitions={len(transitions)}")
+    print(f"num_states={num_yields}")
+    print(f"inputs={io[0]}, outputs={io[1]}")
+
+    state_width = (num_yields - 1).bit_length()
+    io_str = ""
+    for input_, t in io[0].items():
+        if io_str:
+            io_str += ", "
+        if t != "Bit":
+            raise NotImplementedError()
+        io_str += f"input {input_}"
+
+    for output_, t in io[1].items():
+        if io_str:
+            io_str += ", "
+        if t != "State":
+            raise NotImplementedError()
+        width = f"[{state_width - 1}:0] "
+        io_str += f"output {width}{output_}"
+
+    case_map = defaultdict(list)
+    for transition in transitions:
+        case_map[transition[0]].append(transition[1:])
+
+    case_str = ""
+    case_str += "case (state)\n"
+    for case, transitions in case_map.items():
+        case_str += "    "
+        case_str += f"{case}: "
+        for transition in transitions:
+            if transition != transitions[0]:
+                case_str += " else "
+            cond = " && ".join(transition[1])
+            case_str += f"if ({cond}) begin\n"
+            case_str += f"        state <= {transition[0]}\n"
+            case_str += f"    end"
+        case_str += "\n"
+    case_str += "endcase"
+    case_str = "   " + "\n    ".join(line for line in case_str.splitlines())
+    module_tmpl = f"""
+module {name}({io_str}, input CLK);
+reg [{state_width - 1}:0] state;
+always @(posedge CLK) begin
+{case_str}
+end
+endmodule
+    """
+    # print(module_tmpl)
+    with open(f"{name}.v", "w") as f:
+        f.write(module_tmpl)
 
 
 compile("fsm.py")
