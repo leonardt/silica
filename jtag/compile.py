@@ -452,14 +452,18 @@ def compile(file):
                 case_str += " else "
             cond = " && ".join(transition[1])
             case_str += f"if ({cond}) begin\n"
-            case_str += f"        state <= {transition[0]}\n"
+            case_str += f"        state <= {transition[0]};\n"
             case_str += f"    end"
         case_str += "\n"
     case_str += "endcase"
     case_str = "   " + "\n    ".join(line for line in case_str.splitlines())
+
+    # Assumes first state is first key
+    init = list(case_map.keys())[0]
+
     module_tmpl = f"""
 module {name}({io_str}, input CLK);
-reg [{state_width - 1}:0] state;
+reg [{state_width - 1}:0] state = {init};
 always @(posedge CLK) begin
 {case_str}
 end

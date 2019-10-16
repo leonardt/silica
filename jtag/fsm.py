@@ -61,7 +61,7 @@ class Scan(FSM):
     def shift(self):
         while True:
             tms = yield self.encodings["shift"]
-            if tms == 0:
+            if tms == 1:
                 yield from self.exit_1()
                 return
 
