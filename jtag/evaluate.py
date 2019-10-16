@@ -29,7 +29,7 @@ def evaluate_circuit(verilog_file, top_name):
     results[top_name]["LCs"] = 0
     results[top_name]["PLBs"] = 0
 
-    num_trials = 5
+    num_trials = 1
     for i in range(0, num_trials):
         res = run(f"yosys -p 'synth_ice40 -top {top_name} -blif {verilog_file}.blif' {verilog_file}.v | grep -A 20 \"2.44. Printing statistics.\"")
         for line in res.out.splitlines():
@@ -89,3 +89,5 @@ def evaluate_circuit(verilog_file, top_name):
 evaluate_circuit("fsm", "fsm")
 
 evaluate_circuit("reference", "tap")
+
+evaluate_circuit("chisel", "JtagStateMachine")

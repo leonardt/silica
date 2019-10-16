@@ -21,9 +21,16 @@ PAUSE_IR = 11
 EXIT2_IR = 8
 UPDATE_IR = 13
 
-circ = m.DefineFromVerilogFile("fsm.v", type_map={"CLK": m.In(m.Clock)})[0]
+circ = m.DefineFromVerilogFile("fsm.v", type_map={"CLK": m.In(m.Clock),
+                                                  "RESET": m.In(m.Reset)})[0]
 tester = fault.Tester(circ, circ.CLK)
 tester.circuit.tms = 1
+tester.circuit.RESET = 0
+tester.eval()
+tester.circuit.RESET = 1
+tester.eval()
+tester.circuit.RESET = 0
+tester.eval()
 tester.step(2)
 tester.circuit.state.expect(TEST_LOGIC_RESET)
 tester.circuit.tms = 1
@@ -131,12 +138,42 @@ tester.step(2)
 tester.circuit.state.expect(UPDATE_IR)
 # END REPEAT FOR IR
 
-tester.circuit.tms = 0
+tester.circuit.tms = 1
 tester.step(2)
-tester.circuit.state.expect(RUN_TEST_IDLE)
+tester.circuit.state.expect(SELECT_DR_SCAN)
+
+tester.circuit.tms = 1
+tester.step(2)
+tester.circuit.state.expect(SELECT_IR_SCAN)
+
+tester.circuit.tms = 1
+tester.step(2)
+tester.circuit.state.expect(TEST_LOGIC_RESET)
 
 tester.compile_and_run("verilator", magma_output="verilog")
-ref = m.DefineFromVerilogFile("reference.v", type_map={"CLK": m.In(m.Clock)})[0]
+ref = m.DefineFromVerilogFile("reference.v",
+                              type_map={"CLK": m.In(m.Clock),
+                                        "RESET": m.In(m.Reset)})[0]
 
 ref_tester = tester.retarget(ref, ref.CLK)
 ref_tester.compile_and_run("verilator", magma_output="verilog")
+
+chisel_ref = m.DefineFromVerilogFile("chisel.v",
+                                     type_map={"clk": m.In(m.Clock),
+                                               "reset": m.In(m.Reset)},
+                                     target_modules=["JtagStateMachine"])[0]
+
+class ChiselWrapper(m.Circuit):
+    IO = ["CLK", m.In(m.Clock), "tms", m.In(m.Bit), "state", m.Out(m.Bits[4]),
+          "RESET", m.In(m.Reset)]
+    @classmethod
+    def definition(io):
+        fsm = chisel_ref()
+        fsm.clock <= io.CLK
+        fsm.reset <= io.RESET
+        fsm.io_tms <= io.tms
+        io.state <= fsm.io_currState
+
+
+chisel_tester = tester.retarget(ChiselWrapper, ChiselWrapper.CLK)
+chisel_tester.compile_and_run("verilator", magma_output="verilog")

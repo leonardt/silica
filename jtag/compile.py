@@ -451,8 +451,10 @@ def compile(file):
             if transition != transitions[0]:
                 case_str += " else "
             cond = " && ".join(transition[1])
-            case_str += f"if ({cond}) begin\n"
-            case_str += f"        state <= {transition[0]};\n"
+            if transition != transitions[-1]:
+                case_str += f"if ({cond}) "
+            case_str += "begin\n"
+            case_str += f"        next_state = {transition[0]};\n"
             case_str += f"    end"
         case_str += "\n"
     case_str += "endcase"
@@ -462,10 +464,20 @@ def compile(file):
     init = list(case_map.keys())[0]
 
     module_tmpl = f"""
-module {name}({io_str}, input CLK);
-reg [{state_width - 1}:0] state = {init};
-always @(posedge CLK) begin
-{case_str}
+module {name}({io_str}, input CLK, input RESET);
+reg [{state_width - 1}:0] curr_state;
+reg [{state_width - 1}:0] next_state;
+assign state = curr_state;
+
+always @(posedge CLK or posedge RESET) begin
+    if (RESET) begin
+        curr_state <= {init};
+    end else begin
+        curr_state <= next_state;
+    end
+end
+always @(*) begin
+  {case_str}
 end
 endmodule
     """

@@ -6,10 +6,10 @@ class TAP(FSM):
     outputs = {"state": State}
 
     def __init__(self):
-        self.ir_scan = Scan(self, capture=14, shift=10, exit_1=9, pause=11,
-                            exit_2=8, update=13)
         self.dr_scan = Scan(self, capture=6, shift=2, exit_1=1, pause=3,
                             exit_2=0, update=5)
+        self.ir_scan = Scan(self, capture=14, shift=10, exit_1=9, pause=11,
+                            exit_2=8, update=13)
 
     def __call__(self):
         yield from self.test_logic_reset()

@@ -1,4 +1,4 @@
-module tap(input tms, output [3:0] state, input CLK);
+module tap(input tms, output [3:0] state, input CLK, input RESET);
   localparam TEST_LOGIC_RESET = 4'd15 ,
              RUN_TEST_IDLE = 4'd12 ,
              SELECT_DR_SCAN = 4'd7 ,
@@ -15,11 +15,15 @@ module tap(input tms, output [3:0] state, input CLK);
              PAUSE_IR = 4'd11 ,
              EXIT2_IR = 4'd8 ,
              UPDATE_IR = 4'd13;
-  reg [3:0] CS = TEST_LOGIC_RESET;
+  reg [3:0] CS;
   reg [3:0] NS;
   assign state = CS;
-  always @(posedge CLK) begin
-    CS <= NS;
+  always @(posedge CLK, posedge RESET) begin
+    if (RESET) begin
+      CS <= TEST_LOGIC_RESET;
+    end else begin
+      CS <= NS;
+    end
   end
   always @(*) begin
     case(CS)
@@ -38,7 +42,7 @@ module tap(input tms, output [3:0] state, input CLK);
       EXIT1_IR : NS = tms ? UPDATE_IR : PAUSE_IR ;
       PAUSE_IR : NS = tms ? EXIT2_IR : PAUSE_IR ;
       EXIT2_IR : NS = tms ? UPDATE_IR : SHIFT_IR ;
-      UPDATE_IR : NS = tms ? SELECT_IR_SCAN : RUN_TEST_IDLE ;
+      UPDATE_IR : NS = tms ? SELECT_DR_SCAN : RUN_TEST_IDLE ;
     endcase
   end
 endmodule
