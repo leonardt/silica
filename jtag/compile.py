@@ -1,8 +1,16 @@
+import re
+from abc import ABCMeta
+import inspect
 import copy
 import ast
 from collections import defaultdict
 from staticfg import CFGBuilder
 import astor
+from silica.transformations import specialize_constants
+
+
+class NoInitException(Exception):
+    pass
 
 
 class State:
@@ -10,6 +18,16 @@ class State:
 
 
 class Bit:
+    pass
+
+
+
+class BitsMeta(ABCMeta):
+    def __getitem__(cls, n):
+        pass
+
+
+class Bits(metaclass=BitsMeta):
     pass
 
 
@@ -50,7 +68,10 @@ def specialize_init_methods(tree):
             attrs_to_specialize = {}
             classes_to_specialize = {}
             for class_def in self.class_defs.values():
-                init_method = self.get_init_method(class_def.body)
+                try:
+                    init_method = self.get_init_method(class_def.body)
+                except NoInitException:
+                    continue
                 attr_map, value_map = self.process_init(class_def.name, init_method)
                 attrs_to_specialize[class_def] = attr_map
                 # class_def.body.remove(init_method)
@@ -76,7 +97,10 @@ def specialize_init_methods(tree):
 
             for item in node.body:
                 if isinstance(item, ast.ClassDef):
-                    item.body.remove(self.get_init_method(item.body))
+                    try:
+                        item.body.remove(self.get_init_method(item.body))
+                    except NoInitException:
+                        continue
 
             node.body += list(specialized_classes.values())
 
@@ -87,7 +111,7 @@ def specialize_init_methods(tree):
                 if isinstance(node, ast.FunctionDef) and \
                         node.name == "__init__":
                     return node
-            raise Exception("Did not find __init__ method")
+            raise NoInitException("Did not find __init__ method")
 
         def process_init(self, class_name, method):
             attr_map = {}
@@ -190,14 +214,12 @@ def get_io(cls):
                     assert isinstance(node.value, ast.Dict)
                     for k, v in zip(node.value.keys, node.value.values):
                         assert isinstance(k, ast.Str)
-                        assert isinstance(v, ast.Name)
-                        inputs[k.s] = v.id
+                        inputs[k.s] = astor.to_source(v).rstrip()
                 elif node.targets[0].id == "outputs":
                     assert isinstance(node.value, ast.Dict)
                     for k, v in zip(node.value.keys, node.value.values):
                         assert isinstance(k, ast.Str)
-                        assert isinstance(v, ast.Name)
-                        outputs[k.s] = v.id
+                        outputs[k.s] = astor.to_source(v).rstrip()
     Visitor().visit(cls)
     return inputs, outputs
 
@@ -256,7 +278,7 @@ def merge_classes(tree):
                     to_append.append(s)
             first_class.body += to_append
     tree.body = new_body
-    return tree
+    return tree, get_io(first_class)
 
 
 def is_yield(node):
@@ -363,8 +385,10 @@ def compile(file):
         tree = ast.parse(src, mode='exec')
     tree = specialize_init_methods(tree)
     tree = convert_to_class_methods(tree)
-    tree = merge_classes(tree)
-    io = get_io(tree.body[-1])
+    tree, io = merge_classes(tree)
+    stack = inspect.stack()
+    defn_locals = stack[1].frame.f_locals
+    specialize_constants(tree, defn_locals)
     # print(astor.to_source(tree))
     cfg = CFGBuilder().build(name, tree)
     # cfg.build_visual(name, 'pdf')
@@ -389,13 +413,30 @@ def compile(file):
     #         print()
     # print(num_yields)
     transitions = []
+    init_outputs = None
     for k, v in func_to_paths_map.items():
         for path in v.entry_paths + v.other_paths:
             # Ignore entry paths
             if is_yield(path[0].statements[0]) and \
                     is_yield(path[-1].statements[0]) and len(path) > 1:
-                start_state = path[0].statements[0].value.value.n
-                end_state = path[-1].statements[0].value.value.n
+                if isinstance(path[0].statements[0].value.value, ast.Tuple):
+                    start_state = path[0].statements[0].value.value.elts[0]
+                    end_state = path[-1].statements[0].value.value.elts[0]
+                    outputs = path[-1].statements[0].value.value.elts[1:]
+                else:
+                    start_state = path[0].statements[0].value.value
+                    end_state = path[-1].statements[0].value.value
+                    outputs = []
+                if init_outputs is None:
+                    init_outputs = outputs
+                if isinstance(start_state, ast.Str):
+                    assert isinstance(end_state, ast.Str)
+                    start_state, end_state = start_state.s, end_state.s
+                elif isinstance(start_state, ast.Num):
+                    assert isinstance(end_state, ast.Num)
+                    start_state, end_state = start_state.n, end_state.n
+                else:
+                    raise NotImplementedError()
                 cases = set()
                 for i, block in enumerate(path):
                     if i == len(path) - 1:
@@ -415,7 +456,7 @@ def compile(file):
                 if not impossible:
                     if "True" in cases:
                         cases.remove("True")
-                    transitions.append((start_state, end_state, cases))
+                    transitions.append((start_state, end_state, cases, outputs))
     print("\n".join(str(x) for x in transitions))
     print(f"num_transitions={len(transitions)}")
     print(f"num_states={num_yields}")
@@ -426,21 +467,43 @@ def compile(file):
     for input_, t in io[0].items():
         if io_str:
             io_str += ", "
-        if t != "Bit":
+        width = ""
+        if "Bits" in t:
+            n = int(re.search(r"\[([0-9]+)\]", t).group(1))
+            width = f"[{n - 1}:0] "
+        elif t != "Bit":
             raise NotImplementedError()
-        io_str += f"input {input_}"
-
-    for output_, t in io[1].items():
-        if io_str:
-            io_str += ", "
-        if t != "State":
-            raise NotImplementedError()
-        width = f"[{state_width - 1}:0] "
-        io_str += f"output {width}{output_}"
+        io_str += f"input {width}{input_}"
 
     case_map = defaultdict(list)
     for transition in transitions:
         case_map[transition[0]].append(transition[1:])
+
+    output_regs = ""
+    output_reg_updates = ""
+    output_reg_inits = ""
+    for i, (output_, t) in enumerate(io[1].items()):
+        if io_str:
+            io_str += ", "
+        if "Bits" in t:
+            n = int(re.search(r"\[([0-9]+)\]", t).group(1))
+            width = f"[{n - 1}:0] "
+        elif t == "State":
+            width = f"[{state_width - 1}:0] "
+        else:
+            raise NotImplementedError()
+        io_str += f"output {width}{output_}"
+        output_regs += f"reg {width}curr_{output_};\n"
+        output_regs += f"reg {width}next_{output_};\n"
+        output_regs += f"assign {output_} = curr_{output_};\n"
+        output_regs += f"\n"
+        output_reg_updates += f"        curr_{output_} <= next_{output_};\n"
+        # ASSUMES STATE == i == 0
+        if i == 0:
+            init = list(case_map.keys())[0]
+        else:
+            init = init_outputs[i - 1].s
+        output_reg_inits += f"        curr_{output_} <= {init};\n"
 
     case_str = ""
     case_str += "case (state)\n"
@@ -451,29 +514,47 @@ def compile(file):
             if transition != transitions[0]:
                 case_str += " else "
             cond = " && ".join(transition[1])
-            if transition != transitions[-1]:
+            cond = cond.replace("not", "~")
+            if len(transitions) == 1:
+                pass
+            # FIXME: Hack to add else clause for tms == 0 or tms == 1
+            elif transition == transitions[-1] and len(transitions) == 2 and \
+                    "&&".join(transitions[0][1]).replace("==", "!=") == cond:
+                pass
+            else:
                 case_str += f"if ({cond}) "
             case_str += "begin\n"
             case_str += f"        next_state = {transition[0]};\n"
+            for o, v in zip(list(io[1].keys())[1:], transition[2]):
+                assert isinstance(v, ast.Str)
+                case_str += f"        next_{o} = {v.s};\n"
+
             case_str += f"    end"
         case_str += "\n"
     case_str += "endcase"
     case_str = "   " + "\n    ".join(line for line in case_str.splitlines())
 
     # Assumes first state is first key
-    init = list(case_map.keys())[0]
+
+    # HANDLED BY EXPLICIT STATE OUTPUT
+    # reg [{state_width - 1}:0] curr_state;
+    # reg [{state_width - 1}:0] next_state;
+    # assign state = curr_state;
+    #
+    # init = list(case_map.keys())[0]
+    # curr_state <= {init};
+    #
+    # curr_state <= next_state;
 
     module_tmpl = f"""
 module {name}({io_str}, input CLK, input RESET);
-reg [{state_width - 1}:0] curr_state;
-reg [{state_width - 1}:0] next_state;
-assign state = curr_state;
 
+{output_regs}
 always @(posedge CLK or posedge RESET) begin
     if (RESET) begin
-        curr_state <= {init};
+{output_reg_inits}
     end else begin
-        curr_state <= next_state;
+{output_reg_updates.rstrip()}
     end
 end
 always @(*) begin
@@ -484,6 +565,3 @@ endmodule
     # print(module_tmpl)
     with open(f"{name}.v", "w") as f:
         f.write(module_tmpl)
-
-
-compile("fsm.py")

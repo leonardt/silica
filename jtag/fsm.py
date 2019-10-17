@@ -1,4 +1,4 @@
-from compile import FSM, Bit, State
+from compile import FSM, Bit, State, compile
 
 
 class TAP(FSM):
@@ -80,3 +80,6 @@ class Scan(FSM):
             yield from self.tap.select_dr_scan()
         else:
             yield from self.tap.run_test_idle()
+
+
+compile("fsm.py")

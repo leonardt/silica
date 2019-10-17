@@ -15,6 +15,8 @@ class InlineConstants(ast.NodeTransformer):
                 return copy.deepcopy(constant)
             elif isinstance(constant, int):
                 return ast.Num(constant)
+            elif isinstance(constant, str):
+                return ast.Str(constant)
             elif isinstance(constant, silica.BitVector):
                 return ast.parse(f"bits({constant._value}, {constant.num_bits})").body[0].value
         return node
