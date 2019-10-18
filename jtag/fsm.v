@@ -16,88 +16,103 @@ always @(posedge CLK or posedge RESET) begin
     end
 end
 always @(*) begin
-     case (state)
-        15: if ((tms == 0)) begin
+    if (state == 15) begin
+        if ((tms == 0)) begin
             next_state = 12;
         end else begin
             next_state = 15;
         end
-        12: if ((tms == 1)) begin
+    end else if (state == 12) begin
+        if ((tms == 1)) begin
             next_state = 7;
         end else begin
             next_state = 12;
         end
-        7: if ((tms == 1)) begin
+    end else if (state == 7) begin
+        if ((tms == 1)) begin
             next_state = 4;
         end else begin
             next_state = 6;
         end
-        4: if ((tms == 1)) begin
+    end else if (state == 4) begin
+        if ((tms == 1)) begin
             next_state = 15;
         end else begin
             next_state = 14;
         end
-        6: if ((tms == 1)) begin
+    end else if (state == 6) begin
+        if ((tms == 1)) begin
             next_state = 1;
         end else begin
             next_state = 2;
         end
-        2: if ((tms == 1)) begin
+    end else if (state == 2) begin
+        if ((tms == 1)) begin
             next_state = 1;
         end else begin
             next_state = 2;
         end
-        1: if ((tms == 0)) begin
+    end else if (state == 1) begin
+        if ((tms == 0)) begin
             next_state = 3;
         end else begin
             next_state = 5;
         end
-        5: if ((tms == 1)) begin
+    end else if (state == 5) begin
+        if ((tms == 1)) begin
             next_state = 7;
         end else begin
             next_state = 12;
         end
-        3: if ((tms == 0)) begin
+    end else if (state == 3) begin
+        if ((tms == 0)) begin
             next_state = 3;
         end else begin
             next_state = 0;
         end
-        0: if ((tms == 0)) begin
+    end else if (state == 0) begin
+        if ((tms == 0)) begin
             next_state = 2;
         end else begin
             next_state = 5;
         end
-        14: if ((tms == 1)) begin
+    end else if (state == 14) begin
+        if ((tms == 1)) begin
             next_state = 9;
         end else begin
             next_state = 10;
         end
-        10: if ((tms == 1)) begin
+    end else if (state == 10) begin
+        if ((tms == 1)) begin
             next_state = 9;
         end else begin
             next_state = 10;
         end
-        9: if ((tms == 0)) begin
+    end else if (state == 9) begin
+        if ((tms == 0)) begin
             next_state = 11;
         end else begin
             next_state = 13;
         end
-        13: if ((tms == 1)) begin
+    end else if (state == 13) begin
+        if ((tms == 1)) begin
             next_state = 7;
         end else begin
             next_state = 12;
         end
-        11: if ((tms == 0)) begin
+    end else if (state == 11) begin
+        if ((tms == 0)) begin
             next_state = 11;
         end else begin
             next_state = 8;
         end
-        8: if ((tms == 0)) begin
+    end else if (state == 8) begin
+        if ((tms == 0)) begin
             next_state = 10;
         end else begin
             next_state = 13;
         end
-    endcase
+    end
 end
 endmodule
     

@@ -95,7 +95,7 @@ class SDRAM(FSM):
         refresh_cnt, rd_enable, wr_enable = yield REF_PRE, CMD_PALL
         refresh_cnt, rd_enable, wr_enable = yield REF_NOP1, CMD_NOP
         refresh_cnt, rd_enable, wr_enable = yield REF_REF, CMD_REF
-        for _ in range(8, -1, -1):
+        for _ in range(7, -1, -1):
             refresh_cnt, rd_enable, wr_enable = yield REF_NOP2, CMD_NOP
         yield from self.idle()
 

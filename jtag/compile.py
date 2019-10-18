@@ -601,10 +601,12 @@ def compile(file):
         regs_str += f"reg {width}{r};\n"
 
     case_str = ""
-    case_str += "case (state)\n"
-    for case, transitions in case_map.items():
-        case_str += "    "
-        case_str += f"{case}: "
+    # case_str += "case (state)\n"
+    for i, (case, transitions) in enumerate(case_map.items()):
+        # case_str += "    "
+        if i > 0:
+            case_str += "end else "
+        case_str += f"if (state == {case}) begin\n    "
         for transition in transitions:
             if transition != transitions[0]:
                 case_str += " else "
@@ -628,8 +630,9 @@ def compile(file):
 
             case_str += f"    end"
         case_str += "\n"
-    case_str += "endcase"
-    case_str = "   " + "\n    ".join(line for line in case_str.splitlines())
+    case_str += "end"
+    # case_str += "endcase"
+    case_str = "    " + "\n    ".join(line for line in case_str.splitlines())
 
     # Assumes first state is first key
 
@@ -656,7 +659,7 @@ always @(posedge CLK or posedge RESET) begin
     end
 end
 always @(*) begin
-  {case_str}
+{case_str}
 end
 endmodule
     """
