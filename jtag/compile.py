@@ -502,14 +502,14 @@ def compile(file):
                     is_yield(path[-1].statements[0]) and len(path) > 1:
                 if isinstance(path[0].statements[0].value.value, ast.Tuple):
                     start_state = path[0].statements[0].value.value.elts[0]
+                    if init_outputs is None:
+                        init_outputs = path[0].statements[0].value.value.elts[1:]
                     end_state = path[-1].statements[0].value.value.elts[0]
                     outputs = path[-1].statements[0].value.value.elts[1:]
                 else:
                     start_state = path[0].statements[0].value.value
                     end_state = path[-1].statements[0].value.value
                     outputs = []
-                if init_outputs is None:
-                    init_outputs = outputs
                 if isinstance(start_state, ast.Str):
                     assert isinstance(end_state, ast.Str)
                     start_state, end_state = start_state.s, end_state.s
