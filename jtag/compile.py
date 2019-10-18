@@ -472,7 +472,7 @@ def compile(file):
     desugar_for_loops(tree)
     # print(astor.to_sourme(tree))
     cfg = CFGBuilder().build(name, tree)
-    # cfg.build_visual(name, 'pdf')
+    cfg.build_visual(name, 'pdf')
     num_yields = sum(count_yields(s) for s in cfg.entryblock.statements)
     func_to_paths_map = build_func_to_paths_map(cfg)
     join_yield_froms(func_to_paths_map)
