@@ -495,6 +495,13 @@ def compile(file):
     # print(num_yields)
     transitions = []
     init_outputs = None
+    init_assigns = []
+    # TODO: Assumes first path in second func
+    for block in list(func_to_paths_map.values())[1].entry_paths[0]:
+        for statement in block.statements:
+            if isinstance(statement, ast.Assign) and \
+                    not is_yield(statement):
+                init_assigns.append(statement)
     for k, v in func_to_paths_map.items():
         for path in v.entry_paths + v.other_paths:
             # Ignore entry paths
@@ -598,6 +605,7 @@ def compile(file):
             width = f"[{n - 1}:0] "
         else:
             raise NotImplementedError()
+        regs_str += f"reg {width}{r}_curr;\n"
         regs_str += f"reg {width}{r};\n"
 
     case_str = ""
@@ -634,6 +642,18 @@ def compile(file):
     # case_str += "endcase"
     case_str = "    " + "\n    ".join(line for line in case_str.splitlines())
 
+    reg_defaults = ""
+    reg_updates = ""
+    reg_inits = ""
+    for r, t in registers.items():
+        reg_defaults += f"    {r} = {r}_curr;\n"
+        reg_updates += f"        {r}_curr <= {r};\n"
+    for assign in init_assigns:
+        s = astor.to_source(assign).rstrip()
+        for r in registers.keys():
+            s = s.replace(r, f"{r}_curr")
+        reg_inits += f"        {s.replace('=', '<=')};\n"
+
     # Assumes first state is first key
 
     # HANDLED BY EXPLICIT STATE OUTPUT
@@ -653,12 +673,15 @@ module {name}({io_str}, input CLK, input RESET);
 {output_regs}
 always @(posedge CLK or posedge RESET) begin
     if (RESET) begin
+{reg_inits}
 {output_reg_inits}
     end else begin
 {output_reg_updates.rstrip()}
+{reg_updates}
     end
 end
 always @(*) begin
+{reg_defaults}
 {case_str}
 end
 endmodule

@@ -13,9 +13,10 @@ tester.circuit.RESET = 1
 tester.eval()
 tester.circuit.RESET = 0
 tester.eval()
-tester.circuit.state.expect(0b01000)
-tester.circuit.cmd.expect(0b10111000)
-tester.step(2)
+for i in range(16):
+    tester.circuit.state.expect(0b01000)
+    tester.circuit.cmd.expect(0b10111000)
+    tester.step(2)
 tester.circuit.state.expect(0b01001)
 tester.circuit.cmd.expect(0b10010001)
 tester.step(2)

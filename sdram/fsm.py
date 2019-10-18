@@ -61,14 +61,15 @@ class SDRAM(FSM):
         "cmd": Bits[8]
     }
     registers = {
-        "_": Bits[3]
+        "_": Bits[4]
     }
 
     def __call__(self):
         yield from self.init()
 
     def init(self):
-        refresh_cnt, rd_enable, wr_enable = yield INIT_NOP1, CMD_NOP
+        for _ in range(15, -1, -1):
+            refresh_cnt, rd_enable, wr_enable = yield INIT_NOP1, CMD_NOP
         refresh_cnt, rd_enable, wr_enable = yield INIT_PRE1, CMD_PALL
         refresh_cnt, rd_enable, wr_enable = yield INIT_NOP1_1, CMD_NOP
         refresh_cnt, rd_enable, wr_enable = yield INIT_REF1, CMD_REF
