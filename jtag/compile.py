@@ -6,7 +6,8 @@ import ast
 from collections import defaultdict
 from staticfg import CFGBuilder
 import astor
-from silica.transformations import specialize_constants
+from silica.transformations import specialize_constants, constant_fold
+from silica.ast_utils import *
 
 
 class NoInitException(Exception):
@@ -34,6 +35,69 @@ class Bits(metaclass=BitsMeta):
 class FSM:
     pass
 
+
+def desugar_for_loops(tree):
+    class ForLoopDesugarer(ast.NodeTransformer):
+        def __init__(self):
+            super().__init__()
+            self.loopvars = set()
+
+        def visit_For(self, node):
+            new_body = []
+            for s in node.body:
+                result = self.visit(s)
+                if isinstance(result, list):
+                    new_body.extend(result)
+                else:
+                    new_body.append(result)
+            node.body = new_body
+
+            # range() iterator
+            if is_call(node.iter) and is_name(node.iter.func) and \
+               node.iter.func.id == "range":
+                if len(node.iter.args) > 0:
+                    if not len(node.iter.args) < 4:
+                        raise TypeError("range expected at most 3 arguments, got {}"
+                                        .format(len(node.iter.args)))
+                    if not is_name(node.target):
+                        raise NotImplementedError("Target is not a named argument: `{}`"
+                                                  .format(to_source(node.target)))
+
+                    start = ast.Num(0)
+                    stop  = node.iter.args[0]
+                    step  = ast.Num(1)
+
+                    if len(node.iter.args) > 1:
+                        start = node.iter.args[0]
+                        stop  = node.iter.args[1]
+
+                    if len(node.iter.args) == 3:
+                        step  = node.iter.args[2]
+                    neg_step = isinstance(step, ast.UnaryOp) and isinstance(step.op, ast.USub)
+                    if neg_step:
+                        stop = ast.BinOp(stop, ast.Add(), ast.Num(1))
+                    else:
+                        stop = ast.BinOp(stop, ast.Sub(), ast.Num(1))
+                    stop = constant_fold(stop)
+                else:
+                    raise NotImplementedError("keyword iterators are not yet supported")
+
+                bit_width = eval(astor.to_source(stop).rstrip() + "-" + astor.to_source(start).rstrip()).bit_length()
+                self.loopvars.add((node.target.id, bit_width))
+
+                return [
+                    ast.Assign([ast.Name(node.target.id, ast.Store())], start),
+                    ast.While(ast.NameConstant(True),
+                        node.body + [
+                            ast.If(ast.BinOp(ast.Name(node.target.id, ast.Load()), ast.Eq(), stop), [ast.Break()], []),
+                            ast.Assign([ast.Name(node.target.id, ast.Store())], ast.BinOp(
+                                ast.Name(node.target.id, ast.Load()), ast.Add(), step))
+                        ], [])
+                ]
+
+    desugarer = ForLoopDesugarer()
+    desugarer.visit(tree)
+    return tree, desugarer.loopvars
 
 
 
@@ -224,6 +288,21 @@ def get_io(cls):
     return inputs, outputs
 
 
+def get_registers(cls):
+    registers = {}
+    class Visitor(ast.NodeVisitor):
+        def visit_Assign(self, node):
+            if len(node.targets) == 1 and \
+                    isinstance(node.targets[0], ast.Name):
+                if node.targets[0].id == "registers":
+                    assert isinstance(node.value, ast.Dict)
+                    for k, v in zip(node.value.keys, node.value.values):
+                        assert isinstance(k, ast.Str)
+                        registers[k.s] = astor.to_source(v).rstrip()
+    Visitor().visit(cls)
+    return registers
+
+
 def update_other_class_references(body, other_class, attr):
     class Transformer(ast.NodeTransformer):
         def visit_Attribute(self, node):
@@ -278,7 +357,8 @@ def merge_classes(tree):
                     to_append.append(s)
             first_class.body += to_append
     tree.body = new_body
-    return tree, get_io(first_class)
+    # FIXME: Merge registers from other classes
+    return tree, get_io(first_class), get_registers(first_class)
 
 
 def is_yield(node):
@@ -385,11 +465,12 @@ def compile(file):
         tree = ast.parse(src, mode='exec')
     tree = specialize_init_methods(tree)
     tree = convert_to_class_methods(tree)
-    tree, io = merge_classes(tree)
+    tree, io, registers = merge_classes(tree)
     stack = inspect.stack()
     defn_locals = stack[1].frame.f_locals
     specialize_constants(tree, defn_locals)
-    # print(astor.to_source(tree))
+    desugar_for_loops(tree)
+    # print(astor.to_sourme(tree))
     cfg = CFGBuilder().build(name, tree)
     # cfg.build_visual(name, 'pdf')
     num_yields = sum(count_yields(s) for s in cfg.entryblock.statements)
@@ -438,6 +519,7 @@ def compile(file):
                 else:
                     raise NotImplementedError()
                 cases = set()
+                assigns = []
                 for i, block in enumerate(path):
                     if i == len(path) - 1:
                         continue
@@ -446,6 +528,10 @@ def compile(file):
                             break
                     if exit_.exitcase:
                         cases.add(exit_.get_exitcase().rstrip())
+                    for statement in block.statements:
+                        if isinstance(statement, ast.Assign) and \
+                                not is_yield(statement):
+                            assigns.append(statement)
                 # print("cases:", cases)
                 # FIXME: Hack to remove impossible transitions
                 impossible = False
@@ -456,7 +542,7 @@ def compile(file):
                 if not impossible:
                     if "True" in cases:
                         cases.remove("True")
-                    transitions.append((start_state, end_state, cases, outputs))
+                    transitions.append((start_state, end_state, cases, outputs, assigns))
     print("\n".join(str(x) for x in transitions))
     print(f"num_transitions={len(transitions)}")
     print(f"num_states={num_yields}")
@@ -505,6 +591,15 @@ def compile(file):
             init = init_outputs[i - 1].s
         output_reg_inits += f"        curr_{output_} <= {init};\n"
 
+    regs_str = ""
+    for r, t in registers.items():
+        if "Bits" in t:
+            n = int(re.search(r"\[([0-9]+)\]", t).group(1))
+            width = f"[{n - 1}:0] "
+        else:
+            raise NotImplementedError()
+        regs_str += f"reg {width}{r};\n"
+
     case_str = ""
     case_str += "case (state)\n"
     for case, transitions in case_map.items():
@@ -528,6 +623,8 @@ def compile(file):
             for o, v in zip(list(io[1].keys())[1:], transition[2]):
                 assert isinstance(v, ast.Str)
                 case_str += f"        next_{o} = {v.s};\n"
+            for assign in transition[3]:
+                case_str += "        " + astor.to_source(assign).rstrip() + ";\n"
 
             case_str += f"    end"
         case_str += "\n"
@@ -549,6 +646,7 @@ def compile(file):
     module_tmpl = f"""
 module {name}({io_str}, input CLK, input RESET);
 
+{regs_str}
 {output_regs}
 always @(posedge CLK or posedge RESET) begin
     if (RESET) begin

@@ -60,6 +60,9 @@ class SDRAM(FSM):
         "state": State,
         "cmd": Bits[8]
     }
+    registers = {
+        "i": Bits[3]
+    }
 
     def __call__(self):
         yield from self.init()
@@ -69,13 +72,13 @@ class SDRAM(FSM):
         refresh_cnt, rd_enable, wr_enable = yield INIT_PRE1, CMD_PALL
         refresh_cnt, rd_enable, wr_enable = yield INIT_NOP1_1, CMD_NOP
         refresh_cnt, rd_enable, wr_enable = yield INIT_REF1, CMD_REF
-        for i in range(8):
+        for i in range(7, -1, -1):
             refresh_cnt, rd_enable, wr_enable = yield INIT_NOP2, CMD_NOP
         refresh_cnt, rd_enable, wr_enable = yield INIT_REF2, CMD_REF
-        for i in range(8):
+        for i in range(7, -1, -1):
             refresh_cnt, rd_enable, wr_enable = yield INIT_NOP3, CMD_NOP
         refresh_cnt, rd_enable, wr_enable = yield INIT_LOAD, CMD_MRS
-        for i in range(2):
+        for i in range(2, -1, -1):
             refresh_cnt, rd_enable, wr_enable = yield INIT_NOP4, CMD_NOP
         yield from self.idle()
 
@@ -92,25 +95,25 @@ class SDRAM(FSM):
         refresh_cnt, rd_enable, wr_enable = yield REF_PRE, CMD_PALL
         refresh_cnt, rd_enable, wr_enable = yield REF_NOP1, CMD_NOP
         refresh_cnt, rd_enable, wr_enable = yield REF_REF, CMD_REF
-        for i in range(8):
+        for i in range(8, -1, -1):
             refresh_cnt, rd_enable, wr_enable = yield REF_NOP2, CMD_NOP
         yield from self.idle()
 
     def write(self):
         refresh_cnt, rd_enable, wr_enable = yield WRIT_ACT, CMD_BACT
-        for i in range(2):
+        for i in range(2, -1, -1):
             refresh_cnt, rd_enable, wr_enable = yield WRIT_NOP1, CMD_NOP
         refresh_cnt, rd_enable, wr_enable = yield WRIT_CAS, CMD_WRIT
-        for i in range(2):
+        for i in range(2, -1, -1):
             refresh_cnt, rd_enable, wr_enable = yield WRIT_NOP2, CMD_NOP
         yield from self.idle()
 
     def read(self):
         refresh_cnt, rd_enable, wr_enable = yield READ_ACT, CMD_BACT
-        for i in range(2):
+        for i in range(2, -1, -1):
             refresh_cnt, rd_enable, wr_enable = yield READ_NOP1, CMD_NOP
         refresh_cnt, rd_enable, wr_enable = yield READ_CAS, CMD_READ
-        for i in range(2):
+        for i in range(2, -1, -1):
             refresh_cnt, rd_enable, wr_enable = yield READ_NOP2, CMD_NOP
         refresh_cnt, rd_enable, wr_enable = yield READ_READ, CMD_NOP
         yield from self.idle()

@@ -5,3 +5,4 @@ mantle
 coreir
 git+git://github.com/leonardt/veriloggen.git#egg=veriloggen
 delegator.py
+git+git://github.com/leonardt/staticfg.git#egg=staticfg

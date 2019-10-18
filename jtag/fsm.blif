@@ -37,16 +37,16 @@
 .param LUT_INIT 11001010
 .gate SB_DFFS C=CLK D=next_state[0] Q=curr_state[0] S=RESET
 .attr module_not_derived 00000000000000000000000000000001
-.attr src "fsm.v:9|/usr/local/bin/../share/yosys/ice40/cells_map.v:18"
+.attr src "fsm.v:7|/usr/local/bin/../share/yosys/ice40/cells_map.v:18"
 .gate SB_DFFS C=CLK D=next_state[1] Q=curr_state[1] S=RESET
 .attr module_not_derived 00000000000000000000000000000001
-.attr src "fsm.v:9|/usr/local/bin/../share/yosys/ice40/cells_map.v:18"
+.attr src "fsm.v:7|/usr/local/bin/../share/yosys/ice40/cells_map.v:18"
 .gate SB_DFFS C=CLK D=next_state[2] Q=curr_state[2] S=RESET
 .attr module_not_derived 00000000000000000000000000000001
-.attr src "fsm.v:9|/usr/local/bin/../share/yosys/ice40/cells_map.v:18"
+.attr src "fsm.v:7|/usr/local/bin/../share/yosys/ice40/cells_map.v:18"
 .gate SB_DFFS C=CLK D=next_state[3] Q=curr_state[3] S=RESET
 .attr module_not_derived 00000000000000000000000000000001
-.attr src "fsm.v:9|/usr/local/bin/../share/yosys/ice40/cells_map.v:18"
+.attr src "fsm.v:7|/usr/local/bin/../share/yosys/ice40/cells_map.v:18"
 .names curr_state[0] state[0]
 1 1
 .names curr_state[1] state[1]
