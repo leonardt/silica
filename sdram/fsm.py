@@ -50,6 +50,7 @@ CMD_READ = "8'b10101xx1"
 CMD_WRIT = "8'b10100xx1"
 
 
+# TODO: Add synchronous reset negedge
 class SDRAM(FSM):
     inputs = {
         "refresh_cnt": Bits[10],
