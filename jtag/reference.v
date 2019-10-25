@@ -18,7 +18,7 @@ module verilog_jtag(input tms, output [3:0] state, input CLK, input RESET);
   reg [3:0] CS;
   reg [3:0] NS;
   assign state = CS;
-  always @(posedge CLK, posedge RESET) begin
+  always @(posedge CLK or posedge RESET) begin
     if (RESET) begin
       CS <= TEST_LOGIC_RESET;
     end else begin
