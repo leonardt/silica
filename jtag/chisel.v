@@ -132,7 +132,7 @@ module AsyncResetRegVec_w4_i15( // @[:freechips.rocketchip.system.DefaultConfigR
   assign reg_3_rst = reset; // @[AsyncResetReg.scala 66:16:freechips.rocketchip.system.DefaultConfigRBB.fir@168482.4]
 endmodule
 
-module JtagStateMachine( // @[:freechips.rocketchip.system.DefaultConfigRBB.fir@168491.2]
+module chisel_JtagStateMachine( // @[:freechips.rocketchip.system.DefaultConfigRBB.fir@168491.2]
   input        clock, // @[:freechips.rocketchip.system.DefaultConfigRBB.fir@168492.4]
   input        reset, // @[:freechips.rocketchip.system.DefaultConfigRBB.fir@168493.4]
   input        io_tms, // @[:freechips.rocketchip.system.DefaultConfigRBB.fir@168494.4]

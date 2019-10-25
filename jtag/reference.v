@@ -1,4 +1,4 @@
-module tap(input tms, output [3:0] state, input CLK, input RESET);
+module verilog_jtag(input tms, output [3:0] state, input CLK, input RESET);
   localparam TEST_LOGIC_RESET = 4'd15 ,
              RUN_TEST_IDLE = 4'd12 ,
              SELECT_DR_SCAN = 4'd7 ,
