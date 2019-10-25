@@ -109,6 +109,8 @@ def liveness_analysis(cfg):
             for key, port in sub_coroutine.IO.ports.items():
                 if key in "CLK":
                     continue
+                if key in "RESET":
+                    continue
                 wire_name = f"_si_sub_co_{name}_{key}"
                 if port.isinput():
                     block.live_ins.add(wire_name)

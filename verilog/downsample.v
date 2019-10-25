@@ -5,7 +5,8 @@ module downsample_verilog(
     output data_out_valid,
     output [15:0] data_out_data,
     input data_out_ready,
-    input CLK
+    input CLK,
+    input RESET
 );
 reg [4:0] x;
 reg [4:0] y;
@@ -34,8 +35,13 @@ always @(*) begin
 end
 
 
-always @(posedge CLK) begin
-    x <= x_next;
-    y <= y_next;
+always @(posedge CLK or posedge RESET) begin
+    if (RESET) begin
+        x <= 0;
+        y <= 0;
+    end else begin
+        x <= x_next;
+        y <= y_next;
+    end
 end
 endmodule

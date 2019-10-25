@@ -24,6 +24,15 @@ class YieldFromFunctionInliner(ast.NodeTransformer):
                 else:
                     new_body.append(result)
             node.body = new_body
+            if isinstance(node, ast.If):
+                new_orelse = []
+                for statement in node.orelse:
+                    result = self.visit(statement)
+                    if isinstance(result, list):
+                        new_orelse.extend(result)
+                    else:
+                        new_orelse.append(result)
+                node.orelse = new_orelse
             return node
         return super().visit(node)
 

@@ -70,9 +70,9 @@ class Context:
     def declare_reg(self, name, width=None, height=None):
         self.module.Reg(name, width, height)
 
-    def assign(self, lhs, rhs):
+    def assign(self, lhs, rhs, blk=1):
         # return vg.Subst(lhs, rhs, not self.is_reg(lhs))
-        return vg.Subst(lhs, rhs, 1)
+        return vg.Subst(lhs, rhs, blk)
 
     def initial(self, body=[]):
         return self.module.Initial(body)
@@ -359,7 +359,7 @@ class TempVarPromoter(ast.NodeTransformer):
         return node
 
 
-def compile_statements(ctx, seq, comb_body, states, one_state, width_table,
+def compile_statements(ctx, else_body, comb_body, states, one_state, width_table,
                        registers, statements):
     module = ctx.module
     # temp_var_promoter = TempVarPromoter(width_table)
@@ -398,11 +398,11 @@ def compile_statements(ctx, seq, comb_body, states, one_state, width_table,
 
                 if conds:
                     cond = reduce(vg.Lor, conds)
-                    seq.If(cond)(
+                    else_body.append(vg.If(cond)(
                         stmt
-                    )
+                    ))
                 else:
-                    seq(stmt)
+                    else_body.append(stmt)
             else:
                 # print(astor.to_source(statement))
                 result = ctx.translate(statement)
@@ -420,21 +420,23 @@ def compile_statements(ctx, seq, comb_body, states, one_state, width_table,
                 raise e
             if stmt:
                 if has_reg:
-                    seq(stmt)
+                    else_body.append(stmt)
                 else:
                     comb_body.append(stmt)
 
 
 def compile_states(ctx, states, one_state, width_table, registers,
-                   sub_coroutines):
+                   sub_coroutines, init_body):
     module = ctx.module
-    seq = vg.TmpSeq(module, module.get_ports()["CLK"])
+    else_body = []
     comb_body = []
     for name, def_ in sub_coroutines.items():
         ports = []
         for key, type_ in def_.interface.ports.items():
             if key == "CLK":
                 ports.append((key, ctx.get_by_name(f"CLK")))
+            elif key == "RESET":
+                ports.append((key, ctx.get_by_name(f"RESET")))
             else:
                 ports.append((key, ctx.get_by_name(f"_si_sub_co_{name}_{key}")))
 
@@ -465,7 +467,7 @@ def compile_states(ctx, states, one_state, width_table, registers,
                 index = statements.index(statement)
             else:
                 statements.insert(index, statement)
-    compile_statements(ctx, seq, comb_body, states, one_state, width_table, registers, statements)
+    compile_statements(ctx, else_body, comb_body, states, one_state, width_table, registers, statements)
     for i, state in enumerate(states):
         for value, target in state.path[-1].stores.items():
             if (target, value) not in seen:
@@ -486,29 +488,35 @@ def compile_states(ctx, states, one_state, width_table, registers,
                         if_body = []
                         for i in range(width.height):
                             if_body.append(ctx.assign(vg.Pointer(ctx.get_by_name(target), i),
-                                                      vg.Pointer(ctx.get_by_name(value), i)))
+                                                      vg.Pointer(ctx.get_by_name(value), i),
+                                                      blk=target not in registers))
                         if if_body:
                             if target in registers:
-                                seq.If(cond)(if_body)
+                                else_body.append(vg.If(cond)(if_body))
                             else:
                                 comb_body.append(vg.If(cond)(if_body))
                     else:
                         if target in registers:
-                            seq.If(cond)(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
+                            else_body.append(vg.If(cond)(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value), blk=0)))
                         else:
                             comb_body.append(vg.If(cond)(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value))))
                 else:
                     if isinstance(width, MemoryType):
                         for i in range(width.height):
                             if target in registers:
-                                seq(ctx.assign(vg.Pointer(ctx.get_by_name(target), i),
-                                               vg.Pointer(ctx.get_by_name(value), i)))
+                                else_body.append(ctx.assign(vg.Pointer(ctx.get_by_name(target),
+                                                                       i),
+                                                            vg.Pointer(ctx.get_by_name(value),
+                                                                       i),
+                                                            blk=0))
                             else:
                                 comb_body.append(ctx.assign(vg.Pointer(ctx.get_by_name(target), i),
                                                             vg.Pointer(ctx.get_by_name(value), i)))
                     else:
                         if target in registers:
-                            seq(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
+                            else_body.append(ctx.assign(ctx.get_by_name(target),
+                                                        ctx.get_by_name(value),
+                                                        blk=0))
                         else:
                             comb_body.append(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
     if not one_state:
@@ -562,12 +570,13 @@ def compile_states(ctx, states, one_state, width_table, registers,
 
             if stmts:
                 if not started:
-                    if_stmt = seq.If(cond)
+                    if_stmt = vg.If(cond)
+                    else_body.append(if_stmt)
                     started = True
                 elif i == len(states) - 1:
-                    if_stmt = seq.Else()
+                    if_stmt = if_stmt.Else()
                 else:
-                    if_stmt = seq.Elif(cond)
+                    if_stmt = if_stmt.Elif(cond)
                 if_stmt(stmts)
             comb_cond = reduce(
                 vg.Land,
@@ -590,19 +599,33 @@ def compile_states(ctx, states, one_state, width_table, registers,
         comb_body
     )
     if not one_state:
-        seq(
-            ctx.assign(ctx.get_by_name('yield_state'), ctx.get_by_name('yield_state_next'))
+        else_body.append(
+            ctx.assign(ctx.get_by_name('yield_state'), ctx.get_by_name('yield_state_next'), blk=0)
         )
+    ctx.module.Always(
+        vg.Posedge(ctx.module.get_ports()["CLK"]),
+        vg.Posedge(ctx.module.get_ports()["RESET"])
+    )(
+        vg.If(
+            ctx.module.get_ports()["RESET"]
+        )(
+            init_body
+        )(
+            else_body
+        )
+    )
 
 
 def compile_by_path(ctx, paths, one_state, width_table, registers,
-                    sub_coroutines, strategy="by_statement"):
+                    sub_coroutines, outputs, init_body, strategy="by_statement"):
 
     for name, def_ in sub_coroutines.items():
         ports = []
         for key, type_ in def_.interface.ports.items():
             if key == "CLK":
                 ports.append((key, ctx.get_by_name(f"CLK")))
+            elif key == "RESET":
+                ports.append((key, ctx.get_by_name(f"RESET")))
             else:
                 ports.append((key, ctx.get_by_name(f"_si_sub_co_{name}_{key}")))
 
@@ -676,21 +699,33 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
     ctx.module.Always(vg.SensitiveAll())(
         body
     )
-    seq = vg.TmpSeq(ctx.module, ctx.module.get_ports()["CLK"])
+    else_body = []
     for reg in registers:
         width = width_table[reg]
         if isinstance(width, MemoryType):
             for i in range(width.height):
-                seq(
+                else_body.append(
                     ctx.assign(
                         vg.Pointer(ctx.get_by_name(reg), vg.Int(i)),
-                        vg.Pointer(ctx.get_by_name(reg + "_next"), vg.Int(i))
+                        vg.Pointer(ctx.get_by_name(reg + "_next"), vg.Int(i)),
+                        blk=0
                     )
                 )
         else:
-            seq(
-                ctx.assign(ctx.get_by_name(reg), ctx.get_by_name(reg + "_next"))
+            else_body.append(
+                ctx.assign(ctx.get_by_name(reg), ctx.get_by_name(reg + "_next"), blk=0)
             )
-    seq(
-        ctx.assign(ctx.get_by_name('yield_state'), ctx.get_by_name('yield_state_next'))
+    else_body.append(
+        ctx.assign(ctx.get_by_name('yield_state'), ctx.get_by_name('yield_state_next'), blk=0)
+    )
+    ctx.module.Always(
+        vg.Posedge(ctx.module.get_ports()["CLK"]), vg.Posedge(ctx.module.get_ports()["RESET"])
+    )(
+        vg.If(
+            ctx.module.get_ports()["RESET"]
+        )(
+            init_body
+        )(
+            else_body
+        )
     )

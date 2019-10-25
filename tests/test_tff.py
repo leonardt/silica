@@ -48,10 +48,10 @@ def test_TFF(strategy):
                            flags=['-Wno-fatal'], magma_output="verilog")
     from mantle import FF, LUT2, I0, I1
     class MantleTFF(m.Circuit):
-        IO = ["I", m.In(m.Bit), "O", m.Out(m.Bit)] + m.ClockInterface()
+        IO = ["I", m.In(m.Bit), "O", m.Out(m.Bit)] + m.ClockInterface(has_reset=True)
         @classmethod
         def definition(io):
-            tff = FF()
+            tff = FF(has_reset=True)
             lut = LUT2( I0^I1 )
             tff(lut)
 

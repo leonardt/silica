@@ -95,7 +95,7 @@ def test_PISO(strategy):
     n = 10
     init = 0
     has_ce = False
-    has_reset = False
+    has_reset = True
 
     class _PISO(Circuit):
         name = _RegisterName('PISO', n, init, has_ce, has_reset)

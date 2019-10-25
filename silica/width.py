@@ -133,5 +133,7 @@ def get_io_width(type_):
             return type_.N
     elif isinstance(type_, types.Channel):
         return get_io_width(type_.type_)
+    elif isinstance(type_, types.Register):
+        return get_io_width(type_.T)
     else:
         raise NotImplementedError(type_)

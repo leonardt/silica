@@ -152,7 +152,7 @@ def test_fifo(strategy):
     tester.compile_and_run(target="verilator", directory="tests/build",
                            flags=['-Wno-fatal'], magma_output="verilog")
     verilog_fifo = m.DefineFromVerilogFile(
-        "verilog/fifo.v", type_map={"CLK": m.In(m.Clock)})[0]
+        "verilog/fifo.v", type_map={"CLK": m.In(m.Clock), "RESET": m.In(m.Reset)})[0]
 
     verilog_tester = tester.retarget(verilog_fifo, verilog_fifo.CLK)
     verilog_tester.compile_and_run(target="verilator", directory="tests/build",

@@ -24,6 +24,7 @@ from silica.analysis import CollectInitialWidthsAndTypes, collect_sub_coroutines
 from silica.transformations.promote_widths import PromoteWidths
 from silica.transformations.desugar_for_loops import propagate_types, get_final_widths
 from silica.transformations.desugar_send_calls import desugar_send_calls
+import silica.types as types
 
 import veriloggen as vg
 
@@ -64,6 +65,51 @@ def add_coroutine_to_tables(coroutine, width_table, type_table, sub_coroutine_na
             type_table[output] = to_type_str(type_)
 
 
+def rewrite_yield_constants(tree, outputs):
+    class Transformer(ast.NodeTransformer):
+        def visit(self, node):
+            """
+            For nodes with a `body` attribute, we explicitly traverse them and
+            flatten any lists that are returned. This allows visitors to return
+            more than one node.
+            """
+            if hasattr(node, 'body') and not isinstance(node, ast.IfExp):
+                new_body = []
+                for statement in node.body:
+                    result = self.visit(statement)
+                    if isinstance(result, list):
+                        new_body.extend(result)
+                    else:
+                        new_body.append(result)
+                node.body = new_body
+                if isinstance(node, ast.If):
+                    new_orelse = []
+                    for statement in node.orelse:
+                        result = self.visit(statement)
+                        if isinstance(result, list):
+                            new_orelse.extend(result)
+                        else:
+                            new_orelse.append(result)
+                    node.orelse = new_orelse
+                return node
+            return super().visit(node)
+
+        def visit_Assign(self, node):
+            if isinstance(node.value, ast.Yield):
+                yield_ = node.value
+                new_args = []
+                if isinstance(yield_.value, ast.Num):
+                    assert len(outputs) == 1
+                    assign_ = ast.Assign(
+                        [ast.Name(outputs[0], ast.Store())],
+                        yield_.value
+                    )
+                    yield_.value = ast.Name(outputs[0], ast.Load())
+                    return [assign_, node]
+            return node
+    return Transformer().visit(tree)
+
+
 def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog', strategy="by_path"):
     if not isinstance(coroutine, Coroutine):
         raise ValueError("silica.compile expects a silica.Coroutine")
@@ -86,6 +132,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     specialize_list_comps(tree, func_globals, func_locals)
     tree, list_lens = propagate_types(tree)
     tree, loopvars = desugar_for_loops(tree, list_lens)
+    tree = rewrite_yield_constants(tree, list(coroutine._outputs.keys()))
 
     width_table = {}
     type_table = {}
@@ -116,7 +163,6 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
         sub_coroutines[var] = compile(sub_coroutine)
         add_coroutine_to_tables(sub_coroutine, width_table, type_table, var)
     tree = desugar_send_calls(tree, sub_coroutines)
-    # print(astor.to_source(tree))
     # DesugarArrays().run(tree)
     cfg = ControlFlowGraph(tree, width_table, func_locals, func_globals,
                            sub_coroutines, strategy)
@@ -128,6 +174,9 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
         return compile_magma(coroutine, file_name, mux_strategy, output)
 
     registers = set()
+    for key, value in coroutine._outputs.items():
+        if isinstance(value, types.Register):
+            registers.add(key)
     outputs = tuple()
     for path in cfg.paths:
         outputs += (collect_names(path[-1].value, ctx=ast.Load), )
@@ -157,7 +206,13 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
                     if ast_utils.is_name(statement.value) and statement.value.id in initial_values:
                         initial_values[statement.targets[0].id] = initial_values[statement.value.id]
                     else:
-                        initial_values[statement.targets[0].id] = get_constant(statement.value)
+                        key = statement.targets[0].id
+                        if strategy == 'by_statement':
+                            for var in cfg.ssa_var_to_curr_id_map:
+                                # FIXME: Doesn't work with variables with shared prefix
+                                if var in key:
+                                    key = var
+                        initial_values[key] = get_constant(statement.value)
         initial_basic_block |= isinstance(node, BasicBlock)
     if not initial_basic_block:
         num_states -= 1
@@ -181,6 +236,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
 
     inputs = { i : get_len(t) for i,t in coroutine._inputs.items() }
     inputs["CLK"] = 1
+    inputs["RESET"] = 1
     outputs = { o : width_table.get(o, 1) or 1 for o in outputs }
     ctx.declare_ports(inputs, outputs)
 
@@ -246,12 +302,12 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     if strategy == "by_path":
         init_body = []
         for key, value in initial_values.items():
-            if value is not None:
-                init_body.append(ctx.assign(ctx.get_by_name(key), value))
-                if key in registers:
-                    init_body.append(ctx.assign(ctx.get_by_name(key + "_next"), value))
+            if value is not None and key in registers:
+                init_body.append(ctx.assign(ctx.get_by_name(key), value, blk=0))
+                # if key in registers:
+                #     init_body.append(ctx.assign(ctx.get_by_name(key + "_next"), value))
     else:
-        init_body = [ctx.assign(ctx.get_by_name(key), value) for key, value in
+        init_body = [ctx.assign(ctx.get_by_name(key), value, blk=0) for key, value in
                      initial_values.items() if value is not None]
 
     # for sub_coroutine in sub_coroutines:
@@ -277,7 +333,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
         # ctx.declare_wire(f"yield_state_next", yield_state_width)
         ctx.declare_reg(f"yield_state_next", yield_state_width)
 
-        init_body.append(ctx.assign(ctx.get_by_name("yield_state"), 0))
+        init_body.append(ctx.assign(ctx.get_by_name("yield_state"), 0, blk=0))
 
     # if initial_basic_block:
     #     for statement in states[0].statements:
@@ -295,10 +351,10 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     #     states = states[1:]
     if strategy == "by_statement":
         verilog.compile_states(ctx, states, cfg.curr_yield_id == 3, width_table,
-                               registers, sub_coroutines)
+                               registers, sub_coroutines, init_body)
     else:
         verilog.compile_by_path(ctx, cfg.paths, cfg.curr_yield_id == 3, width_table,
-                                registers, sub_coroutines, strategy)
+                                registers, sub_coroutines, outputs, init_body, strategy)
     # cfg.render()
     verilog_str = ""
     for sub_coroutine in sub_coroutines.values():
@@ -308,4 +364,4 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     if file_name is not None:
         with open(file_name, "w") as f:
             f.write(verilog_str)
-    return m.DefineFromVerilog(verilog_str, type_map={"CLK": m.In(m.Clock)}, target_modules=[coroutine._name])[0]
+    return m.DefineFromVerilog(verilog_str, type_map={"CLK": m.In(m.Clock), "RESET": m.In(m.Reset)}, target_modules=[coroutine._name])[0]

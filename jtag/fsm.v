@@ -9,13 +9,16 @@ assign state = curr_state;
 
 always @(posedge CLK or posedge RESET) begin
     if (RESET) begin
+
         curr_state <= 15;
 
     end else begin
         curr_state <= next_state;
+
     end
 end
 always @(*) begin
+
     if (state == 15) begin
         if ((tms == 0)) begin
             next_state = 12;

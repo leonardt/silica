@@ -37,7 +37,7 @@ def test_counter(strategy):
                            flags=['-Wno-fatal'], magma_output="verilog")
     from mantle import DefineCounter
 
-    mantle_counter = DefineCounter(N, cout=False)
+    mantle_counter = DefineCounter(N, cout=False, has_reset=True)
     mantle_tester = tester.retarget(mantle_counter, mantle_counter.CLK)
     mantle_tester.compile_and_run(target="verilator", directory="tests/build",
                                   flags=['-Wno-fatal'],
@@ -45,7 +45,8 @@ def test_counter(strategy):
                                   magma_output="verilog")
 
     verilog_counter = m.DefineFromVerilogFile(
-        "verilog/counter.v", type_map={"CLK": m.In(m.Clock)})[0]
+        "verilog/counter.v", type_map={"CLK": m.In(m.Clock),
+                                       "RESET": m.In(m.Reset)})[0]
     verilog_tester = tester.retarget(verilog_counter, verilog_counter.CLK)
     verilog_tester.compile_and_run(target="verilator", directory="tests/build",
                                    flags=['-Wno-fatal'],

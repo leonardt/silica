@@ -50,7 +50,6 @@ CMD_READ = "8'b10101xx1"
 CMD_WRIT = "8'b10100xx1"
 
 
-# TODO: Add synchronous reset negedge
 class SDRAM(FSM):
     inputs = {
         "refresh_cnt": Bits[10],
@@ -67,6 +66,14 @@ class SDRAM(FSM):
 
     def __call__(self):
         yield from self.init()
+        while True:
+            refresh_cnt, rd_enable, wr_enable = yield IDLE, CMD_NOP
+            if refresh_cnt >= CYCLES_BETWEEN_REFRESH:
+                yield from self.refresh()
+            elif rd_enable:
+                yield from self.read()
+            elif wr_enable:
+                yield from self.write()
 
     def init(self):
         for _ in range(15, -1, -1):
@@ -82,16 +89,6 @@ class SDRAM(FSM):
         refresh_cnt, rd_enable, wr_enable = yield INIT_LOAD, CMD_MRS
         for _ in range(1, -1, -1):
             refresh_cnt, rd_enable, wr_enable = yield INIT_NOP4, CMD_NOP
-        yield from self.idle()
-
-    def idle(self):
-        refresh_cnt, rd_enable, wr_enable = yield IDLE, CMD_NOP
-        if refresh_cnt >= CYCLES_BETWEEN_REFRESH:
-            yield from self.refresh()
-        elif rd_enable:
-            yield from self.read()
-        elif wr_enable:
-            yield from self.write()
 
     def refresh(self):
         refresh_cnt, rd_enable, wr_enable = yield REF_PRE, CMD_PALL
@@ -99,7 +96,6 @@ class SDRAM(FSM):
         refresh_cnt, rd_enable, wr_enable = yield REF_REF, CMD_REF
         for _ in range(7, -1, -1):
             refresh_cnt, rd_enable, wr_enable = yield REF_NOP2, CMD_NOP
-        yield from self.idle()
 
     def write(self):
         refresh_cnt, rd_enable, wr_enable = yield WRIT_ACT, CMD_BACT
@@ -108,7 +104,6 @@ class SDRAM(FSM):
         refresh_cnt, rd_enable, wr_enable = yield WRIT_CAS, CMD_WRIT
         for _ in range(1, -1, -1):
             refresh_cnt, rd_enable, wr_enable = yield WRIT_NOP2, CMD_NOP
-        yield from self.idle()
 
     def read(self):
         refresh_cnt, rd_enable, wr_enable = yield READ_ACT, CMD_BACT
@@ -118,7 +113,6 @@ class SDRAM(FSM):
         for _ in range(1, -1, -1):
             refresh_cnt, rd_enable, wr_enable = yield READ_NOP2, CMD_NOP
         refresh_cnt, rd_enable, wr_enable = yield READ_READ, CMD_NOP
-        yield from self.idle()
 
 
 compile("fsm.py")

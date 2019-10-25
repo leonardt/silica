@@ -2,7 +2,7 @@ from .coroutine import coroutine, Coroutine, generator, Generator
 from .function import function, compile_function
 from .compile import compile
 from ._config import Config
-from .types import Channel, In, Out
+from .types import Channel, In, Out, Register
 config = Config()
 
 import magma as m

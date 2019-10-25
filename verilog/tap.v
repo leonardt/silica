@@ -1,4 +1,4 @@
-module tap(input CLK, input TMS, input TDI, output TDO, output reg [3:0] IR, output reg [4:0] regA, output reg [6:0] regB, output update_dr, output update_ir);
+module tap(input CLK, input RESET, input TMS, input TDI, output TDO, output reg [3:0] IR, output reg [4:0] regA, output reg [6:0] regB, output update_dr, output update_ir);
   localparam TEST_LOGIC_RESET = 4'd0 ,
              RUN_TEST_IDLE = 4'd1 ,
              SELECT_DR_SCAN = 4'd2 ,
@@ -15,13 +15,10 @@ module tap(input CLK, input TMS, input TDI, output TDO, output reg [3:0] IR, out
              PAUSE_IR = 4'd13 ,
              EXIT2_IR = 4'd14 ,
              UPDATE_IR = 4'd15;
-  reg [3:0] CS = TEST_LOGIC_RESET;
+  reg [3:0] CS;
   reg [3:0] NS;
   assign cs = CS;
   assign ns = NS;
-  always @(posedge CLK) begin
-    CS <= NS;
-  end
   always @(*) begin
     case(CS)
       TEST_LOGIC_RESET : NS = TMS ? TEST_LOGIC_RESET : RUN_TEST_IDLE;
@@ -49,19 +46,20 @@ module tap(input CLK, input TMS, input TDI, output TDO, output reg [3:0] IR, out
   wire shift_regA = shift_dr & (IR==4'd2);
   wire shift_regB = shift_dr & (IR==4'd14);
   assign TDO = shift_ir ? IR[0] : (shift_regA ? regA[0] : (shift_regB ? regB[0] : 1'b0 ));
-  always @(posedge CLK) begin
-    if (shift_ir) begin
-      IR <= {TDI,IR[3:1]};
-    end
-  end
-  always @(posedge CLK) begin
-    if (shift_regA) begin
-      regA <= {TDI,regA[4:1]};
-    end
-  end
-  always @(posedge CLK) begin
-    if (shift_regB) begin
-      regB <= {TDI,regB[6:1]};
+  always @(posedge CLK or posedge RESET) begin
+    if (RESET) begin
+      CS <= TEST_LOGIC_RESET;
+    end else begin
+      CS <= NS;
+      if (shift_ir) begin
+        IR <= {TDI,IR[3:1]};
+      end
+      if (shift_regA) begin
+        regA <= {TDI,regA[4:1]};
+      end
+      if (shift_regB) begin
+        regB <= {TDI,regB[6:1]};
+      end
     end
   end
 endmodule

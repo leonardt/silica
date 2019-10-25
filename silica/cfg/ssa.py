@@ -457,6 +457,8 @@ def convert_to_ssa(cfg):
                                 continue
                             if key == "CLK":
                                 continue
+                            if key == "RESET":
+                                continue
                             var = f"_si_sub_co_{name}_{key}"
                             block.stores[block._ssa_stores[var]] = var
             for successor, _ in block.outgoing_edges:

@@ -86,7 +86,7 @@ def test_UART(strategy):
                            flags=['-Wno-fatal', '--trace'],
                            magma_output="verilog")
     verilog_uart = m.DefineFromVerilogFile(
-        'verilog/uart.v', type_map={'CLK': m.In(m.Clock)})[0]
+        'verilog/uart.v', type_map={"CLK": m.In(m.Clock), "RESET": m.In(m.Reset)})[0]
     verilog_tester = tester.retarget(verilog_uart, verilog_uart.CLK)
 
     verilog_tester.compile_and_run(target="verilator", directory="tests/build",

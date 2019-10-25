@@ -78,7 +78,7 @@ def test_ser4(strategy):
     shutil.copy("verilog/serializer.v", "tests/build/serializer_verilog.v")
     serializer_verilog = \
         m.DefineFromVerilogFile("tests/build/serializer_verilog.v",
-                                type_map={"CLK": m.In(m.Clock)})[0]
+                                type_map={"CLK": m.In(m.Clock), "RESET": m.In(m.Reset)})[0]
 
     verilog_tester = tester.retarget(serializer_verilog,
                                      serializer_verilog.CLK)

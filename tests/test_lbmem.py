@@ -228,7 +228,7 @@ def test_lbmem(strategy):
     tester.compile_and_run(target="verilator", directory="tests/build",
                            flags=['-Wno-fatal'], magma_output="verilog")
     verilog_lbmem = m.DefineFromVerilogFile("verilog/lbmem.v",
-                                            type_map={"CLK": m.In(m.Clock)})[0]
+                                            type_map={"CLK": m.In(m.Clock), "RESET": m.In(m.Reset)})[0]
     verilog_tester = tester.retarget(verilog_lbmem, verilog_lbmem.CLK)
     verilog_tester.compile_and_run(target="verilator", directory="tests/build",
                                    flags=['-Wno-fatal'],

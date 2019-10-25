@@ -80,7 +80,7 @@ def test_downsample_simple(strategy):
                            magma_output="verilog")
 
     verilog_downsample = m.DefineFromVerilogFile(
-        "verilog/downsample.v", type_map={"CLK": m.In(m.Clock)})[0]
+        "verilog/downsample.v", type_map={"CLK": m.In(m.Clock), "RESET": m.In(m.Reset)})[0]
     verilog_tester = tester.retarget(verilog_downsample,
                                      verilog_downsample.CLK)
     verilog_tester.compile_and_run(target="verilator",
@@ -117,7 +117,7 @@ def test_downsample_loops_simple():
                            magma_output="verilog")
 
     verilog_downsample = m.DefineFromVerilogFile(
-        "verilog/downsample.v", type_map={"CLK": m.In(m.Clock)})[0]
+        "verilog/downsample.v", type_map={"CLK": m.In(m.Clock), "RESET": m.In(m.Reset)})[0]
     verilog_tester = tester.retarget(verilog_downsample,
                                      verilog_downsample.CLK)
     verilog_tester.compile_and_run(target="verilator",
@@ -162,7 +162,7 @@ def test_downsample_loops_simple_random_stalls():
                            magma_output="verilog")
 
     verilog_downsample = m.DefineFromVerilogFile(
-        "verilog/downsample.v", type_map={"CLK": m.In(m.Clock)})[0]
+        "verilog/downsample.v", type_map={"CLK": m.In(m.Clock), "RESET": m.In(m.Reset)})[0]
     verilog_tester = tester.retarget(verilog_downsample,
                                      verilog_downsample.CLK)
     verilog_tester.compile_and_run(target="verilator",

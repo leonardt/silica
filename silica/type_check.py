@@ -14,6 +14,8 @@ def to_type_str(type_):
         return "bits"
     elif isinstance(type_, types.Channel):
         return to_type_str(type_.type_)
+    elif isinstance(type_, types.Register):
+        return to_type_str(type_.T)
     else:
         raise NotImplementedError(type_)
 

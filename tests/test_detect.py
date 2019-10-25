@@ -54,7 +54,7 @@ def test_detect111(strategy):
                            magma_output="verilog")
 
     verilog_detect = m.DefineFromVerilogFile(
-        'verilog/detect111.v', type_map={'CLK': m.In(m.Clock)})[0]
+        'verilog/detect111.v', type_map={'CLK': m.In(m.Clock), 'RESET': m.In(m.Reset)})[0]
     verilog_tester = tester.retarget(verilog_detect, verilog_detect.CLK)
 
     verilog_tester.compile_and_run(target="verilator", directory="tests/build",
