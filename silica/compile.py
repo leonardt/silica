@@ -190,7 +190,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     num_yields = cfg.curr_yield_id
     num_states = len(states)
     initial_values = {}
-    initial_basic_block = False
+    # initial_basic_block = False
     # sub_coroutines = {}
     # cfg.render()
     for node in cfg.paths[0][:-1]:
@@ -213,14 +213,14 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
                                 if var in key:
                                     key = var
                         initial_values[key] = get_constant(statement.value)
-        initial_basic_block |= isinstance(node, BasicBlock)
-    if not initial_basic_block:
-        num_states -= 1
-        num_yields -= 1
-        states = states[1:]
-        # for state in states:
-        #     state.start_yield_id -= 1
-        #     state.end_yield_id -= 1
+        # initial_basic_block |= isinstance(node, BasicBlock)
+    # if not initial_basic_block:
+    #     num_states -= 1
+    #     num_yields -= 1
+    #     states = states[1:]
+    #     # for state in states:
+    #     #     state.start_yield_id -= 1
+    #     #     state.end_yield_id -= 1
     num_states = len(states)
     if has_ce:
         raise NotImplementedError("add ce to module decl")
@@ -322,6 +322,8 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
 
     if cfg.curr_yield_id > 1:
         yield_state_width = (cfg.curr_yield_id - 1).bit_length()
+        if yield_state_width == 1:
+            yield_state_width = None
         ctx.declare_reg("yield_state", yield_state_width)
 
         # yield_state_next is a reg instead of wire because of the following
@@ -333,7 +335,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
         # ctx.declare_wire(f"yield_state_next", yield_state_width)
         ctx.declare_reg(f"yield_state_next", yield_state_width)
 
-        init_body.append(ctx.assign(ctx.get_by_name("yield_state"), 0, blk=0))
+        # init_body.append(ctx.assign(ctx.get_by_name("yield_state"), 0, blk=0))
 
     # if initial_basic_block:
     #     for statement in states[0].statements:
@@ -350,11 +352,11 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     # if initial_basic_block:
     #     states = states[1:]
     if strategy == "by_statement":
-        verilog.compile_states(ctx, states, cfg.curr_yield_id == 3, width_table,
-                               registers, sub_coroutines, init_body)
+        verilog.compile_states(ctx, states, cfg.curr_yield_id == 1, width_table,
+                               registers, sub_coroutines)
     else:
-        verilog.compile_by_path(ctx, cfg.paths, cfg.curr_yield_id == 3, width_table,
-                                registers, sub_coroutines, outputs, init_body, strategy)
+        verilog.compile_by_path(ctx, cfg.paths, cfg.curr_yield_id == 1, width_table,
+                                registers, sub_coroutines, outputs, inputs, strategy)
     # cfg.render()
     verilog_str = ""
     for sub_coroutine in sub_coroutines.values():

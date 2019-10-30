@@ -51,6 +51,12 @@ def test_downsample_simple(strategy):
                                   strategy=strategy)
 
     tester = fault.Tester(magma_downsample, magma_downsample.CLK)
+    tester.poke(magma_downsample.RESET, 0)
+    tester.eval()
+    tester.poke(magma_downsample.RESET, 1)
+    tester.eval()
+    tester.poke(magma_downsample.RESET, 0)
+    tester.eval()
     tester.poke(magma_downsample.data_in_valid, 0)
     tester.poke(magma_downsample.data_in_data, 0xDEAD)
     tester.poke(magma_downsample.data_out_ready, 0)
@@ -76,7 +82,8 @@ def test_downsample_simple(strategy):
     tester.expect(magma_downsample.data_out_valid, 1)
     tester.expect(magma_downsample.data_out_data, 0xDEAD)
 
-    tester.compile_and_run("verilator", flags=["-Wno-fatal"],
+    print(tester)
+    tester.compile_and_run("verilator", flags=["-Wno-fatal", "--trace"],
                            magma_output="verilog")
 
     verilog_downsample = m.DefineFromVerilogFile(
@@ -95,6 +102,12 @@ def test_downsample_loops_simple():
                                   file_name="tests/build/si_downsample.v")
 
     tester = fault.Tester(magma_downsample, magma_downsample.CLK)
+    tester.poke(magma_downsample.RESET, 0)
+    tester.eval()
+    tester.poke(magma_downsample.RESET, 1)
+    tester.eval()
+    tester.poke(magma_downsample.RESET, 0)
+    tester.eval()
     for i in range(2):
         for y in range(32):
             for x in range(32):
@@ -132,6 +145,12 @@ def test_downsample_loops_simple_random_stalls():
                                   file_name="tests/build/si_downsample.v")
 
     tester = fault.Tester(magma_downsample, magma_downsample.CLK)
+    tester.poke(magma_downsample.RESET, 0)
+    tester.eval()
+    tester.poke(magma_downsample.RESET, 1)
+    tester.eval()
+    tester.poke(magma_downsample.RESET, 0)
+    tester.eval()
     for i in range(2):
         for y in range(32):
             for x in range(32):

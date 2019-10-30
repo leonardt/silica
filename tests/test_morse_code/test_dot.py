@@ -40,6 +40,12 @@ def test_dot(strategy):
     # si_dot = m.DefineFromVerilogFile("tests/build/si_dot.v",
     #                                  type_map={"CLK": m.In(m.Clock)})[0]
     tester = fault.Tester(si_dot, si_dot.CLK)
+    tester.poke(si_dot.RESET, 0)
+    tester.eval()
+    tester.poke(si_dot.RESET, 1)
+    tester.eval()
+    tester.poke(si_dot.RESET, 0)
+    tester.eval()
     for i in range(2):
         dot.send(True)
         assert dot.cb == 1

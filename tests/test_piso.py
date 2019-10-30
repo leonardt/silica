@@ -116,7 +116,7 @@ def test_PISO(strategy):
             wire(mux.O[-1], piso.O)
             wireclock(piso, reg)
     mantle_tester = tester.retarget(_PISO, clock=_PISO.CLK)
-    m.compile("tests/build/mantle_piso", _PISO)
+    m.compile("tests/build/mantle_piso", _PISO, output="verilog")
     mantle_tester.compile_and_run(target="verilator", directory="tests/build",
                                   include_verilog_libraries=['../cells_sim.v'],
                                   magma_output="verilog")

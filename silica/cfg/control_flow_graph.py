@@ -181,7 +181,7 @@ class ControlFlowGraph:
                  sub_coroutines, strategy):
         self.blocks = []
         self.curr_block = None
-        self.curr_yield_id = 1
+        self.curr_yield_id = 0
         self.local_vars = set()
         self.width_table = width_table
         self.func_locals = func_locals
@@ -206,13 +206,13 @@ class ControlFlowGraph:
             #    insert_phi_node(block, join_block, var_counter)
             # elif isinstance(block, Yield):
             #     replacer.visit(block.value)
-        # self.adjust_yield_ids()
         try:
             self.paths_between_yields = self.paths = self.collect_paths_between_yields()
         except RecursionError as error:
             # Most likely infinite loop in CFG, TODO: should catch this with an analysis phase
             self.render()
             raise error
+        self.adjust_yield_ids()
         self.sub_coroutines = sub_coroutines
         # for node in self.paths[0][:-1]:
         #     if isinstance(node, HeadBlock):
@@ -274,7 +274,7 @@ class ControlFlowGraph:
         """
         assert isinstance(func_def, ast.FunctionDef)
         self.head_block = HeadBlock()
-        self.head_block.yield_id = 0
+        self.head_block.yield_id = -1
         self.blocks.append(self.head_block)
         self.curr_block = self.head_block
         # self.curr_block = self.gen_new_block()
@@ -374,15 +374,13 @@ class ControlFlowGraph:
             raise NotImplementedError(type(block))
 
     def adjust_yield_ids(self):
-        paths = []
-        has_initial_yield = False
-        for block in self.blocks:
-            if isinstance(block, Yield) and block.is_initial_yield:
-                has_initial_yield = True
-        if not has_initial_yield:
+        if hasattr(self.head_block, "initial_yield"):
+            seen = set()
             for block in self.blocks:
-                if isinstance(block, Yield) and not block.is_initial_yield:
-                    block.yield_id += 1
+                if isinstance(block, Yield) and block not in seen:
+                    block.yield_id -= 1
+                    seen.add(block)
+            self.curr_yield_id -= 1
 
 
     def collect_paths_between_yields(self):
@@ -1036,7 +1034,7 @@ def build_state_info(paths, outputs, inputs):
     state_vars = {"yield_state"}
     for path in paths:
         if isinstance(path[0], HeadBlock):
-            start_yield_id = 0
+            start_yield_id = -1
         else:
             start_yield_id = path[0].yield_id
         end_yield_id = path[-1].yield_id

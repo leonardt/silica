@@ -426,7 +426,7 @@ def compile_statements(ctx, else_body, comb_body, states, one_state, width_table
 
 
 def compile_states(ctx, states, one_state, width_table, registers,
-                   sub_coroutines, init_body):
+                   sub_coroutines):
     module = ctx.module
     else_body = []
     comb_body = []
@@ -444,7 +444,7 @@ def compile_states(ctx, states, one_state, width_table, registers,
 
     seen = set()
     for i, state in enumerate(states):
-        if isinstance(state.path[0], HeadBlock):
+        if isinstance(state.path[0], Yield) and state.path[0].yield_id < 0:
             continue
         for target, value in state.path[0].loads.items():
             if (target, value) not in seen:
@@ -468,10 +468,18 @@ def compile_states(ctx, states, one_state, width_table, registers,
             else:
                 statements.insert(index, statement)
     compile_statements(ctx, else_body, comb_body, states, one_state, width_table, registers, statements)
+    reset_body = []
     for i, state in enumerate(states):
+        if isinstance(state.path[0], Yield) and state.path[0].yield_id < 0:
+            continue
+        is_reset = isinstance(state.path[0], HeadBlock)
         for value, target in state.path[-1].stores.items():
             if (target, value) not in seen:
-                seen.add((target, value))
+                if not is_reset:
+                    seen.add((target, value))
+                    update_body = else_body
+                else:
+                    update_body = reset_body
                 width = width_table[value]
                 if not one_state:
                     # cond = ctx.get_by_name('yield_state_next') == state.start_yield_id
@@ -480,7 +488,11 @@ def compile_states(ctx, states, one_state, width_table, registers,
                         if _state.path[-1] is not state.path[-1]:
                             continue
                         conds = [ctx.translate(process_statement(cond)) for cond in _state.conds]
-                        cond = reduce(vg.Land, conds, ctx.get_by_name('yield_state') == _state.start_yield_id)
+                        if is_reset:
+                            cond = reduce(vg.Land, conds) if conds else vg.Int(1)
+                        else:
+                            cond = reduce(vg.Land, conds, ctx.get_by_name('yield_state') == _state.start_yield_id)
+
                         all_conds[str(cond)] = cond
                     all_conds = list(all_conds.values())
                     cond = reduce(vg.Lor, all_conds)
@@ -492,32 +504,34 @@ def compile_states(ctx, states, one_state, width_table, registers,
                                                       blk=target not in registers))
                         if if_body:
                             if target in registers:
-                                else_body.append(vg.If(cond)(if_body))
-                            else:
+                                update_body.append(vg.If(cond)(if_body))
+                            elif not is_reset:
                                 comb_body.append(vg.If(cond)(if_body))
                     else:
                         if target in registers:
-                            else_body.append(vg.If(cond)(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value), blk=0)))
-                        else:
+                            assign = ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value), blk=0)
+                            update_body.append(vg.If(cond)(assign))
+                        elif not is_reset:
                             comb_body.append(vg.If(cond)(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value))))
                 else:
                     if isinstance(width, MemoryType):
                         for i in range(width.height):
                             if target in registers:
-                                else_body.append(ctx.assign(vg.Pointer(ctx.get_by_name(target),
-                                                                       i),
-                                                            vg.Pointer(ctx.get_by_name(value),
-                                                                       i),
-                                                            blk=0))
-                            else:
+                                assign = \
+                                    ctx.assign(vg.Pointer(ctx.get_by_name(target),
+                                                          i),
+                                               vg.Pointer(ctx.get_by_name(value),
+                                                          i), blk=0)
+                                update_body.append(assign)
+                            elif not is_reset:
                                 comb_body.append(ctx.assign(vg.Pointer(ctx.get_by_name(target), i),
                                                             vg.Pointer(ctx.get_by_name(value), i)))
                     else:
                         if target in registers:
-                            else_body.append(ctx.assign(ctx.get_by_name(target),
-                                                        ctx.get_by_name(value),
-                                                        blk=0))
-                        else:
+                            assign = ctx.assign(ctx.get_by_name(target),
+                                                ctx.get_by_name(value), blk=0)
+                            update_body.append(assign)
+                        elif not is_reset:
                             comb_body.append(ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value)))
     if not one_state:
         started = False
@@ -527,30 +541,55 @@ def compile_states(ctx, states, one_state, width_table, registers,
             yields.add(state.path[-1])
         next_yield_stmts = []
         next_state = None
+        reset_next_state = None
         yields = list(yields)
         for yield_ in yields:
+            is_reset = yield_.yield_id < 0
+            if is_reset and isinstance(yield_, Yield):
+                continue
             next_yield = ctx.assign(ctx.get_by_name('yield_state_next'), yield_.yield_id)
             all_conds = {}
-            for state in states:
-                if state.end_yield_id == yield_.yield_id:
-                    cond = ctx.get_by_name('yield_state') == state.start_yield_id
+            if not is_reset:
+                for state in states:
+                    if state.start_yield_id < 0:
+                        continue
+                    if state.end_yield_id == yield_.yield_id:
+                        cond = ctx.get_by_name('yield_state') == state.start_yield_id
+                        if state.conds:
+                            conds = (ctx.translate(process_statement(cond)) for cond in state.conds)
+                            cond = reduce(vg.Land, conds, cond)
+                        all_conds[str(cond)] = cond
+                if all_conds:
+                    all_conds = list(all_conds.values())
+                    if len(all_conds) > 1:
+                        cond = reduce(vg.Lor, all_conds[1:], all_conds[0])
+                    else:
+                        cond = all_conds[0]
+                    if next_state is None:
+                        next_state = vg.If(cond)(next_yield)
+                    elif yield_ == yields[-1]:
+                        next_state.Else(next_yield)
+                    else:
+                        next_state.Elif(cond)(next_yield)
+            else:
+                reset_states = list(filter(lambda x: x.start_yield_id < 0, states))
+                print(states)
+                for state in reset_states:
+                    next_yield = ctx.assign(ctx.get_by_name('yield_state'),
+                                            state.end_yield_id, blk=0)
                     if state.conds:
                         conds = (ctx.translate(process_statement(cond)) for cond in state.conds)
-                        cond = reduce(vg.Land, conds, cond)
-                    all_conds[str(cond)] = cond
-            if all_conds:
-                all_conds = list(all_conds.values())
-                if len(all_conds) > 1:
-                    cond = reduce(vg.Lor, all_conds[1:], all_conds[0])
-                else:
-                    cond = all_conds[0]
-                if next_state is None:
-                    next_state = vg.If(cond)(next_yield)
-                elif yield_ == yields[-1]:
-                    next_state.Else(next_yield)
-                else:
-                    next_state.Elif(cond)(next_yield)
+                        cond = reduce(vg.Land, conds)
+                        if reset_next_state is None:
+                            reset_next_state = vg.If(cond)(next_yield)
+                        elif state == reset_states[-1]:
+                            reset_next_state = reset_next_state.Else(next_yield)
+                        else:
+                            reset_next_state.Elif(cond)(next_yield)
+                    else:
+                        reset_next_state = next_yield
         assert next_state is not None
+        assert reset_next_state is not None
         comb_body.insert(0, next_state)
         for i, state in enumerate(states):
             conds = []
@@ -602,6 +641,8 @@ def compile_states(ctx, states, one_state, width_table, registers,
         else_body.append(
             ctx.assign(ctx.get_by_name('yield_state'), ctx.get_by_name('yield_state_next'), blk=0)
         )
+        # reset_body.insert(0, reset_next_state)
+        reset_body = [reset_next_state] + comb_body + reset_body
     ctx.module.Always(
         vg.Posedge(ctx.module.get_ports()["CLK"]),
         vg.Posedge(ctx.module.get_ports()["RESET"])
@@ -609,7 +650,7 @@ def compile_states(ctx, states, one_state, width_table, registers,
         vg.If(
             ctx.module.get_ports()["RESET"]
         )(
-            init_body
+            reset_body
         )(
             else_body
         )
@@ -617,7 +658,8 @@ def compile_states(ctx, states, one_state, width_table, registers,
 
 
 def compile_by_path(ctx, paths, one_state, width_table, registers,
-                    sub_coroutines, outputs, init_body, strategy="by_statement"):
+                    sub_coroutines, outputs, inputs,
+                    strategy="by_statement"):
 
     for name, def_ in sub_coroutines.items():
         ports = []
@@ -635,6 +677,8 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
     first_if = None
     state_map = {}
     for i, path in enumerate(paths):
+        if isinstance(path[0], Yield) and path[0].yield_id < 0:
+            continue
         state = path[0].yield_id
         if state not in state_map:
             state_map[state] = []
@@ -658,13 +702,16 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
                 statements[0].orig_node = block.orig_node
                 statements[0].is_true = path[n + 1] is block.true_edge
             elif isinstance(block, Yield):
-                statements.append(ast.parse(f"yield_state_next = {block.yield_id}").body[0])
+                if not one_state:
+                    statements.append(
+                        ast.parse(f"yield_state_next = {block.yield_id}").body[0])
             else:
                 raise NotImplementedError(block)
         state_map[state].append(statements)
 
     last_if = None
     items = list(state_map.items())
+    reset_body = None
     for state, statements in items:
         body = []
         for block in statements:
@@ -674,18 +721,27 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
         body = merge_ifs(body)
 
         body = [ctx.translate(stmt) for stmt in body]
-        if_ = vg.If(
-            (ctx.module.get_vars()["yield_state"] == state)
-        )(body)
-        if last_if is not None:
-            if (state, statements) == items[-1]:
-                last_if.Else(body)
+        if state == -1:
+            reset_body = body
+        elif not one_state:
+            if_ = vg.If(
+                (ctx.module.get_vars()["yield_state"] == state)
+            )(body)
+            if last_if is not None:
+                if (state, statements) == items[-1]:
+                    last_if.Else(body)
+                else:
+                    last_if.Else([if_])
             else:
-                last_if.Else([if_])
+                first_if = if_
+            last_if = if_
         else:
-            first_if = if_
-        last_if = if_
-    body = [first_if]
+            assert len(items) <= 2
+    assert reset_body is not None
+    if last_if is not None:
+        body = [first_if]
+    else:
+        assert one_state
     for reg in registers:
         width = width_table[reg]
         if isinstance(width, MemoryType):
@@ -696,7 +752,14 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
                 ))
         else:
             body.insert(0, ctx.assign(ctx.get_by_name(reg + "_next"), ctx.get_by_name(reg)))
-    ctx.module.Always(vg.SensitiveAll())(
+    sensitivity_list = []
+    for reg in registers:
+        sensitivity_list.append(ctx.get_by_name(reg))
+    for input_ in inputs:
+        sensitivity_list.append(ctx.get_by_name(input_))
+    if not one_state:
+        sensitivity_list.append(ctx.get_by_name("yield_state"))
+    ctx.module.Always(*sensitivity_list)(
         body
     )
     else_body = []
@@ -713,18 +776,22 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
                 )
         else:
             else_body.append(
-                ctx.assign(ctx.get_by_name(reg), ctx.get_by_name(reg + "_next"), blk=0)
+                ctx.assign(ctx.get_by_name(reg), ctx.get_by_name(reg +
+                                                                 "_next"),
+                           blk=0)
             )
-    else_body.append(
-        ctx.assign(ctx.get_by_name('yield_state'), ctx.get_by_name('yield_state_next'), blk=0)
-    )
+    if not one_state:
+        else_body.append(
+            ctx.assign(ctx.get_by_name('yield_state'),
+                       ctx.get_by_name('yield_state_next'), blk=0)
+        )
     ctx.module.Always(
         vg.Posedge(ctx.module.get_ports()["CLK"]), vg.Posedge(ctx.module.get_ports()["RESET"])
     )(
         vg.If(
             ctx.module.get_ports()["RESET"]
         )(
-            init_body
+            reset_body + else_body
         )(
             else_body
         )

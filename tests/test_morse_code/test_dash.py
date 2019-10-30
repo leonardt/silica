@@ -76,6 +76,12 @@ def test_dash(strategy):
     # si_dash = m.DefineFromVerilogFile("tests/build/si_dash.v",
     #                                  type_map={"CLK": m.In(m.Clock)})[0]
     tester = fault.Tester(si_dash, si_dash.CLK)
+    tester.poke(si_dash.RESET, 0)
+    tester.eval()
+    tester.poke(si_dash.RESET, 1)
+    tester.eval()
+    tester.poke(si_dash.RESET, 0)
+    tester.eval()
     for i in range(2):
         dash.send(True)
         assert dash.cb == 1

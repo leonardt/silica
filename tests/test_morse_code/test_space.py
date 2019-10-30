@@ -9,8 +9,10 @@ import shutil
 
 @si.coroutine
 def Space(I: Bit) -> {"cb": Bit, "is_": Bit}:
-    I = yield
     while True:
+        cb = bit(0)
+        is_ = bit(0)
+        I = yield cb, is_
         if ~I:
             cb = bit(1)
             is_ = bit(0)
@@ -26,9 +28,6 @@ def Space(I: Bit) -> {"cb": Bit, "is_": Bit}:
                         I = yield cb, is_
                         if I:
                             break
-        cb = bit(0)
-        is_ = bit(0)
-        I = yield cb, is_
 
 
 @pytest.mark.parametrize("strategy", ["by_path", "by_statement"])
@@ -39,6 +38,12 @@ def test_space(strategy):
     # si_space = m.DefineFromVerilogFile("tests/build/si_space.v",
     #                                  type_map={"CLK": m.In(m.Clock)})[0]
     tester = fault.Tester(si_space, si_space.CLK)
+    tester.poke(si_space.RESET, 0)
+    tester.eval()
+    tester.poke(si_space.RESET, 1)
+    tester.eval()
+    tester.poke(si_space.RESET, 0)
+    tester.eval()
     for i in range(2):
         space.send(False)
         assert space.cb == 1

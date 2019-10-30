@@ -325,21 +325,29 @@ def convert_to_ssa(cfg):
                                 continue
                             conds = set()
                             conds = {}
+                            # block.print_statements()
+                            reset_conds = set()
                             for path in cfg.paths:
                                 if predecessor in path and block in path[1:] and path.index(predecessor) == path[1:].index(block):
                                     these_conds = get_conds_up_to(path, predecessor, cfg)
-                                    if these_conds not in conds:
-                                        conds[these_conds] = set()
-                                    conds[these_conds].add(path[0].yield_id)
+                                    if path[0].yield_id < 0:
+                                        reset_conds.add(these_conds)
+                                    else:
+                                        if these_conds not in conds:
+                                            conds[these_conds] = set()
+                                        conds[these_conds].add(path[0].yield_id)
                             if not conds:
                                 # not in valid path
                                 continue
                             expanded_conds = []
                             for cond, yields in conds.items():
                                 # If not in all yields
-                                if len(yields) < cfg.curr_yield_id - 1:
+                                if len(yields) < cfg.curr_yield_id:
                                     cond = cond + " & " + "(" + " | ".join(f"(yield_state == {i})" for i in yields) + ")"
                                 expanded_conds.append(cond)
+                            if reset_conds:
+                                for cond in reset_conds:
+                                    expanded_conds.append(f"RESET & ({cond})")
                             conds = [ast.parse(cond) for cond in expanded_conds]
                             if len(conds) > 1:
                                 phi_conds.append(ast.BoolOp(ast.Or(), conds))

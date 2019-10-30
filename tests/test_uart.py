@@ -63,6 +63,12 @@ def test_UART(strategy):
     # si_uart = m.DefineFromVerilogFile("tests/build/si_uart.v",
     #                                  type_map={"CLK": m.In(m.Clock)})[0]
     tester = fault.Tester(si_uart, si_uart.CLK)
+    tester.poke(si_uart.RESET, 0)
+    tester.eval()
+    tester.poke(si_uart.RESET, 1)
+    tester.eval()
+    tester.poke(si_uart.RESET, 0)
+    tester.eval()
     tester.step(2)
     for message in [0xDE, 0xAD]:
         tester.expect(si_uart.ready, 1)
