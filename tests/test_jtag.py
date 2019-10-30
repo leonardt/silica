@@ -202,7 +202,7 @@ def test_jtag(strategy):
 
     flags = []
     # if strategy == "by_statement":
-    flags += ["-Wno-fatal"]
+    # flags += ["-Wno-fatal"]
     tester.compile_and_run("verilator", magma_output="verilog", flags=flags,
                            directory="tests/build")
     ref = m.DefineFromVerilogFile("jtag/reference.v",

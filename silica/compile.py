@@ -110,6 +110,49 @@ def rewrite_yield_constants(tree, outputs):
     return Transformer().visit(tree)
 
 
+def replace_memory_init(tree):
+    class Transformer(ast.NodeTransformer):
+        def visit(self, node):
+            """
+            For nodes with a `body` attribute, we explicitly traverse them and
+            flatten any lists that are returned. This allows visitors to return
+            more than one node.
+            """
+            if hasattr(node, 'body') and not isinstance(node, ast.IfExp):
+                new_body = []
+                for statement in node.body:
+                    result = self.visit(statement)
+                    if isinstance(result, list):
+                        new_body.extend(result)
+                    else:
+                        new_body.append(result)
+                node.body = new_body
+                if isinstance(node, ast.If):
+                    new_orelse = []
+                    for statement in node.orelse:
+                        result = self.visit(statement)
+                        if isinstance(result, list):
+                            new_orelse.extend(result)
+                        else:
+                            new_orelse.append(result)
+                    node.orelse = new_orelse
+                return node
+            return super().visit(node)
+
+        def visit_Assign(self, node):
+            if ast_utils.is_call(node.value) and \
+                    ast_utils.is_name(node.value.func) and node.value.func.id == "memory":
+                assert len(node.targets) == 1 and isinstance(node.targets[0], ast.Name)
+                assert isinstance(node.value.args[0], ast.Num)
+                return [
+                    ast.parse(f"{node.targets[0].id}[{i}] = 0").body[0]
+                    for i in range(node.value.args[0].n)
+                ]
+            return node
+    return Transformer().visit(tree)
+
+
+
 def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog', strategy="by_path"):
     if not isinstance(coroutine, Coroutine):
         raise ValueError("silica.compile expects a silica.Coroutine")
@@ -132,7 +175,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     specialize_list_comps(tree, func_globals, func_locals)
     tree, list_lens = propagate_types(tree)
     tree, loopvars = desugar_for_loops(tree, list_lens)
-    tree = rewrite_yield_constants(tree, list(coroutine._outputs.keys()))
+    # tree = rewrite_yield_constants(tree, list(coroutine._outputs.keys()))
 
     width_table = {}
     type_table = {}
@@ -163,6 +206,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
         sub_coroutines[var] = compile(sub_coroutine)
         add_coroutine_to_tables(sub_coroutine, width_table, type_table, var)
     tree = desugar_send_calls(tree, sub_coroutines)
+    tree = replace_memory_init(tree)
     # DesugarArrays().run(tree)
     cfg = ControlFlowGraph(tree, width_table, func_locals, func_globals,
                            sub_coroutines, strategy)
@@ -174,45 +218,48 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
         return compile_magma(coroutine, file_name, mux_strategy, output)
 
     registers = set()
+    outputs = list(coroutine._outputs.keys())
     for key, value in coroutine._outputs.items():
+        if key == "state":
+            continue
         if isinstance(value, types.Register):
             registers.add(key)
-    outputs = tuple()
+    # outputs = tuple()
     for path in cfg.paths:
-        outputs += (collect_names(path[-1].value, ctx=ast.Load), )
+        # outputs += (collect_names(path[-1].value, ctx=ast.Load), )
         registers |= (path[0].live_ins & path[0].live_outs)
 
     registers = set(filter(lambda x: "_si_sub_co_" not in x, registers))
 
-    assert all(outputs[1] == output for output in outputs[1:]), "Yield statements must all have the same outputs except for the first"
-    outputs = outputs[1]
+    # assert all(outputs[1] == output for output in outputs[1:]), "Yield statements must all have the same outputs except for the first"
+    # outputs = outputs[1]
     states = cfg.states
     num_yields = cfg.curr_yield_id
     num_states = len(states)
-    initial_values = {}
+    # initial_values = {}
     # initial_basic_block = False
     # sub_coroutines = {}
     # cfg.render()
-    for node in cfg.paths[0][:-1]:
-        if isinstance(node, HeadBlock):
-            for statement in node:
-                if ast_utils.is_call(statement.value) and ast_utils.is_name(statement.value.func) and statement.value.func.id == "coroutine_create":
-                    pass
-                    # sub_coroutine = eval(astor.to_source(statement.value.args[0]), func_globals, func_locals)
-                    # statement.value.func = ast.Name(sub_coroutine._name, ast.Load())
-                    # statement.value.args = []
-                    # sub_coroutines[statement.targets[0].id] = compile(sub_coroutine())
-                else:
-                    if ast_utils.is_name(statement.value) and statement.value.id in initial_values:
-                        initial_values[statement.targets[0].id] = initial_values[statement.value.id]
-                    else:
-                        key = statement.targets[0].id
-                        if strategy == 'by_statement':
-                            for var in cfg.ssa_var_to_curr_id_map:
-                                # FIXME: Doesn't work with variables with shared prefix
-                                if var in key:
-                                    key = var
-                        initial_values[key] = get_constant(statement.value)
+    # for node in cfg.paths[0][:-1]:
+    #     if isinstance(node, HeadBlock):
+    #         for statement in node:
+    #             if ast_utils.is_call(statement.value) and ast_utils.is_name(statement.value.func) and statement.value.func.id == "coroutine_create":
+    #                 pass
+    #                 # sub_coroutine = eval(astor.to_source(statement.value.args[0]), func_globals, func_locals)
+    #                 # statement.value.func = ast.Name(sub_coroutine._name, ast.Load())
+    #                 # statement.value.args = []
+    #                 # sub_coroutines[statement.targets[0].id] = compile(sub_coroutine())
+    #             else:
+    #                 if ast_utils.is_name(statement.value) and statement.value.id in initial_values:
+    #                     initial_values[statement.targets[0].id] = initial_values[statement.value.id]
+    #                 else:
+    #                     key = statement.targets[0].id
+    #                     if strategy == 'by_statement':
+    #                         for var in cfg.ssa_var_to_curr_id_map:
+    #                             # FIXME: Doesn't work with variables with shared prefix
+    #                             if var in key:
+    #                                 key = var
+    #                     initial_values[key] = get_constant(statement.value)
         # initial_basic_block |= isinstance(node, BasicBlock)
     # if not initial_basic_block:
     #     num_states -= 1
@@ -299,16 +346,16 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
             if strategy == "by_path":
                 ctx.declare_reg(register + "_next", width)
 
-    if strategy == "by_path":
-        init_body = []
-        for key, value in initial_values.items():
-            if value is not None and key in registers:
-                init_body.append(ctx.assign(ctx.get_by_name(key), value, blk=0))
-                # if key in registers:
-                #     init_body.append(ctx.assign(ctx.get_by_name(key + "_next"), value))
-    else:
-        init_body = [ctx.assign(ctx.get_by_name(key), value, blk=0) for key, value in
-                     initial_values.items() if value is not None]
+    # if strategy == "by_path":
+    #     init_body = []
+    #     for key, value in initial_values.items():
+    #         if value is not None and key in registers:
+    #             init_body.append(ctx.assign(ctx.get_by_name(key), value, blk=0))
+    #             # if key in registers:
+    #             #     init_body.append(ctx.assign(ctx.get_by_name(key + "_next"), value))
+    # else:
+    #     init_body = [ctx.assign(ctx.get_by_name(key), value, blk=0) for key, value in
+    #                  initial_values.items() if value is not None]
 
     # for sub_coroutine in sub_coroutines:
     #     for key, type_ in sub_coroutines[sub_coroutine].interface.ports.items():
@@ -343,7 +390,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
             # init_body.append(ctx.translate(statement)) # TODO: redefinition bug?
             # temp_var_promoter.visit(statement)
 
-    ctx.initial(init_body)
+    # ctx.initial(init_body)
 
     raddrs = {}
     waddrs = {}
@@ -353,7 +400,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     #     states = states[1:]
     if strategy == "by_statement":
         verilog.compile_states(ctx, states, cfg.curr_yield_id == 1, width_table,
-                               registers, sub_coroutines)
+                               registers, inputs, sub_coroutines)
     else:
         verilog.compile_by_path(ctx, cfg.paths, cfg.curr_yield_id == 1, width_table,
                                 registers, sub_coroutines, outputs, inputs, strategy)

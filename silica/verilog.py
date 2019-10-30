@@ -1,3 +1,4 @@
+import copy
 import astor
 import ast
 from .width import get_width
@@ -37,10 +38,13 @@ def merge_ifs(block):
     return new_block
 
 
-def replace_references_to_registers(stmt, registers):
+def replace_references_to_registers(stmt, registers, is_reset):
     replace_map = {}
     for key in registers:
-        replace_map[key] = ast.Name(key + "_next")
+        if not is_reset:
+            replace_map[key] = ast.Name(key + "_next")
+        else:
+            replace_map[key] = ast.Name(key)
     return replace_symbols(stmt, replace_map)
 
 
@@ -306,7 +310,6 @@ class ExpandLists(ast.NodeTransformer):
 
 class ListToVerilog(ast.NodeTransformer):
     def visit_List(self, node):
-        print(ast.dump(node))
         node = ast.Set(node.elts)
         return node
 
@@ -425,7 +428,7 @@ def compile_statements(ctx, else_body, comb_body, states, one_state, width_table
                     comb_body.append(stmt)
 
 
-def compile_states(ctx, states, one_state, width_table, registers,
+def compile_states(ctx, states, one_state, width_table, registers, inputs,
                    sub_coroutines):
     module = ctx.module
     else_body = []
@@ -573,7 +576,6 @@ def compile_states(ctx, states, one_state, width_table, registers,
                         next_state.Elif(cond)(next_yield)
             else:
                 reset_states = list(filter(lambda x: x.start_yield_id < 0, states))
-                print(states)
                 for state in reset_states:
                     next_yield = ctx.assign(ctx.get_by_name('yield_state'),
                                             state.end_yield_id, blk=0)
@@ -634,15 +636,27 @@ def compile_states(ctx, states, one_state, width_table, registers,
             comb_body.append(vg.Subst(ctx.get_by_name(output),
                                       ctx.get_by_name(var), 1))
 
-    ctx.module.Always(vg.SensitiveAll())(
-        comb_body
-    )
+    sensitivity_list = []
+    for reg in registers:
+        sensitivity_list.append(ctx.get_by_name(reg))
+    for input_ in inputs:
+        sensitivity_list.append(ctx.get_by_name(input_))
+    if not one_state:
+        sensitivity_list.append(ctx.get_by_name("yield_state"))
+    # ctx.module.Always(*sensitivity_list)(
+    #     comb_body
+    # )
+    for stmt in comb_body:
+        ctx.module.Always(*sensitivity_list)(
+            # comb_body
+            stmt
+        )
     if not one_state:
         else_body.append(
             ctx.assign(ctx.get_by_name('yield_state'), ctx.get_by_name('yield_state_next'), blk=0)
         )
-        # reset_body.insert(0, reset_next_state)
-        reset_body = [reset_next_state] + comb_body + reset_body
+        reset_body.insert(0, reset_next_state)
+        # reset_body = [reset_next_state] + comb_body + reset_body
     ctx.module.Always(
         vg.Posedge(ctx.module.get_ports()["CLK"]),
         vg.Posedge(ctx.module.get_ports()["RESET"])
@@ -680,6 +694,9 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
         if isinstance(path[0], Yield) and path[0].yield_id < 0:
             continue
         state = path[0].yield_id
+        if state >= 0 and "state" in outputs:
+            assert isinstance(path[0].value.value.value, ast.Num)
+            state = path[0].value.value.value.n
         if state not in state_map:
             state_map[state] = []
         statements = []
@@ -688,30 +705,46 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
                 continue
             elif isinstance(block, BasicBlock):
                 statements = [
-                    replace_references_to_registers(process_statement(stmt),
-                                                    registers) for stmt in
+                    replace_references_to_registers(process_statement(copy.deepcopy(stmt)),
+                                                    registers, state < 0) for stmt in
                     block.statements] + statements
             elif isinstance(block, Branch):
                 cond = block.cond
                 if path[n + 1] is block.false_edge:
                     cond = ast.UnaryOp(ast.Invert(), cond)
                 statements = [ast.If(
-                    replace_references_to_registers(process_statement(cond), registers),
+                    replace_references_to_registers(process_statement(copy.deepcopy(cond)),
+                                                    registers, state < 0),
                     statements, []
                 )]
                 statements[0].orig_node = block.orig_node
                 statements[0].is_true = path[n + 1] is block.true_edge
             elif isinstance(block, Yield):
                 if not one_state:
-                    statements.append(
-                        ast.parse(f"yield_state_next = {block.yield_id}").body[0])
+                    if "state" in outputs:
+                        assert isinstance(block.value.value.value, ast.Num)
+                        next_state = block.value.value.value.n
+                        # if state >= 0:
+                        #     statements.append(
+                        #         ast.parse(f"yield_state_next = state_next").body[0])
+                        # else:
+                        #     statements.append(
+                        #         ast.parse(f"yield_state = state").body[0])
+                    else:
+                        next_state = block.yield_id
+                    if state >= 0:
+                        statements.append(
+                            ast.parse(f"yield_state_next = {next_state}").body[0])
+                    else:
+                        statements.append(
+                            ast.parse(f"yield_state = {next_state}").body[0])
             else:
                 raise NotImplementedError(block)
         state_map[state].append(statements)
 
     last_if = None
     items = list(state_map.items())
-    reset_body = None
+    reset_body = []
     for state, statements in items:
         body = []
         for block in statements:
@@ -720,23 +753,30 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
                     body.append(stmt)
         body = merge_ifs(body)
 
-        body = [ctx.translate(stmt) for stmt in body]
         if state == -1:
-            reset_body = body
-        elif not one_state:
-            if_ = vg.If(
-                (ctx.module.get_vars()["yield_state"] == state)
-            )(body)
-            if last_if is not None:
-                if (state, statements) == items[-1]:
-                    last_if.Else(body)
+            for stmt in body:
+                if not isinstance(stmt, ast.Assign):
+                    raise NotImplementedError(astor.to_source(stmt))
                 else:
-                    last_if.Else([if_])
-            else:
-                first_if = if_
-            last_if = if_
+                    reset_body.append(
+                        ctx.translate_assign(stmt.targets[0], ctx.translate(stmt.value), blk=0)
+                    )
         else:
-            assert len(items) <= 2
+            body = [ctx.translate(stmt) for stmt in body]
+            if not one_state:
+                if_ = vg.If(
+                    (ctx.module.get_vars()["yield_state"] == state)
+                )(body)
+                if last_if is not None:
+                    if (state, statements) == items[-1]:
+                        last_if.Else(body)
+                    else:
+                        last_if.Else([if_])
+                else:
+                    first_if = if_
+                last_if = if_
+            else:
+                assert len(items) <= 2
     assert reset_body is not None
     if last_if is not None:
         body = [first_if]
@@ -791,8 +831,11 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
         vg.If(
             ctx.module.get_ports()["RESET"]
         )(
-            reset_body + else_body
+            reset_body
         )(
             else_body
         )
     )
+    if "state" in outputs:
+        ctx.module.Assign(ctx.assign(ctx.module.get_ports()["state"],
+                                     ctx.get_by_name("yield_state")))
