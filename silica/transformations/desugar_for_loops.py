@@ -17,7 +17,7 @@ def get_call_func(node):
     raise NotImplementedError(type(node.value.func))  # pragma: no cover
 
 
-def desugar_for_loops(tree, type_table):
+def desugar_for_loops(tree, type_table, width_table):
     class ForLoopDesugarer(ast.NodeTransformer):
         def __init__(self):
             super().__init__()
@@ -36,18 +36,18 @@ def desugar_for_loops(tree, type_table):
             # range() iterator
             if is_call(node.iter) and is_name(node.iter.func) and \
                node.iter.func.id == "range":
-                try:
-                    range_object = eval(astor.to_source(node.iter))
-                    body = []
-                    for i in range_object:
-                        symbol_table = {node.target.id: ast.Num(i)}
-                        for child in node.body:
-                            body.append(
-                                constant_fold(replace_symbols(deepcopy(child), symbol_table))
-                            )
-                    return body
-                except Exception as e:
-                    pass
+                # try:
+                #     range_object = eval(astor.to_source(node.iter))
+                #     body = []
+                #     for i in range_object:
+                #         symbol_table = {node.target.id: ast.Num(i)}
+                #         for child in node.body:
+                #             body.append(
+                #                 constant_fold(replace_symbols(deepcopy(child), symbol_table))
+                #             )
+                #     return body
+                # except Exception as e:
+                #     pass
 
                 if len(node.iter.args) > 0:
                     if not len(node.iter.args) < 4:
@@ -71,14 +71,29 @@ def desugar_for_loops(tree, type_table):
                     raise NotImplementedError("keyword iterators are not yet supported")
 
                 bit_width = eval(astor.to_source(stop).rstrip() + "-" + astor.to_source(start).rstrip()).bit_length()
-                self.loopvars.add((node.target.id, bit_width))
+                # self.loopvars.add((node.target.id, bit_width))
+                if isinstance(step, ast.UnaryOp) and isinstance(step.op, ast.USub):
+                    comp_op = ast.Eq()
+                    assert isinstance(stop, ast.UnaryOp) and isinstance(stop.op, ast.USub) and \
+                        isinstance(stop.operand, ast.Num) and stop.operand.n == 1
+                    stop = ast.Num(0)
+                    step = step.operand
+                    step_op = ast.Sub()
+                else:
+                    comp_op = ast.Lt()
+                    step_op = ast.Add()
+                start = ast.parse(f"bits({astor.to_source(start).rstrip()}, {width_table[node.target.id]})").body[0].value
+                step = ast.parse(f"bits({astor.to_source(step).rstrip()}, {width_table[node.target.id]})").body[0].value
+                stop = ast.parse(f"bits({astor.to_source(stop).rstrip()}, {width_table[node.target.id]})").body[0].value
 
                 return [
                     ast.Assign([ast.Name(node.target.id, ast.Store())], start),
-                    ast.While(ast.BinOp(ast.Name(node.target.id, ast.Load()), ast.Lt(), stop),
+                    ast.While(ast.NameConstant(True),
                         node.body + [
+                            ast.If(ast.BinOp(ast.Name(node.target.id, ast.Load()), comp_op, stop),
+                                   [ast.Break()], []),
                             ast.Assign([ast.Name(node.target.id, ast.Store())], ast.BinOp(
-                                ast.Name(node.target.id, ast.Load()), ast.Add(), step))
+                                ast.Name(node.target.id, ast.Load()), step_op, step))
                         ], [])
                 ]
             # for _ in name

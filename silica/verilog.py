@@ -196,6 +196,8 @@ class Context:
             return vg.Int(stmt.n)
         elif is_sub(stmt):
             return vg.Sub
+        elif is_u_sub(stmt):
+            return vg.Uminus
         elif is_subscript(stmt):
             if is_index(stmt.slice):
                 return vg.Pointer(
@@ -695,8 +697,12 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
             continue
         state = path[0].yield_id
         if state >= 0 and "state" in outputs:
-            assert isinstance(path[0].value.value.value, ast.Num)
-            state = path[0].value.value.value.n
+            if isinstance(path[0].value.value.value, ast.Num):
+                state = path[0].value.value.value.n
+            else:
+                assert isinstance(path[0].value.value.value, ast.Tuple)
+                assert isinstance(path[0].value.value.value.elts[0], ast.Num)
+                state = path[0].value.value.value.elts[0].n
         if state not in state_map:
             state_map[state] = []
         statements = []
@@ -722,8 +728,12 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
             elif isinstance(block, Yield):
                 if not one_state:
                     if "state" in outputs:
-                        assert isinstance(block.value.value.value, ast.Num)
-                        next_state = block.value.value.value.n
+                        if isinstance(block.value.value.value, ast.Num):
+                            next_state = block.value.value.value.n
+                        else:
+                            assert isinstance(block.value.value.value, ast.Tuple)
+                            assert isinstance(block.value.value.value.elts[0], ast.Num)
+                            next_state = block.value.value.value.elts[0].n
                         # if state >= 0:
                         #     statements.append(
                         #         ast.parse(f"yield_state_next = state_next").body[0])
@@ -740,6 +750,11 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
                             ast.parse(f"yield_state = {next_state}").body[0])
             else:
                 raise NotImplementedError(block)
+        if state < 0:
+            statements = [
+                replace_references_to_registers(process_statement(copy.deepcopy(stmt)),
+                                                registers, state < 0) for stmt in
+                path[0].statements] + statements
         state_map[state].append(statements)
 
     last_if = None
@@ -755,12 +770,13 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
 
         if state == -1:
             for stmt in body:
-                if not isinstance(stmt, ast.Assign):
-                    raise NotImplementedError(astor.to_source(stmt))
-                else:
+                if isinstance(stmt, ast.Assign):
                     reset_body.append(
-                        ctx.translate_assign(stmt.targets[0], ctx.translate(stmt.value), blk=0)
+                        ctx.translate_assign(stmt.targets[0],
+                                             ctx.translate(stmt.value), blk=0)
                     )
+                else:
+                    raise NotImplementedError(astor.to_source(stmt))
         else:
             body = [ctx.translate(stmt) for stmt in body]
             if not one_state:

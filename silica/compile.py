@@ -98,7 +98,7 @@ def rewrite_yield_constants(tree, outputs):
             if isinstance(node.value, ast.Yield):
                 yield_ = node.value
                 new_args = []
-                if isinstance(yield_.value, ast.Num):
+                if isinstance(yield_.value, ast.Num) and "state" not in outputs:
                     assert len(outputs) == 1
                     assign_ = ast.Assign(
                         [ast.Name(outputs[0], ast.Store())],
@@ -106,6 +106,18 @@ def rewrite_yield_constants(tree, outputs):
                     )
                     yield_.value = ast.Name(outputs[0], ast.Load())
                     return [assign_, node]
+                elif isinstance(yield_.value, ast.Tuple):
+                    start_i = 0
+                    if "state" in outputs:
+                        start_i = 1
+                    assigns = []
+                    for i in range(start_i, len(yield_.value.elts)):
+                        assigns.append(ast.Assign(
+                            [ast.Name(outputs[i], ast.Store())],
+                            yield_.value.elts[i]
+                        ))
+                        yield_.value.elts[i] = ast.Name(outputs[i], ast.Load())
+                    return assigns + [node]
             return node
     return Transformer().visit(tree)
 
@@ -168,37 +180,38 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     func_locals.update(coroutine._defn_locals)
     func_locals.update(func_globals)
     specialize_arguments(tree, coroutine)
+    inline_yield_from_functions(tree, func_globals, func_locals)
     specialize_constants(tree, coroutine._defn_locals)
     specialize_evals(tree, func_globals, func_locals)
-    inline_yield_from_functions(tree, func_globals, func_locals)
     constant_fold(tree)
     specialize_list_comps(tree, func_globals, func_locals)
     tree, list_lens = propagate_types(tree)
-    tree, loopvars = desugar_for_loops(tree, list_lens)
-    # tree = rewrite_yield_constants(tree, list(coroutine._outputs.keys()))
+    tree = rewrite_yield_constants(tree, list(coroutine._outputs.keys()))
 
     width_table = {}
     type_table = {}
 
     add_coroutine_to_tables(coroutine, width_table, type_table)
 
-    for name,width in loopvars:
-        width_table[name] = width
+    # for name,width in loopvars:
+    #     width_table[name] = width
 
     constant_fold(tree)
 
-    for name,_ in loopvars:
-        type_table[name] = 'uint'
+    # for name,_ in loopvars:
+    #     type_table[name] = 'uint'
 
     CollectInitialWidthsAndTypes(width_table, type_table, func_locals, func_globals).visit(tree)
     PromoteWidths(width_table, type_table).visit(tree)
     tree, loopvars = get_final_widths(tree, width_table, func_locals, func_globals)
+    tree, loopvars = desugar_for_loops(tree, list_lens, width_table)
 
-    for name,width in loopvars.items():
-        width_table[name] = width
+    # for name,width in loopvars.items():
+    #     width_table[name] = width
 
     # Desugar(width_table).visit(tree)
     type_table = {}
+    print(astor.to_source(tree))
     TypeChecker(width_table, type_table).check(tree)
     sub_coroutines = {}
     for var, name in collect_sub_coroutines(tree).items():
