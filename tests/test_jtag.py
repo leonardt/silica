@@ -23,7 +23,6 @@ PAUSE_IR = 11
 EXIT2_IR = 8
 UPDATE_IR = 13
 
-
 @generator
 def Scan(capture, shift, exit_1, pause, exit_2, update):
     tms = yield capture

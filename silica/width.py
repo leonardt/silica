@@ -108,6 +108,9 @@ def get_width(node, width_table, func_locals={}, func_globals={}):
                     return upper - lower - 1
     elif isinstance(node, ast.Num):
         return max(node.n.bit_length(), 1)
+    elif isinstance(node, ast.Str):
+        # Verilog literal string, e.g. 5'b01000
+        return int(node.s.split("'")[0])
     elif isinstance(node, ast.Attribute):
         type_ = width_table[node.value.id]._outputs[node.attr]
         if isinstance(type_, m.BitKind):

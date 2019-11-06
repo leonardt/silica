@@ -274,6 +274,8 @@ class Context:
         elif isinstance(stmt, ast.Expr) and is_call(stmt.value) and is_name(stmt.value.func) and stmt.value.func.id == "print":
             # Skip print statements for now, maybe translate to display?
             return
+        elif isinstance(stmt, ast.Str):
+            return vg.EmbeddedCode(stmt.s)
         raise NotImplementedError(ast.dump(stmt))
 
     def to_verilog(self):
@@ -675,7 +677,7 @@ def compile_states(ctx, states, one_state, width_table, registers, inputs,
 
 def compile_by_path(ctx, paths, one_state, width_table, registers,
                     sub_coroutines, outputs, inputs,
-                    strategy="by_statement"):
+                    strategy="by_statement", reset_type="posedge"):
 
     for name, def_ in sub_coroutines.items():
         ports = []
@@ -701,8 +703,14 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
                 state = path[0].value.value.value.n
             else:
                 assert isinstance(path[0].value.value.value, ast.Tuple)
-                assert isinstance(path[0].value.value.value.elts[0], ast.Num)
-                state = path[0].value.value.value.elts[0].n
+                value = path[0].value.value.value.elts[0]
+                if isinstance(value, ast.Num):
+                    value = value.n
+                elif isinstance(value, ast.Str):
+                    value = value.s
+                else:
+                    raise NotImplementedError(value)
+                state = value
         if state not in state_map:
             state_map[state] = []
         statements = []
@@ -712,7 +720,7 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
             elif isinstance(block, BasicBlock):
                 statements = [
                     replace_references_to_registers(process_statement(copy.deepcopy(stmt)),
-                                                    registers, state < 0) for stmt in
+                                                    registers, isinstance(state, int) and state < 0) for stmt in
                     block.statements] + statements
             elif isinstance(block, Branch):
                 cond = block.cond
@@ -720,7 +728,7 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
                     cond = ast.UnaryOp(ast.Invert(), cond)
                 statements = [ast.If(
                     replace_references_to_registers(process_statement(copy.deepcopy(cond)),
-                                                    registers, state < 0),
+                                                    registers, isinstance(state, int) and state < 0),
                     statements, []
                 )]
                 statements[0].orig_node = block.orig_node
@@ -732,8 +740,14 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
                             next_state = block.value.value.value.n
                         else:
                             assert isinstance(block.value.value.value, ast.Tuple)
-                            assert isinstance(block.value.value.value.elts[0], ast.Num)
-                            next_state = block.value.value.value.elts[0].n
+                            value = block.value.value.value.elts[0]
+                            if isinstance(value, ast.Num):
+                                value = value.n
+                            elif isinstance(value, ast.Str):
+                                value = "\"" + value.s + "\""
+                            else:
+                                raise NotImplementedError(value)
+                            next_state = value
                         # if state >= 0:
                         #     statements.append(
                         #         ast.parse(f"yield_state_next = state_next").body[0])
@@ -742,7 +756,7 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
                         #         ast.parse(f"yield_state = state").body[0])
                     else:
                         next_state = block.yield_id
-                    if state >= 0:
+                    if not isinstance(state, int) or state >= 0:
                         statements.append(
                             ast.parse(f"yield_state_next = {next_state}").body[0])
                     else:
@@ -750,7 +764,7 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
                             ast.parse(f"yield_state = {next_state}").body[0])
             else:
                 raise NotImplementedError(block)
-        if state < 0:
+        if isinstance(state, int) and state < 0:
             statements = [
                 replace_references_to_registers(process_statement(copy.deepcopy(stmt)),
                                                 registers, state < 0) for stmt in
@@ -781,7 +795,7 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
             body = [ctx.translate(stmt) for stmt in body]
             if not one_state:
                 if_ = vg.If(
-                    (ctx.module.get_vars()["yield_state"] == state)
+                    (ctx.module.get_vars()["yield_state"] == vg.EmbeddedNumeric(state))
                 )(body)
                 if last_if is not None:
                     if (state, statements) == items[-1]:
@@ -841,12 +855,16 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
             ctx.assign(ctx.get_by_name('yield_state'),
                        ctx.get_by_name('yield_state_next'), blk=0)
         )
+    if reset_type == "posedge":
+        reset_event = vg.Posedge(ctx.module.get_ports()["RESET"])
+        reset_cond = ctx.module.get_ports()["RESET"] 
+    else:
+        reset_event = vg.Negedge(ctx.module.get_ports()["RESET"])
+        reset_cond = ~ctx.module.get_ports()["RESET"] 
     ctx.module.Always(
-        vg.Posedge(ctx.module.get_ports()["CLK"]), vg.Posedge(ctx.module.get_ports()["RESET"])
+        vg.Posedge(ctx.module.get_ports()["CLK"]), reset_event
     )(
-        vg.If(
-            ctx.module.get_ports()["RESET"]
-        )(
+        vg.If(reset_cond)(
             reset_body
         )(
             else_body

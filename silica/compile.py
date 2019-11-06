@@ -165,7 +165,7 @@ def replace_memory_init(tree):
 
 
 
-def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog', strategy="by_path"):
+def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog', strategy="by_path", reset_type="posedge"):
     if not isinstance(coroutine, Coroutine):
         raise ValueError("silica.compile expects a silica.Coroutine")
 
@@ -416,7 +416,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
                                registers, inputs, sub_coroutines)
     else:
         verilog.compile_by_path(ctx, cfg.paths, cfg.curr_yield_id == 1, width_table,
-                                registers, sub_coroutines, outputs, inputs, strategy)
+                                registers, sub_coroutines, outputs, inputs, strategy, reset_type)
     # cfg.render()
     verilog_str = ""
     for sub_coroutine in sub_coroutines.values():

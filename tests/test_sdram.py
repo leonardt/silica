@@ -15,76 +15,76 @@ REFRESH_COUNT = 8192  # cycles (how many refreshes required per refresh time)
 CYCLES_BETWEEN_REFRESH = \
     (CLK_FREQUENCY * 1_000 * REFRESH_TIME) // REFRESH_COUNT
 
-# IDLE = "5'b00000"
-IDLE = 0b00000
+IDLE = "5'b00000"
+# IDLE = 0b00000
 
-# INIT_NOP1 = "5'b01000"
-# INIT_PRE1 = "5'b01001"
-# INIT_NOP1_1 = "5'b00101"
-# INIT_REF1 = "5'b01010"
-# INIT_NOP2 = "5'b01011"
-# INIT_REF2 = "5'b01100"
-# INIT_NOP3 = "5'b01101"
-# INIT_LOAD = "5'b01110"
-# INIT_NOP4 = "5'b01111"
+INIT_NOP1 = "5'b01000"
+INIT_PRE1 = "5'b01001"
+INIT_NOP1_1 = "5'b00101"
+INIT_REF1 = "5'b01010"
+INIT_NOP2 = "5'b01011"
+INIT_REF2 = "5'b01100"
+INIT_NOP3 = "5'b01101"
+INIT_LOAD = "5'b01110"
+INIT_NOP4 = "5'b01111"
 
-# REF_PRE = "5'b00001"
-# REF_NOP1 = "5'b00010"
-# REF_REF = "5'b00011"
-# REF_NOP2 = "5'b00100"
+REF_PRE = "5'b00001"
+REF_NOP1 = "5'b00010"
+REF_REF = "5'b00011"
+REF_NOP2 = "5'b00100"
 
-# READ_ACT = "5'b10000"
-# READ_NOP1 = "5'b10001"
-# READ_CAS = "5'b10010"
-# READ_NOP2 = "5'b10011"
-# READ_READ = "5'b10100"
+READ_ACT = "5'b10000"
+READ_NOP1 = "5'b10001"
+READ_CAS = "5'b10010"
+READ_NOP2 = "5'b10011"
+READ_READ = "5'b10100"
 
-# WRIT_ACT = "5'b11000"
-# WRIT_NOP1 = "5'b11001"
-# WRIT_CAS = "5'b11010"
-# WRIT_NOP2 = "5'b11011"
+WRIT_ACT = "5'b11000"
+WRIT_NOP1 = "5'b11001"
+WRIT_CAS = "5'b11010"
+WRIT_NOP2 = "5'b11011"
 
-INIT_NOP1 = 0b01000
-INIT_PRE1 = 0b01001
-INIT_NOP1_1 = 0b00101
-INIT_REF1 = 0b01010
-INIT_NOP2 = 0b01011
-INIT_REF2 = 0b01100
-INIT_NOP3 = 0b01101
-INIT_LOAD = 0b01110
-INIT_NOP4 = 0b01111
+# INIT_NOP1 = 0b01000
+# INIT_PRE1 = 0b01001
+# INIT_NOP1_1 = 0b00101
+# INIT_REF1 = 0b01010
+# INIT_NOP2 = 0b01011
+# INIT_REF2 = 0b01100
+# INIT_NOP3 = 0b01101
+# INIT_LOAD = 0b01110
+# INIT_NOP4 = 0b01111
 
-REF_PRE = 0b00001
-REF_NOP1 = 0b00010
-REF_REF = 0b00011
-REF_NOP2 = 0b00100
+# REF_PRE = 0b00001
+# REF_NOP1 = 0b00010
+# REF_REF = 0b00011
+# REF_NOP2 = 0b00100
 
-READ_ACT = 0b10000
-READ_NOP1 = 0b10001
-READ_CAS = 0b10010
-READ_NOP2 = 0b10011
-READ_READ = 0b10100
+# READ_ACT = 0b10000
+# READ_NOP1 = 0b10001
+# READ_CAS = 0b10010
+# READ_NOP2 = 0b10011
+# READ_READ = 0b10100
 
-WRIT_ACT = 0b11000
-WRIT_NOP1 = 0b11001
-WRIT_CAS = 0b11010
-WRIT_NOP2 = 0b11011
+# WRIT_ACT = 0b11000
+# WRIT_NOP1 = 0b11001
+# WRIT_CAS = 0b11010
+# WRIT_NOP2 = 0b11011
 
-# CMD_PALL = "8'b10010001"
-# CMD_REF = "8'b10001000"
-# CMD_NOP = "8'b10111000"
-# CMD_MRS = "8'b1000000x"
-# CMD_BACT = "8'b10011xxx"
-# CMD_READ = "8'b10101xx1"
-# CMD_WRIT = "8'b10100xx1"
+CMD_PALL = "8'b10010001"
+CMD_REF = "8'b10001000"
+CMD_NOP = "8'b10111000"
+CMD_MRS = "8'b1000000x"
+CMD_BACT = "8'b10011xxx"
+CMD_READ = "8'b10101xx1"
+CMD_WRIT = "8'b10100xx1"
 
-CMD_PALL = bits(0b10010001, 8)
-CMD_REF = bits(0b10001000, 8)
-CMD_NOP = bits(0b10111000, 8)
-CMD_MRS = bits(0b10000000, 8)
-CMD_BACT = bits(0b10011000, 8)
-CMD_READ = bits(0b10101001, 8)
-CMD_WRIT = bits(0b10100001, 8)
+# CMD_PALL = bits(0b10010001, 8)
+# CMD_REF = bits(0b10001000, 8)
+# CMD_NOP = bits(0b10111000, 8)
+# CMD_MRS = bits(0b10000000, 8)
+# CMD_BACT = bits(0b10011000, 8)
+# CMD_READ = bits(0b10101001, 8)
+# CMD_WRIT = bits(0b10100001, 8)
 
 
 @coroutine
@@ -156,14 +156,14 @@ def read():
 
 def test_sdram():
     silica_sdram = SDRAMController()
-    circ = compile(silica_sdram, file_name="si_sdram.v", strategy="by_path")
+    circ = compile(silica_sdram, file_name="si_sdram.v", strategy="by_path", reset_type="negedge")
 
     tester = fault.Tester(circ, circ.CLK)
-    tester.circuit.RESET = 0
-    tester.eval()
     tester.circuit.RESET = 1
     tester.eval()
     tester.circuit.RESET = 0
+    tester.eval()
+    tester.circuit.RESET = 1
     tester.eval()
     for i in range(16):
         tester.circuit.state.expect(0b01000)
