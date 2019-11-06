@@ -27,9 +27,8 @@ UPDATE_IR = 13
 def Scan(capture, shift, exit_1, pause, exit_2, update):
     tms = yield capture
     while True:
-        if (tms == 0):
-            while tms == 0:
-                tms = yield shift
+        while tms == 0:
+            tms = yield shift
         tms = yield exit_1
         if tms == 0:
             while tms == 0:

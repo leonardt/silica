@@ -98,10 +98,10 @@ def SDRAMController(refresh_cnt: Bits[10], rd_enable: Bit, wr_enable: Bit) -> {
         refresh_cnt, rd_enable, wr_enable = yield IDLE, CMD_NOP
         if refresh_cnt >= CYCLES_BETWEEN_REFRESH:
             refresh_cnt, rd_enable, wr_enable = yield from refresh()
-        elif rd_enable:
-            refresh_cnt, rd_enable, wr_enable = yield from read()
         elif wr_enable:
             refresh_cnt, rd_enable, wr_enable = yield from write()
+        elif rd_enable:
+            refresh_cnt, rd_enable, wr_enable = yield from read()
 
 
 @generator
