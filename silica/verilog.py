@@ -785,10 +785,12 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
         if state == -1:
             for stmt in body:
                 if isinstance(stmt, ast.Assign):
-                    reset_body.append(
-                        ctx.translate_assign(stmt.targets[0],
-                                             ctx.translate(stmt.value), blk=0)
-                    )
+                    if stmt.targets[0].id in registers or \
+                            stmt.targets[0].id == "yield_state":
+                        reset_body.append(
+                            ctx.translate_assign(stmt.targets[0],
+                                                 ctx.translate(stmt.value), blk=0)
+                        )
                 else:
                     raise NotImplementedError(astor.to_source(stmt))
         else:

@@ -28,32 +28,18 @@ import mantle
 
 @si.coroutine
 def uart_transmitter(data: si.Bits[8], valid: si.Bit) -> \
-        {"tx": si.Bit, "ready": si.Bit}:
-    data, valid = yield
+        {"tx": si.Bit}:
+    i = bits(0, 3)
     while True:
+        tx = bit(1)
+        data, valid = yield tx
         if valid:
             message = data
             tx = bit(0)  # start bit
-            ready = bit(0)
-            data, valid = yield tx, ready
+            data, valid = yield tx
             for i in range(7, -1, -1):
                 tx = message[i]
-                ready = bit(0)
-                data, valid = yield tx, ready
-            tx = bit(1)  # end bit
-            ready = bit(0)
-            data, valid = yield tx, ready
-        else:
-            tx = bit(1)
-            ready = bit(1)
-            data, valid = yield tx, ready
-
-        # Interestingly enough, this variant produces worse quality
-            # ready = bit(0)
-        # else:
-            # ready = bit(1)
-        # tx = bit(1)
-        # data, valid = yield tx, ready
+                data, valid = yield tx
 
 
 @pytest.mark.parametrize("strategy", ["by_path", "by_statement"])
@@ -71,24 +57,22 @@ def test_UART(strategy):
     tester.eval()
     tester.step(2)
     for message in [0xDE, 0xAD]:
-        tester.expect(si_uart.ready, 1)
         tester.poke(si_uart.data, message)
         tester.poke(si_uart.valid, 1)
         tester.eval()
+        # start bit
         tester.expect(si_uart.tx, 0)
-        tester.expect(si_uart.ready, 0)
         tester.step(2)
         tester.poke(si_uart.data, 0xFF)
         tester.poke(si_uart.valid, 0)
 
-        # start bit
         for i in range(8):
             tester.expect(si_uart.tx, (message >> (7-i)) & 1)
             tester.step(2)
         # end bit
         tester.expect(si_uart.tx, 1)
         tester.step(2)
-        tester.expect(si_uart.ready, 1)
+    print(tester)
 
     tester.compile_and_run(target="verilator", directory="tests/build",
                            flags=['-Wno-fatal', "--trace"],
