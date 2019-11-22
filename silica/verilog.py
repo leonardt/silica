@@ -444,6 +444,8 @@ def compile_states(ctx, states, one_state, width_table, registers, inputs,
                 ports.append((key, ctx.get_by_name(f"CLK")))
             elif key == "RESET":
                 ports.append((key, ctx.get_by_name(f"RESET")))
+            elif key == "CE":
+                ports.append((key, ctx.get_by_name(f"CE")))
             else:
                 ports.append((key, ctx.get_by_name(f"_si_sub_co_{name}_{key}")))
 
@@ -677,7 +679,8 @@ def compile_states(ctx, states, one_state, width_table, registers, inputs,
 
 def compile_by_path(ctx, paths, one_state, width_table, registers,
                     sub_coroutines, outputs, inputs,
-                    strategy="by_statement", reset_type="posedge"):
+                    strategy="by_statement", reset_type="posedge",
+                    has_ce=False):
 
     for name, def_ in sub_coroutines.items():
         ports = []
@@ -863,6 +866,8 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
     else:
         reset_event = vg.Negedge(ctx.module.get_ports()["RESET"])
         reset_cond = ~ctx.module.get_ports()["RESET"] 
+    if has_ce:
+        else_body = vg.If(ctx.module.get_ports()["CE"])(else_body)
     ctx.module.Always(
         vg.Posedge(ctx.module.get_ports()["CLK"]), reset_event
     )(

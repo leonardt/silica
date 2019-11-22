@@ -165,7 +165,9 @@ def replace_memory_init(tree):
 
 
 
-def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog', strategy="by_path", reset_type="posedge"):
+def compile(coroutine, file_name=None, mux_strategy="one-hot",
+        output='verilog', strategy="by_path", reset_type="posedge",
+        has_ce=False):
     if not isinstance(coroutine, Coroutine):
         raise ValueError("silica.compile expects a silica.Coroutine")
 
@@ -173,9 +175,8 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     func_locals = stack[1].frame.f_locals
     func_globals = stack[1].frame.f_globals
 
-    has_ce = coroutine.has_ce
     tree = ast_utils.get_ast(coroutine._definition).body[0]  # Get the first element of the ast.Module
-    tree, coroutine = desugar_channels(tree, coroutine)
+    # tree, coroutine = desugar_channels(tree, coroutine)
     module_name = coroutine._name
     func_locals.update(coroutine._defn_locals)
     func_locals.update(func_globals)
@@ -282,8 +283,6 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     #     #     state.start_yield_id -= 1
     #     #     state.end_yield_id -= 1
     num_states = len(states)
-    if has_ce:
-        raise NotImplementedError("add ce to module decl")
 
     # declare module and ports
     ctx = verilog.Context(module_name, sub_coroutines)
@@ -297,6 +296,8 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     inputs = { i : get_len(t) for i,t in coroutine._inputs.items() }
     inputs["CLK"] = 1
     inputs["RESET"] = 1
+    if has_ce:
+        inputs["CE"] = 1
     outputs = { o : width_table.get(o, 1) or 1 for o in outputs }
     ctx.declare_ports(inputs, outputs)
 
@@ -412,11 +413,13 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     # if initial_basic_block:
     #     states = states[1:]
     if strategy == "by_statement":
+        if has_ce:
+            raise NotImplementedError()
         verilog.compile_states(ctx, states, cfg.curr_yield_id == 1, width_table,
                                registers, inputs, sub_coroutines)
     else:
         verilog.compile_by_path(ctx, cfg.paths, cfg.curr_yield_id == 1, width_table,
-                                registers, sub_coroutines, outputs, inputs, strategy, reset_type)
+                                registers, sub_coroutines, outputs, inputs, strategy, reset_type, has_ce)
     # cfg.render()
     verilog_str = ""
     for sub_coroutine in sub_coroutines.values():
@@ -426,4 +429,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot", output='verilog',
     if file_name is not None:
         with open(file_name, "w") as f:
             f.write(verilog_str)
-    return m.DefineFromVerilog(verilog_str, type_map={"CLK": m.In(m.Clock), "RESET": m.In(m.Reset)}, target_modules=[coroutine._name])[0]
+    type_map = {"CLK": m.In(m.Clock), "RESET": m.In(m.Reset)}
+    if has_ce:
+        type_map["CE"] = m.In(m.Enable)
+    return m.DefineFromVerilog(verilog_str, type_map=type_map, target_modules=[coroutine._name])[0]
