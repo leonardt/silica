@@ -164,6 +164,17 @@ def replace_memory_init(tree):
     return Transformer().visit(tree)
 
 
+def add_inputs(tree, inputs):
+    class Transformer(ast.NodeTransformer):
+        def visit_Expr(self, node):
+            if isinstance(node.value, ast.Yield):
+                return ast.Assign([ast.Tuple([ast.Name(k, ast.Store()) for k in
+                                              inputs], ast.Store())],
+                                  node.value)
+            return node
+    return Transformer().visit(tree)
+
+
 
 def compile(coroutine, file_name=None, mux_strategy="one-hot",
         output='verilog', strategy="by_path", reset_type="posedge",
@@ -176,6 +187,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot",
     func_globals = stack[1].frame.f_globals
 
     tree = ast_utils.get_ast(coroutine._definition).body[0]  # Get the first element of the ast.Module
+    tree = add_inputs(tree, coroutine._inputs.keys())
     # tree, coroutine = desugar_channels(tree, coroutine)
     module_name = coroutine._name
     func_locals.update(coroutine._defn_locals)

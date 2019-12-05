@@ -19,7 +19,7 @@ def Downsample(
       "data_out_valid": si.Bit}:
     x = bits(0, 5)
     y = bits(0, 5)
-    data_in_valid, data_in_data, data_out_ready = yield
+    yield
     while True:
         y = 0
         while True:
@@ -31,13 +31,11 @@ def Downsample(
                 data_in_ready = data_out_ready | ~keep
                 if data_in_ready & data_in_valid:
                     if x == 31:
-                        data_in_valid, data_in_data, data_out_ready = yield \
-                            data_in_ready, data_out_data, data_out_valid
+                        yield data_in_ready, data_out_data, data_out_valid
                         break
                     x = x + 1
                 # dropping or data_out is ready
-                data_in_valid, data_in_data, data_out_ready = yield \
-                    data_in_ready, data_out_data, data_out_valid
+                yield data_in_ready, data_out_data, data_out_valid
             if y == 31:
                 break
             y = y + 1
