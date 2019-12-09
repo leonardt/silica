@@ -1,0 +1,12 @@
+# DESCRIPTION: Verilator output: Timestamp data for --skip-identical.  Delete at will.
+C "-Wall -Wno-INCABSPATH -Wno-DECLFILENAME --cc SDRAMController.v --exe SDRAMController_driver.cpp --top-module SDRAMController"
+S   4289660  5139258  1566237745           0  1560691944           0 "/usr/local/Cellar/verilator/4.016/bin/verilator_bin"
+S      4985  8805115  1575585510           0  1575585510           0 "SDRAMController.v"
+T     27798  8805119  1575585510           0  1575585510           0 "obj_dir/VSDRAMController.cpp"
+T      3431  8805118  1575585510           0  1575585510           0 "obj_dir/VSDRAMController.h"
+T      1890  8805121  1575585510           0  1575585510           0 "obj_dir/VSDRAMController.mk"
+T       575  8805117  1575585510           0  1575585510           0 "obj_dir/VSDRAMController__Syms.cpp"
+T       775  8805116  1575585510           0  1575585510           0 "obj_dir/VSDRAMController__Syms.h"
+T       348  8805122  1575585510           0  1575585510           0 "obj_dir/VSDRAMController__ver.d"
+T         0        0  1575585510           0  1575585510           0 "obj_dir/VSDRAMController__verFiles.dat"
+T      1272  8805120  1575585510           0  1575585510           0 "obj_dir/VSDRAMController_classes.mk"

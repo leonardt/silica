@@ -1,0 +1,12 @@
+# DESCRIPTION: Verilator output: Timestamp data for --skip-identical.  Delete at will.
+C "-Wall -Wno-INCABSPATH -Wno-DECLFILENAME -Wno-fatal --cc downsample_verilog.v -I../../verilog --exe downsample_verilog_driver.cpp --top-module downsample_verilog"
+S   4289660  5139258  1566237745           0  1560691944           0 "/usr/local/Cellar/verilator/4.016/bin/verilator_bin"
+S       933  5985025  1575586715           0  1575586715           0 "downsample_verilog.v"
+T     10179  5985029  1575586715           0  1575586715           0 "obj_dir/Vdownsample_verilog.cpp"
+T      3421  5985028  1575586715           0  1575586715           0 "obj_dir/Vdownsample_verilog.h"
+T      1917  5985031  1575586715           0  1575586715           0 "obj_dir/Vdownsample_verilog.mk"
+T       590  5985027  1575586715           0  1575586715           0 "obj_dir/Vdownsample_verilog__Syms.cpp"
+T       796  5985026  1575586715           0  1575586715           0 "obj_dir/Vdownsample_verilog__Syms.h"
+T       372  5985032  1575586715           0  1575586715           0 "obj_dir/Vdownsample_verilog__ver.d"
+T         0        0  1575586715           0  1575586715           0 "obj_dir/Vdownsample_verilog__verFiles.dat"
+T      1281  5985030  1575586715           0  1575586715           0 "obj_dir/Vdownsample_verilog_classes.mk"

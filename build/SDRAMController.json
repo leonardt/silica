@@ -1,0 +1,63 @@
+{"top":"global.SDRAMController",
+"namespaces":{
+  "global":{
+    "modules":{
+      "SDRAMController":{
+        "type":["Record",[
+          ["refresh_cnt",["Array",10,"BitIn"]],
+          ["rd_enable","BitIn"],
+          ["wr_enable","BitIn"],
+          ["state",["Array",5,"Bit"]],
+          ["cmd",["Array",8,"Bit"]],
+          ["CLK",["Named","coreir.clkIn"]],
+          ["RESET","BitIn"]
+        ]],
+        "instances":{
+          "_SDRAMController_inst0":{
+            "modref":"global._SDRAMController"
+          },
+          "enable_inst0":{
+            "modref":"global.enable"
+          }
+        },
+        "connections":[
+          ["enable_inst0.CE","_SDRAMController_inst0.CE"],
+          ["self.CLK","_SDRAMController_inst0.CLK"],
+          ["self.RESET","_SDRAMController_inst0.RESET"],
+          ["self.cmd","_SDRAMController_inst0.cmd"],
+          ["enable_inst0.n","_SDRAMController_inst0.n"],
+          ["self.rd_enable","_SDRAMController_inst0.rd_enable"],
+          ["self.refresh_cnt","_SDRAMController_inst0.refresh_cnt"],
+          ["self.state","_SDRAMController_inst0.state"],
+          ["self.wr_enable","_SDRAMController_inst0.wr_enable"],
+          ["self.CLK","enable_inst0.CLK"],
+          ["self.RESET","enable_inst0.RESET"]
+        ]
+      },
+      "_SDRAMController":{
+        "type":["Record",[
+          ["state",["Array",5,"Bit"]],
+          ["cmd",["Array",8,"Bit"]],
+          ["n",["Array",4,"Bit"]],
+          ["refresh_cnt",["Array",10,"BitIn"]],
+          ["rd_enable","BitIn"],
+          ["wr_enable","BitIn"],
+          ["CLK",["Named","coreir.clkIn"]],
+          ["RESET","BitIn"],
+          ["CE","BitIn"]
+        ]],
+        "metadata":{"verilog":{"verilog_string":"module _SDRAMController\n(\n  output [5-1:0] state,\n  output reg [8-1:0] cmd,\n  output [4-1:0] n,\n  input [10-1:0] refresh_cnt,\n  input rd_enable,\n  input wr_enable,\n  input CLK,\n  input RESET,\n  input CE\n);\n\n  reg [8-1:0] cmd_next;\n  reg [5-1:0] yield_state;\n  reg [5-1:0] yield_state_next;\n\n  always @(cmd or refresh_cnt or rd_enable or wr_enable or CLK or RESET or CE or yield_state) begin\n    cmd_next = cmd;\n    if(yield_state == 5'b01000) begin\n      cmd_next = 8'b10010001;\n      n = 0;\n      yield_state_next = 5'b01001;\n    end else if(yield_state == 5'b01001) begin\n      cmd_next = 8'b10111000;\n      n = 0;\n      yield_state_next = 5'b00101;\n    end else if(yield_state == 5'b00101) begin\n      cmd_next = 8'b10001000;\n      n = 0;\n      yield_state_next = 5'b01010;\n    end else if(yield_state == 5'b01010) begin\n      cmd_next = 8'b10111000;\n      n = 7;\n      yield_state_next = 5'b01011;\n    end else if(yield_state == 5'b01011) begin\n      cmd_next = 8'b10001000;\n      n = 0;\n      yield_state_next = 5'b01100;\n    end else if(yield_state == 5'b01100) begin\n      cmd_next = 8'b10111000;\n      n = 7;\n      yield_state_next = 5'b01101;\n    end else if(yield_state == 5'b01101) begin\n      cmd_next = 8'b1000000x;\n      n = 0;\n      yield_state_next = 5'b01110;\n    end else if(yield_state == 5'b01110) begin\n      cmd_next = 8'b10111000;\n      n = 1;\n      yield_state_next = 5'b01111;\n    end else if(yield_state == 5'b01111) begin\n      cmd_next = 8'b10111000;\n      n = 0;\n      yield_state_next = 5'b00000;\n    end else if(yield_state == 5'b00000) begin\n      if(refresh_cnt >= 519) begin\n        cmd_next = 8'b10010001;\n        n = 0;\n        yield_state_next = 5'b00001;\n      end else if(wr_enable) begin\n        cmd_next = 8'b10011xxx;\n        n = 0;\n        yield_state_next = 5'b11000;\n      end else if(rd_enable) begin\n        cmd_next = 8'b10011xxx;\n        n = 0;\n        yield_state_next = 5'b10000;\n      end else begin\n        cmd_next = 8'b10111000;\n        n = 0;\n        yield_state_next = 5'b00000;\n      end\n    end else if(yield_state == 5'b00001) begin\n      cmd_next = 8'b10111000;\n      n = 0;\n      yield_state_next = 5'b00010;\n    end else if(yield_state == 5'b00010) begin\n      cmd_next = 8'b10001000;\n      n = 0;\n      yield_state_next = 5'b00011;\n    end else if(yield_state == 5'b00011) begin\n      cmd_next = 8'b10111000;\n      n = 7;\n      yield_state_next = 5'b00100;\n    end else if(yield_state == 5'b00100) begin\n      cmd_next = 8'b10111000;\n      n = 0;\n      yield_state_next = 5'b00000;\n    end else if(yield_state == 5'b11000) begin\n      cmd_next = 8'b10111000;\n      n = 1;\n      yield_state_next = 5'b11001;\n    end else if(yield_state == 5'b11001) begin\n      cmd_next = 8'b10100xx1;\n      n = 0;\n      yield_state_next = 5'b11010;\n    end else if(yield_state == 5'b11010) begin\n      cmd_next = 8'b10111000;\n      n = 1;\n      yield_state_next = 5'b11011;\n    end else if(yield_state == 5'b11011) begin\n      cmd_next = 8'b10111000;\n      n = 0;\n      yield_state_next = 5'b00000;\n    end else if(yield_state == 5'b10000) begin\n      cmd_next = 8'b10111000;\n      n = 1;\n      yield_state_next = 5'b10001;\n    end else if(yield_state == 5'b10001) begin\n      cmd_next = 8'b10101xx1;\n      n = 0;\n      yield_state_next = 5'b10010;\n    end else if(yield_state == 5'b10010) begin\n      cmd_next = 8'b10111000;\n      n = 1;\n      yield_state_next = 5'b10011;\n    end else if(yield_state == 5'b10011) begin\n      cmd_next = 8'b10111000;\n      n = 0;\n      yield_state_next = 5'b10100;\n    end else begin\n      cmd_next = 8'b10111000;\n      n = 0;\n      yield_state_next = 5'b00000;\n    end\n  end\n\n\n  always @(posedge CLK or negedge RESET) begin\n    if(~RESET) begin\n      cmd <= 8'b10111000;\n      yield_state <= 5'b01000;\n    end else begin\n      if(CE) begin\n        cmd <= cmd_next;\n        yield_state <= yield_state_next;\n      end \n    end\n  end\n\n  assign state = yield_state;\n\nendmodule"}}
+      },
+      "enable":{
+        "type":["Record",[
+          ["CLK",["Named","coreir.clkIn"]],
+          ["RESET","BitIn"],
+          ["n",["Array",4,"BitIn"]],
+          ["CE","Bit"]
+        ]],
+        "metadata":{"verilog":{"verilog_string":"module enable(input CLK, input RESET, input [3:0] n, output CE);\nreg [3:0] count;\n\nalways @(posedge CLK or negedge RESET) begin\n    if (!RESET) begin\n        count <= 4'hf;\n    end else begin\n        count <= count == 0 ? n : count - 1;\n    end\nend\n\nassign CE = count == 0;\n\nendmodule"}}
+      }
+    }
+  }
+}
+}

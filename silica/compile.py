@@ -164,10 +164,18 @@ def replace_memory_init(tree):
     return Transformer().visit(tree)
 
 
-def add_inputs(tree, inputs):
+def add_io(tree, inputs, outputs):
     class Transformer(ast.NodeTransformer):
         def visit_Expr(self, node):
-            if isinstance(node.value, ast.Yield):
+            if isinstance(node.value, ast.Yield) and node.value.value is None:
+                node.value.value = ast.Tuple([ast.Name(k, ast.Load()) for k in
+                                              outputs], ast.Load())
+                return ast.Assign([ast.Tuple([ast.Name(k, ast.Store()) for k in
+                                              inputs], ast.Store())],
+                                  node.value)
+            elif isinstance(node.value, ast.Yield) and isinstance(node.value.value, ast.Name) and \
+                    node.value.value.id == "RESET":
+                node.value.value = None
                 return ast.Assign([ast.Tuple([ast.Name(k, ast.Store()) for k in
                                               inputs], ast.Store())],
                                   node.value)
@@ -187,7 +195,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot",
     func_globals = stack[1].frame.f_globals
 
     tree = ast_utils.get_ast(coroutine._definition).body[0]  # Get the first element of the ast.Module
-    tree = add_inputs(tree, coroutine._inputs.keys())
+    tree = add_io(tree, coroutine._inputs.keys(), coroutine._outputs.keys())
     # tree, coroutine = desugar_channels(tree, coroutine)
     module_name = coroutine._name
     func_locals.update(coroutine._defn_locals)
@@ -199,6 +207,7 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot",
     constant_fold(tree)
     specialize_list_comps(tree, func_globals, func_locals)
     tree, list_lens = propagate_types(tree)
+    tree, loopvars = desugar_for_loops(tree, list_lens)
     tree = rewrite_yield_constants(tree, list(coroutine._outputs.keys()))
 
     width_table = {}

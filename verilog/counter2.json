@@ -1,0 +1,15 @@
+{"top":"global.vcounter",
+"namespaces":{
+  "global":{
+    "modules":{
+      "vcounter":{
+        "type":["Record",[
+          ["CLK","BitIn"],
+          ["O",["Array",3,"Bit"]]
+        ]],
+        "metadata":{"verilog":{"verilog_string":"module vcounter(input CLK, output [2:0] O);\nreg [2:0] O;\nalways @(posedge CLK) begin\n    O <= O + 1'b1;\nend\nendmodule\n"}}
+      }
+    }
+  }
+}
+}

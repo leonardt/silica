@@ -1,0 +1,12 @@
+# DESCRIPTION: Verilator output: Timestamp data for --skip-identical.  Delete at will.
+C "-Wall -Wno-INCABSPATH -Wno-DECLFILENAME -Wno-fatal --cc Downsample.v --exe Downsample_driver.cpp --top-module Downsample"
+S   4289660  5139258  1566237745           0  1560691944           0 "/usr/local/Cellar/verilator/4.016/bin/verilator_bin"
+S      2891  5987118  1575586711           0  1575586711           0 "Downsample.v"
+T     11043  5987122  1575586711           0  1575586711           0 "obj_dir/VDownsample.cpp"
+T      3246  5987121  1575586711           0  1575586711           0 "obj_dir/VDownsample.h"
+T      1845  5987124  1575586711           0  1575586711           0 "obj_dir/VDownsample.mk"
+T       550  5987120  1575586711           0  1575586711           0 "obj_dir/VDownsample__Syms.cpp"
+T       740  5987119  1575586711           0  1575586711           0 "obj_dir/VDownsample__Syms.h"
+T       308  5987125  1575586711           0  1575586711           0 "obj_dir/VDownsample__ver.d"
+T         0        0  1575586711           0  1575586711           0 "obj_dir/VDownsample__verFiles.dat"
+T      1257  5987123  1575586711           0  1575586711           0 "obj_dir/VDownsample_classes.mk"
