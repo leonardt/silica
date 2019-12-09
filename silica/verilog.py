@@ -13,6 +13,22 @@ from .memory import MemoryType
 from .cfg.util import find_branch_join
 from .transformations.replace_symbols import replace_symbols
 
+
+def filter_duplicates(body):
+    filtered = []
+    seen = set()
+    for stmt in body:
+        stmt_str = astor.to_source(stmt)
+        if stmt_str in seen:
+            continue
+        seen.add(stmt_str)
+        filtered.append(stmt)
+        if isinstance(stmt, ast.If):
+            stmt.body = filter_duplicates(stmt.body)
+            stmt.orelse = filter_duplicates(stmt.orelse)
+    return filtered
+
+
 def merge_ifs(block):
     new_block = []
     cond_map = {}
@@ -207,8 +223,8 @@ class Context:
             elif is_slice(stmt.slice):
                 return vg.Slice(
                     self.translate(stmt.value),
-                    self.translate(stmt.slice.lower),
-                    self.translate(stmt.slice.upper)
+                    vg.Sub(self.translate(stmt.slice.upper), vg.Int(1)),
+                    self.translate(stmt.slice.lower)
                 )
         elif is_tuple(stmt):
             return vg.Cat(*[self.translate(elt) for elt in stmt.elts])
@@ -784,12 +800,18 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
                 if stmt not in body:
                     body.append(stmt)
         body = merge_ifs(body)
+        body = filter_duplicates(body)
 
         if state == -1:
+            initialized = set()
             for stmt in body:
                 if isinstance(stmt, ast.Assign):
                     if stmt.targets[0].id in registers or \
                             stmt.targets[0].id == "yield_state":
+                        # HACK: Take first initialization value
+                        if stmt.targets[0].id in initialized:
+                            continue
+                        initialized.add(stmt.targets[0].id)
                         reset_body.append(
                             ctx.translate_assign(stmt.targets[0],
                                                  ctx.translate(stmt.value), blk=0)

@@ -207,7 +207,6 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot",
     constant_fold(tree)
     specialize_list_comps(tree, func_globals, func_locals)
     tree, list_lens = propagate_types(tree)
-    tree, loopvars = desugar_for_loops(tree, list_lens)
     tree = rewrite_yield_constants(tree, list(coroutine._outputs.keys()))
 
     width_table = {}

@@ -75,16 +75,16 @@ def desugar_for_loops(tree, type_table, width_table):
                 # bit_width = eval(astor.to_source(stop).rstrip() + "-" +
                 #                  astor.to_source(start).rstrip()).bit_length()
                 # self.loopvars.add((node.target.id, bit_width))
+                comp_op = ast.Eq()
                 if isinstance(step, ast.UnaryOp) and isinstance(step.op, ast.USub):
-                    comp_op = ast.Eq()
                     assert isinstance(stop, ast.UnaryOp) and isinstance(stop.op, ast.USub) and \
                         isinstance(stop.operand, ast.Num) and stop.operand.n == 1
                     stop = ast.Num(0)
                     step = step.operand
                     step_op = ast.Sub()
                 else:
-                    comp_op = ast.Lt()
                     step_op = ast.Add()
+                    stop = ast.BinOp(stop, ast.Sub(), ast.Num(1))
                 start = ast.parse(f"bits({astor.to_source(start).rstrip()}, {width_table[node.target.id]})").body[0].value
                 step = ast.parse(f"bits({astor.to_source(step).rstrip()}, {width_table[node.target.id]})").body[0].value
                 stop = ast.parse(f"bits({astor.to_source(stop).rstrip()}, {width_table[node.target.id]})").body[0].value
