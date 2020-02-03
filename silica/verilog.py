@@ -293,6 +293,15 @@ class Context:
             return
         elif isinstance(stmt, ast.Str):
             return vg.EmbeddedCode(stmt.s)
+        elif isinstance(stmt, ast.Call) and stmt.func.id == "replicate":
+            # TODO: Assumes 1 bit replicate
+            assert isinstance(stmt.args[0], ast.Num), \
+                "Expected first arg of replicate to be constant int (value)"
+            assert isinstance(stmt.args[1], ast.Num), \
+                "Expected second arg of replicate to be constant int (times)"
+            return vg.Repeat(vg.Int(stmt.args[0].n, 1), vg.Int(stmt.args[1].n))
+        elif isinstance(stmt, ast.Call) and stmt.func.id == "concat":
+            return vg.Cat(*(self.translate(arg) for arg in stmt.args))
         raise NotImplementedError(ast.dump(stmt))
 
     def to_verilog(self):

@@ -21,6 +21,7 @@ from .liveness import liveness_analysis
 from .util import find_branch_join
 from ..memory import MemoryType
 import silica.ast_utils as ast_utils
+import os
 
 def get_constant(node):
     if isinstance(node, ast.Num):
@@ -296,6 +297,56 @@ class ControlFlowGraph:
         self.remove_if_trues()
 
 
+    def feasible(self, block, value, paths, edge, conds):
+        problem = constraint.Problem()
+        variables = {}
+        constraints = []
+        # print("===========")
+        seen = set()
+        for cond, result in conds:
+            args = collect_names(cond)
+            for special_func in ["uint", "bit", "bits"]:
+                if special_func in args:
+                    args.remove(special_func)
+            for arg in args:
+                if arg in seen:
+                    continue
+                seen.add(arg)
+                width = self.width_table[arg]
+                if width is None:
+                    width = 1
+                problem.addVariable(arg, range(0, 1 << width))
+                if arg not in variables:
+                    variables[arg] = []
+                variables[arg].append(arg)
+
+                class Wrapper(ast.NodeTransformer):
+                    def __init__(self):
+                        super().__init__()
+
+                    def visit_Name(self, node):
+                        if node.id == arg:
+                            return parse_expr(f"uint({node.id}, {width})")
+                        return node
+
+                cond = Wrapper().visit(deepcopy(cond))
+            _constraint = f"lambda {', '.join(args)}: ({astor.to_source(cond).rstrip()}) == BitVector[1]({result})"
+            # print(_constraint)
+            problem.addConstraint(
+                eval(_constraint, self.func_locals),
+                tuple(args))
+        for same in variables.values():
+            if len(same) > 1:
+                _constraint = f"lambda {', '.join(same)}: { ' == '.join(same) }"
+                # print(_constraint)
+                problem.addConstraint(
+                    eval(_constraint, self.func_locals),
+                    tuple(same))
+        # print(problem.getSolution(), value, edge)
+        # print("===========")
+        return problem.getSolution()
+
+
     def find_paths(self, block, initial_block, conds=[]):
         """
         Given a block, recursively build paths to yields
@@ -314,57 +365,12 @@ class ControlFlowGraph:
             false_paths = []
             for value, paths, edge in [(True, true_paths, block.true_edge),
                                        (False, false_paths, block.false_edge)]:
-                _conds = conds[:] + [(block.cond, value)]
-                problem = constraint.Problem()
-                variables = {}
-                constraints = []
-                # print("===========")
-                seen = set()
-                for cond, result in _conds:
-                    args = collect_names(cond)
-                    for special_func in ["uint", "bit", "bits"]:
-                        if special_func in args:
-                            args.remove(special_func)
-                    for arg in args:
-                        if arg in seen:
-                            continue
-                        seen.add(arg)
-                        width = self.width_table[arg]
-                        if width is None:
-                            width = 1
-                        problem.addVariable(arg, range(0, 1 << width))
-                        if arg not in variables:
-                            variables[arg] = []
-                        variables[arg].append(arg)
-
-                        class Wrapper(ast.NodeTransformer):
-                            def __init__(self):
-                                super().__init__()
-
-                            def visit_Name(self, node):
-                                if node.id == arg:
-                                    return parse_expr(f"uint({node.id}, {width})")
-                                return node
-
-                        cond = Wrapper().visit(deepcopy(cond))
-                    _constraint = f"lambda {', '.join(args)}: ({astor.to_source(cond).rstrip()}) == BitVector[1]({result})"
-                    # print(_constraint)
-                    problem.addConstraint(
-                        eval(_constraint, self.func_locals),
-                        tuple(args))
-                for same in variables.values():
-                    if len(same) > 1:
-                        _constraint = f"lambda {', '.join(same)}: { ' == '.join(same) }"
-                        # print(_constraint)
-                        problem.addConstraint(
-                            eval(_constraint, self.func_locals),
-                            tuple(same))
-                # print(problem.getSolution(), value, edge)
-                # print("===========")
-                if problem.getSolution():
-                    # print(edge)
+                conds = conds + [(block.cond, value)]
+                if os.environ.get(
+                        "SILICA_SKIP_PRUNE_INFEASIBLE_PATHS", False) or \
+                        self.feasible(block, value, paths, edge, conds):
                     paths += [[(block)] + path for path in
-                              self.find_paths(edge, initial_block, _conds)]
+                              self.find_paths(edge, initial_block, conds)]
             # for path in true_paths:
             #     path[0].true_edge = path[1]
             # for path in false_paths:

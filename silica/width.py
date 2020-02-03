@@ -47,6 +47,13 @@ def get_width(node, width_table, func_locals={}, func_globals={}):
                 return None
             elif node.func.id == "decoder":
                 return 2 ** get_width(node.args[0], width_table)
+            elif node.func.id == "concat":
+                return sum(get_width(x, width_table) for x in node.args)
+            elif node.func.id == "replicate":
+                # TODO: Assumes 1 bit replicate
+                assert isinstance(node.args[1], ast.Num), \
+                    "Expected second arg of replicate to be constant int (times)"
+                return node.args[1].n
             else:
                 raise NotImplementedError(ast.dump(node))
         else:
