@@ -818,9 +818,13 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
                         if stmt.targets[0].id in initialized:
                             continue
                         initialized.add(stmt.targets[0].id)
+                        target = stmt.targets[0]
+                        if target.id in outputs:
+                            target.id += "_prev"
                         reset_body.append(
-                            ctx.translate_assign(stmt.targets[0],
-                                                 ctx.translate(stmt.value), blk=0)
+                            ctx.translate_assign(target,
+                                                 ctx.translate(stmt.value),
+                                                 blk=0)
                         )
                 else:
                     raise NotImplementedError(astor.to_source(stmt))
@@ -846,18 +850,22 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
     else:
         assert one_state
     for reg in registers:
-        if reg in outputs:
-            continue
         width = width_table[reg]
+        if reg in outputs:
+            target = reg
+            value = reg + "_prev"
+        else:
+            target = reg + "_next"
+            value = reg
         if isinstance(width, MemoryType):
             for i in range(width.height):
                 body.insert(0, ctx.assign(
-                    vg.Pointer(ctx.get_by_name(reg + "_next"), vg.Int(i)),
-                    vg.Pointer(ctx.get_by_name(reg), vg.Int(i))
+                    vg.Pointer(ctx.get_by_name(target), vg.Int(i)),
+                    vg.Pointer(ctx.get_by_name(value), vg.Int(i))
                 ))
         else:
-            body.insert(0, ctx.assign(ctx.get_by_name(reg + "_next"),
-                                      ctx.get_by_name(reg)))
+            body.insert(0, ctx.assign(ctx.get_by_name(target),
+                                      ctx.get_by_name(value)))
     sensitivity_list = []
     for reg in registers:
         sensitivity_list.append(ctx.get_by_name(reg))
