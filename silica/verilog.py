@@ -54,14 +54,15 @@ def merge_ifs(block):
     return new_block
 
 
-def replace_references_to_registers(stmt, registers, is_reset):
+def replace_references_to_registers(stmt, registers, is_reset, outputs):
     replace_map = {}
     for key in registers:
-        if not is_reset:
-            replace_map[key] = ast.Name(key + "_next")
-        else:
-            replace_map[key] = ast.Name(key)
-    return replace_symbols(stmt, replace_map)
+        if key in outputs:
+            stmt = replace_symbols(stmt, {key: ast.Name(key + "_prev")},
+                                   ctx=ast.Load)
+        elif not is_reset:
+            stmt = replace_symbols(stmt, {key: ast.Name(key + "_next")})
+    return stmt
 
 
 
@@ -738,17 +739,21 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
                 continue
             elif isinstance(block, BasicBlock):
                 statements = [
-                    replace_references_to_registers(process_statement(copy.deepcopy(stmt)),
-                                                    registers, isinstance(state, int) and state < 0) for stmt in
-                    block.statements] + statements
+                    replace_references_to_registers(
+                        process_statement(copy.deepcopy(stmt)),
+                        registers, isinstance(state, int) and state < 0,
+                        outputs)
+                    for stmt in block.statements
+                ] + statements
             elif isinstance(block, Branch):
                 cond = block.cond
                 if path[n + 1] is block.false_edge:
                     cond = ast.UnaryOp(ast.Invert(), cond)
                 statements = [ast.If(
-                    replace_references_to_registers(process_statement(copy.deepcopy(cond)),
-                                                    registers, isinstance(state, int) and state < 0),
-                    statements, []
+                    replace_references_to_registers(
+                        process_statement(copy.deepcopy(cond)), registers,
+                        isinstance(state, int) and state < 0, outputs
+                    ), statements, []
                 )]
                 statements[0].orig_node = block.orig_node
                 statements[0].is_true = path[n + 1] is block.true_edge
@@ -785,9 +790,10 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
                 raise NotImplementedError(block)
         if isinstance(state, int) and state < 0:
             statements = [
-                replace_references_to_registers(process_statement(copy.deepcopy(stmt)),
-                                                registers, state < 0) for stmt in
-                path[0].statements] + statements
+                replace_references_to_registers(
+                    process_statement(copy.deepcopy(stmt)), registers, state <
+                    0, outputs) for stmt in path[0].statements
+            ] + statements
         state_map[state].append(statements)
 
     last_if = None
@@ -840,6 +846,8 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
     else:
         assert one_state
     for reg in registers:
+        if reg in outputs:
+            continue
         width = width_table[reg]
         if isinstance(width, MemoryType):
             for i in range(width.height):
@@ -848,7 +856,8 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
                     vg.Pointer(ctx.get_by_name(reg), vg.Int(i))
                 ))
         else:
-            body.insert(0, ctx.assign(ctx.get_by_name(reg + "_next"), ctx.get_by_name(reg)))
+            body.insert(0, ctx.assign(ctx.get_by_name(reg + "_next"),
+                                      ctx.get_by_name(reg)))
     sensitivity_list = []
     for reg in registers:
         sensitivity_list.append(ctx.get_by_name(reg))
@@ -861,20 +870,25 @@ def compile_by_path(ctx, paths, one_state, width_table, registers,
     )
     else_body = []
     for reg in registers:
+        if reg in outputs:
+            target = reg + "_prev"
+            value = reg
+        else:
+            target = reg
+            value = reg + "_next"
         width = width_table[reg]
         if isinstance(width, MemoryType):
             for i in range(width.height):
                 else_body.append(
                     ctx.assign(
-                        vg.Pointer(ctx.get_by_name(reg), vg.Int(i)),
-                        vg.Pointer(ctx.get_by_name(reg + "_next"), vg.Int(i)),
+                        vg.Pointer(ctx.get_by_name(target), vg.Int(i)),
+                        vg.Pointer(ctx.get_by_name(value), vg.Int(i)),
                         blk=0
                     )
                 )
         else:
             else_body.append(
-                ctx.assign(ctx.get_by_name(reg), ctx.get_by_name(reg +
-                                                                 "_next"),
+                ctx.assign(ctx.get_by_name(target), ctx.get_by_name(value),
                            blk=0)
             )
     if not one_state:

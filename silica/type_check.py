@@ -6,11 +6,11 @@ import silica.types as types
 
 
 def to_type_str(type_):
-    if isinstance(type_, m.BitKind):
+    if issubclass(type_, m.Bit):
         return "bit"
-    elif isinstance(type_, m.UIntKind):
+    elif issubclass(type_, m.UInt):
         return "uint"
-    elif isinstance(type_, m.BitsKind):
+    elif issubclass(type_, m.Bits):
         return "bits"
     elif isinstance(type_, types.Channel):
         return to_type_str(type_.type_)

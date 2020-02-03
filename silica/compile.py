@@ -112,11 +112,12 @@ def rewrite_yield_constants(tree, outputs):
                         start_i = 1
                     assigns = []
                     for i in range(start_i, len(yield_.value.elts)):
-                        assigns.append(ast.Assign(
-                            [ast.Name(outputs[i], ast.Store())],
-                            yield_.value.elts[i]
-                        ))
-                        yield_.value.elts[i] = ast.Name(outputs[i], ast.Load())
+                        if isinstance(yield_.value.elts[i], ast.Num):
+                            assigns.append(ast.Assign(
+                                [ast.Name(outputs[i], ast.Store())],
+                                yield_.value.elts[i]
+                            ))
+                            yield_.value.elts[i] = ast.Name(outputs[i], ast.Load())
                     return assigns + [node]
             return node
     return Transformer().visit(tree)
@@ -263,7 +264,8 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot",
         # outputs += (collect_names(path[-1].value, ctx=ast.Load), )
         registers |= (path[0].live_ins & path[0].live_outs)
 
-    registers = set(filter(lambda x: "_si_sub_co_" not in x, registers))
+    registers = sorted(set(filter(lambda x: "_si_sub_co_" not in x,
+                                  registers)))
 
     # assert all(outputs[1] == output for output in outputs[1:]), "Yield statements must all have the same outputs except for the first"
     # outputs = outputs[1]
@@ -371,14 +373,15 @@ def compile(coroutine, file_name=None, mux_strategy="one-hot",
         width = width_table[register]
         if isinstance(width, Coroutine):
             continue
+        suffix = "_prev" if register in outputs else "_next"
         if isinstance(width, MemoryType):
             ctx.declare_reg(register, width.width, width.height)
             if strategy == "by_path":
-                ctx.declare_reg(register + "_next", width.width, width.height)
+                ctx.declare_reg(register + suffix, width.width, width.height)
         else:
             ctx.declare_reg(register, width)
             if strategy == "by_path":
-                ctx.declare_reg(register + "_next", width)
+                ctx.declare_reg(register + suffix, width)
 
     # if strategy == "by_path":
     #     init_body = []
