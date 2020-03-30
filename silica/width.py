@@ -110,7 +110,7 @@ def get_width(node, width_table, func_locals={}, func_globals={}):
         return max(node.n.bit_length(), 1)
     elif isinstance(node, ast.Attribute):
         type_ = width_table[node.value.id]._outputs[node.attr]
-        if isinstance(type_, m.BitKind):
+        if issubclass(type_, m.Bit):
             return None
         raise NotImplementedError(type_)
 
@@ -122,8 +122,8 @@ def get_width(node, width_table, func_locals={}, func_globals={}):
 def get_io_width(type_):
     if type_ is m.Bit:
         return None
-    elif isinstance(type_, m.ArrayKind):
-        if isinstance(type_.T, m.ArrayKind):
+    elif issubclass(type_, m.Array):
+        if issubclass(type_.T, m.Array):
             elem_width = get_io_width(type_.T)
             if isinstance(elem_width, tuple):
                 return (type_.N, ) + elem_width
